@@ -1,0 +1,108 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-deep: #0D1427;
+  --bg-cold: #0C2B4A;
+  --bg-steel: #356184;
+  --danger-ring: #7e3c48;
+  --gold-home: #DEA15E;
+  --gold-soft: #F5B670;
+  --gold-light: #FFF0B8;
+  --cream: #fff3dc;
+  --rose-glass: rgba(160, 102, 122, 0.28);
+  --rose-border: rgba(255, 196, 208, 0.34);
+  --text-main: rgba(255, 248, 238, 0.96);
+  --text-soft: rgba(235, 240, 255, 0.84);
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background:
+    radial-gradient(circle at 20% 50%, rgba(53, 97, 132, 0.18), transparent 40%),
+    linear-gradient(135deg, var(--bg-deep) 0%, #12233c 44%, var(--bg-cold) 100%);
+  font-family: Georgia, "Times New Roman", serif;
+  touch-action: none;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  background-image:
+    linear-gradient(rgba(13, 20, 39, 0.18), rgba(13, 20, 39, 0.28)),
+    url("https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/c9580868-d98a-4cd6-a3ab-8be0b9259e99.png");
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  transform-origin: 50% 50%;
+  animation: cosmosBreath 52s ease-in-out infinite alternate;
+  z-index: 0;
+  opacity: 0.96;
+}
+
+body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 52%, rgba(222, 161, 94, 0.07), transparent 18%),
+    radial-gradient(circle at 65% 30%, rgba(53, 97, 132, 0.10), transparent 22%),
+    linear-gradient(180deg, rgba(12, 43, 74, 0.08), rgba(13, 20, 39, 0.14));
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes cosmosBreath {
+  0% {
+    transform: scale(1.03) rotate(-0.25deg) translate3d(-0.5%, -0.3%, 0);
+  }
+  100% {
+    transform: scale(1.07) rotate(0.35deg) translate3d(0.7%, 0.5%, 0);
+  }
+}
+
+@keyframes shimmerFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes pulseDot {
+  0%,
+  100% {
+    transform: translateY(-50%) scale(0.95);
+    opacity: 0.82;
+  }
+  50% {
+    transform: translateY(-50%) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes haloBreath {
+  0%,
+  100% {
+    box-shadow:
+      0 0 10px rgba(255, 215, 150, 0.18),
+      0 0 22px rgba(255, 196, 130, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 14px rgba(255, 215, 150, 0.26),
+      0 0 28px rgba(255, 196, 130, 0.18);
+  }
+}

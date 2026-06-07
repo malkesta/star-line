@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Star Line</title>
+<link rel="stylesheet" href="./css/base.css" />
+<link rel="stylesheet" href="./css/screens.css" />
+<link rel="stylesheet" href="./css/hud.css" />
+<link rel="stylesheet" href="./css/gameplay.css" />
+      
+</head>
+
+<body>
+<div id="introCinematic">
+  <div class="intro-frame show" id="introFrame1">
+    <img src="./assets/images/intro/intro-1.jpg" alt="" class="intro-image" />
+  </div>
+  <div class="intro-frame" id="introFrame2">
+    <img src="./assets/images/intro/intro-2.jpg" alt="" class="intro-image" />
+  </div>
+  <div class="intro-veil"></div>
+</div>
+
+<div class="hud" id="hud">
+  <div class="hud-group saved">
+    <div class="hud-icon" aria-hidden="true">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <path d="M24 7.5L28.9 17.4L39.9 19L31.95 26.75L33.82 37.7L24 32.55L14.18 37.7L16.05 26.75L8.1 19L19.1 17.4L24 7.5Z" fill="#FFF0B8" stroke="#F5B670" stroke-width="1.4"/>
+        <path d="M19.2 17.5C20.4 15.8 22 14.9 24 14.9C26 14.9 27.6 15.8 28.8 17.5" stroke="#DEA15E" stroke-width="1.2" stroke-linecap="round"/>
+        <circle cx="20.6" cy="22.2" r="1.25" fill="#DEA15E"/>
+        <circle cx="27.4" cy="22.2" r="1.25" fill="#DEA15E"/>
+        <path d="M21 26.9C22.2 28.25 23.25 28.8 24 28.8C24.75 28.8 25.8 28.25 27 26.9" stroke="#DEA15E" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="hud-value" id="savedCount">0</div>
+  </div>
+
+  <div class="hud-group time">
+    <div class="hud-icon" aria-hidden="true">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="15.2" stroke="#F5B670" stroke-width="1.5"/>
+        <circle cx="24" cy="24" r="1.7" fill="#FFF0B8"/>
+        <path d="M24 14.5V18.2" stroke="#FFF0B8" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M24 29V24L30.2 20.2" stroke="#FFF0B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M24 5.6L25.8 8.6L29.2 9.1L26.7 11.45L27.3 14.75L24 13L20.7 14.75L21.3 11.45L18.8 9.1L22.2 8.6L24 5.6Z" fill="#FFF0B8" stroke="#DEA15E" stroke-width="0.8"/>
+      </svg>
+    </div>
+    <div class="time-wrap">
+      <div class="time-bar">
+        <div class="time-fill" id="timeFill"></div>
+        <div class="time-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hud-group lost">
+    <div class="hud-icon" aria-hidden="true">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <path d="M24 6L28.2 15.6L38.6 15.2L31.4 22.8L35.6 32.4L25.6 29.9L18 37L18.95 26.7L10 21.3L20.6 18.9L24 6Z" fill="#0D1427" stroke="#7e3c48" stroke-width="1.4" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="hud-value" id="lostCount">0</div>
+  </div>
+
+  <div class="hud-group score">
+    <div class="hud-icon heart-icon" aria-hidden="true">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <defs>
+          <mask id="heartFillMask" maskUnits="userSpaceOnUse">
+            <rect x="0" y="0" width="48" height="48" fill="black"></rect>
+            <rect id="heartFillRect" x="0" y="0" width="0" height="48" fill="white"></rect>
+          </mask>
+      
+          <linearGradient id="heartGoldGradient" x1="8" y1="8" x2="38" y2="38" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FFF0B8"></stop>
+            <stop offset="55%" stop-color="#F5B670"></stop>
+            <stop offset="100%" stop-color="#DEA15E"></stop>
+          </linearGradient>
+        </defs>
+      
+        <g id="heartPulseGroup">
+          <path
+            d="M24 38.5C23.4 38.5 22.85 38.3 22.4 37.9C19.1 35.2 16.35 32.8 14.15 30.7C11.95 28.55 10.2 26.65 8.9 25C7.6 23.35 6.7 21.83 6.2 20.45C5.73 19.08 5.5 17.67 5.5 16.2C5.5 13.3 6.47 10.88 8.4 8.95C10.33 7.02 12.75 6.05 15.65 6.05C17.25 6.05 18.78 6.39 20.25 7.05C21.71 7.68 22.96 8.61 24 9.85C25.04 8.61 26.29 7.68 27.75 7.05C29.22 6.39 30.75 6.05 32.35 6.05C35.25 6.05 37.67 7.02 39.6 8.95C41.53 10.88 42.5 13.3 42.5 16.2C42.5 17.67 42.25 19.08 41.75 20.45C41.28 21.83 40.4 23.35 39.1 25C37.8 26.65 36.05 28.55 33.85 30.7C31.65 32.8 28.9 35.2 25.6 37.9C25.15 38.3 24.6 38.5 24 38.5Z"
+            fill="rgba(255, 240, 184, 0.18)"
+            stroke="rgba(255, 240, 184, 0.55)"
+            stroke-width="1.3"
+          ></path>
+      
+          <path
+            id="heartGlowShape"
+            d="M24 38.5C23.4 38.5 22.85 38.3 22.4 37.9C19.1 35.2 16.35 32.8 14.15 30.7C11.95 28.55 10.2 26.65 8.9 25C7.6 23.35 6.7 21.83 6.2 20.45C5.73 19.08 5.5 17.67 5.5 16.2C5.5 13.3 6.47 10.88 8.4 8.95C10.33 7.02 12.75 6.05 15.65 6.05C17.25 6.05 18.78 6.39 20.25 7.05C21.71 7.68 22.96 8.61 24 9.85C25.04 8.61 26.29 7.68 27.75 7.05C29.22 6.39 30.75 6.05 32.35 6.05C35.25 6.05 37.67 7.02 39.6 8.95C41.53 10.88 42.5 13.3 42.5 16.2C42.5 17.67 42.25 19.08 41.75 20.45C41.28 21.83 40.4 23.35 39.1 25C37.8 26.65 36.05 28.55 33.85 30.7C31.65 32.8 28.9 35.2 25.6 37.9C25.15 38.3 24.6 38.5 24 38.5Z"
+            fill="none"
+            stroke="rgba(255, 240, 184, 0)"
+            stroke-width="1.2"
+          ></path>
+      
+          <path
+            id="heartFillShape"
+            mask="url(#heartFillMask)"
+            d="M24 38.5C23.4 38.5 22.85 38.3 22.4 37.9C19.1 35.2 16.35 32.8 14.15 30.7C11.95 28.55 10.2 26.65 8.9 25C7.6 23.35 6.7 21.83 6.2 20.45C5.73 19.08 5.5 17.67 5.5 16.2C5.5 13.3 6.47 10.88 8.4 8.95C10.33 7.02 12.75 6.05 15.65 6.05C17.25 6.05 18.78 6.39 20.25 7.05C21.71 7.68 22.96 8.61 24 9.85C25.04 8.61 26.29 7.68 27.75 7.05C29.22 6.39 30.75 6.05 32.35 6.05C35.25 6.05 37.67 7.02 39.6 8.95C41.53 10.88 42.5 13.3 42.5 16.2C42.5 17.67 42.25 19.08 41.75 20.45C41.28 21.83 40.4 23.35 39.1 25C37.8 26.65 36.05 28.55 33.85 30.7C31.65 32.8 28.9 35.2 25.6 37.9C25.15 38.3 24.6 38.5 24 38.5Z"
+            fill="url(#heartGoldGradient)"
+            stroke="#FFF0B8"
+            stroke-width="1.1"
+          ></path>
+        </g>
+      </svg>
+    </div>
+  
+    <div class="hud-value" id="scoreValue">0</div>
+  </div>
+</div>
+
+<div class="instructions">
+  Проведи по звёздочкам, чтобы захватить их → Веди к большой звезде → Обходи тёмные звёзды!
+</div>
+
+<div id="startScreen" class="show">
+  <div class="start-star" aria-hidden="true">
+    <svg width="108" height="108" viewBox="0 0 108 108" fill="none">
+      <circle cx="54" cy="54" r="42" stroke="rgba(245,182,112,0.48)" stroke-width="1.5"/>
+      <circle cx="54" cy="54" r="35" stroke="rgba(255,240,184,0.34)" stroke-width="1"/>
+      <path d="M54 24L61.9 40.1L79.8 42.7L66.9 55.3L69.95 73.1L54 64.7L38.05 73.1L41.1 55.3L28.2 42.7L46.1 40.1L54 24Z" fill="#FFF0B8" stroke="#F5B670" stroke-width="1.7"/>
+      <path d="M46 41.4C47.85 38.75 50.4 37.35 54 37.35C57.6 37.35 60.15 38.75 62 41.4" stroke="#DEA15E" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="47.6" cy="48.6" r="1.8" fill="#DEA15E"/>
+      <circle cx="60.4" cy="48.6" r="1.8" fill="#DEA15E"/>
+      <path d="M48.7 57.4C50.85 59.9 52.7 60.9 54 60.9C55.3 60.9 57.15 59.9 59.3 57.4" stroke="#DEA15E" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+
+  <div class="panel-title">Звёздная линия</div>
+  <div class="panel-text">
+    Маленькие звёздочки заблудились в ночном небе. Проведи их к большой домашней звезде,
+    сохранив свет и обойдя тёмные опасности.
+  </div>
+  <button id="startBtn" class="start-btn">Начать</button>
+  <label class="tutorial-toggle">
+  <span class="tutorial-toggle-text">Обучение</span>
+  <input type="checkbox" id="tutorialEnabled" checked />
+  <span class="tutorial-toggle-box" aria-hidden="true"></span>
+</label>
+</div>
+
+<div id="rotateHint">
+  <div class="panel-title">Поверни экран</div>
+  <div class="panel-text">Для этой версии нужна горизонтальная ориентация экрана.</div>
+</div>
+
+<div id="overlay">
+  <div class="panel-title" id="resultTitle">Конец игры</div>
+
+  <div class="panel-text" id="resultMessage"></div>
+
+  <div class="panel-text">
+    Очки: <span id="finalScore">0</span>
+  </div>
+
+  <div class="panel-text">
+    Цель уровня: <span id="targetScore">300</span>
+  </div>
+
+  <div class="overlay-actions">
+    <button id="restartBtn" class="actionBtn">Играть заново</button>
+    <button id="nextBtn" class="actionBtn actionBtn-disabled">Дальше</button>
+  </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

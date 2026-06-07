@@ -1,0 +1,413 @@
+#startScreen,
+#overlay,
+#rotateHint {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  z-index: 6;
+  color: var(--text-main);
+  background: rgba(8, 13, 25, 0.54);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
+  padding: clamp(16px, 3vw, 24px);
+  backdrop-filter: blur(7px);
+}
+
+#startScreen.show,
+#overlay.show,
+#rotateHint.show {
+  display: flex;
+}
+
+.panel-title {
+  font-size: clamp(30px, 5.2vw, 62px);
+  color: var(--cream);
+  letter-spacing: 0.4px;
+  margin-bottom: clamp(10px, 1.6vw, 14px);
+  text-shadow: 0 0 16px rgba(255, 211, 152, 0.18);
+}
+
+.panel-text {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: clamp(15px, 2.2vw, 19px);
+  line-height: 1.5;
+  margin-bottom: clamp(18px, 3vw, 26px);
+  max-width: min(760px, 92vw);
+  color: var(--text-soft);
+}
+
+.start-btn,
+.actionBtn {
+  position: relative;
+  min-width: min(240px, 78vw);
+  min-height: 48px;
+  padding: clamp(12px, 1.8vw, 14px) clamp(22px, 4vw, 32px);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 213, 188, 0.38);
+  background: linear-gradient(135deg, rgba(155, 96, 118, 0.34), rgba(97, 57, 84, 0.28));
+  color: var(--cream);
+  font-size: clamp(20px, 3vw, 28px);
+  line-height: 1;
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  box-shadow:
+    inset 0 0 16px rgba(255, 240, 220, 0.08),
+    0 0 18px rgba(245, 182, 112, 0.08);
+  animation: haloBreath 5.8s ease-in-out infinite;
+  touch-action: manipulation;
+}
+
+.overlay-actions {
+  display: flex;
+  gap: clamp(10px, 2vw, 16px);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  width: min(100%, 560px);
+}
+
+.actionBtn-disabled {
+  opacity: 0.42;
+  filter: grayscale(0.18);
+  cursor: default;
+  box-shadow:
+    inset 0 0 10px rgba(255, 240, 220, 0.03),
+    0 0 10px rgba(245, 182, 112, 0.03);
+  animation: none;
+}
+
+.actionBtn-disabled::before,
+.actionBtn-disabled::after {
+  opacity: 0.45;
+}
+
+.start-btn::before,
+.start-btn::after,
+.actionBtn::before,
+.actionBtn::after,
+.actionBtn-disabled::before,
+.actionBtn-disabled::after {
+  content: "✦";
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 220, 175, 0.9);
+  font-size: clamp(12px, 1.6vw, 16px);
+  text-shadow: 0 0 12px rgba(255, 215, 150, 0.36);
+}
+
+.start-btn::before,
+.actionBtn::before {
+  left: clamp(12px, 2vw, 16px);
+}
+
+.start-btn::after,
+.actionBtn::after {
+  right: clamp(12px, 2vw, 16px);
+}
+
+.start-btn:active,
+.actionBtn:active {
+  transform: scale(0.985);
+}
+
+.tutorial-toggle {
+  margin-top: clamp(12px, 2.2vw, 16px);
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(8px, 1.8vw, 10px);
+  cursor: pointer;
+  user-select: none;
+  pointer-events: auto;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tutorial-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tutorial-toggle-text {
+  color: rgba(245, 241, 231, 0.66);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: clamp(14px, 1.8vw, 15px);
+  line-height: 1;
+  letter-spacing: 0.2px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.26);
+  transition: color 180ms ease, opacity 180ms ease;
+}
+
+.tutorial-toggle-box {
+  position: relative;
+  width: clamp(36px, 5vw, 39px);
+  height: clamp(20px, 2.8vw, 21px);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 233, 188, 0.42);
+  background: linear-gradient(180deg, rgba(245, 192, 102, 0.94), rgba(222, 161, 94, 0.92));
+  box-shadow:
+    inset 0 0 5px rgba(255, 247, 228, 0.16),
+    0 0 6px rgba(245, 182, 112, 0.12);
+  transition:
+    background 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    opacity 220ms ease;
+}
+
+.tutorial-toggle-box::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: clamp(14px, 2vw, 15px);
+  height: clamp(14px, 2vw, 15px);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 35%,
+    rgba(255, 255, 255, 0.98),
+    rgba(243, 235, 225, 0.96) 65%,
+    rgba(214, 205, 193, 0.95)
+  );
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 0 2px rgba(255, 255, 255, 0.68);
+  transition:
+    left 220ms ease,
+    right 220ms ease,
+    background 220ms ease;
+}
+
+/* Включено по умолчанию */
+.tutorial-toggle input:checked + .tutorial-toggle-box {
+  background: linear-gradient(180deg, rgba(245, 192, 102, 0.94), rgba(222, 161, 94, 0.92));
+  border-color: rgba(255, 236, 194, 0.52);
+  box-shadow:
+    inset 0 0 5px rgba(255, 247, 228, 0.18),
+    0 0 7px rgba(245, 182, 112, 0.14);
+  opacity: 1;
+}
+
+.tutorial-toggle input:checked + .tutorial-toggle-box::before {
+  right: 2px;
+  left: auto;
+}
+
+/* Выключено */
+.tutorial-toggle input:not(:checked) + .tutorial-toggle-box {
+  background: linear-gradient(180deg, rgba(150, 154, 160, 0.24), rgba(110, 114, 122, 0.2));
+  border-color: rgba(208, 214, 224, 0.14);
+  box-shadow:
+    inset 0 0 4px rgba(255, 255, 255, 0.03),
+    0 0 4px rgba(0, 0, 0, 0.06);
+  opacity: 0.5;
+}
+
+.tutorial-toggle input:not(:checked) + .tutorial-toggle-box::before {
+  left: 2px;
+  right: auto;
+  background: radial-gradient(
+    circle at 35% 35%,
+    rgba(245, 245, 245, 0.92),
+    rgba(214, 216, 220, 0.9) 68%,
+    rgba(176, 181, 188, 0.88)
+  );
+}
+
+.tutorial-toggle:hover .tutorial-toggle-text {
+  color: rgba(255, 244, 225, 0.76);
+}
+
+.tutorial-toggle input:not(:checked) ~ .tutorial-toggle-text,
+.tutorial-toggle input:not(:checked) + .tutorial-toggle-box + .tutorial-toggle-text {
+  color: rgba(220, 224, 232, 0.4);
+}
+
+.tutorial-toggle input:focus-visible + .tutorial-toggle-box {
+  outline: 2px solid rgba(255, 240, 184, 0.4);
+  outline-offset: 2px;
+}
+
+.start-star {
+  margin-bottom: clamp(14px, 3vw, 20px);
+  filter: drop-shadow(0 0 22px rgba(245, 182, 112, 0.24));
+}
+
+.start-star svg {
+  width: clamp(72px, 14vw, 108px);
+  height: auto;
+  display: block;
+}
+
+#introCinematic {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  overflow: hidden;
+  background: #050814;
+  transition: opacity 900ms ease, visibility 900ms ease;
+}
+
+#introCinematic.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.intro-frame {
+  position: absolute;
+  inset: -2px;
+  opacity: 0;
+  transform: scale(1.035);
+  filter: brightness(0.94) saturate(0.96);
+  transition: opacity 2200ms ease, transform 9000ms ease, filter 2200ms ease;
+  will-change: opacity, transform, filter;
+  overflow: hidden;
+}
+
+.intro-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.intro-frame.show {
+  opacity: 1;
+  transform: scale(1);
+  filter: brightness(1) saturate(1);
+}
+
+.intro-frame.dimmed {
+  opacity: 1;
+  filter: brightness(0.20) saturate(0.75);
+}
+
+.intro-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(255, 255, 255, 0.05), transparent 30%),
+    linear-gradient(to bottom, rgba(3, 5, 12, 0.06), rgba(4, 6, 14, 0.22) 55%, rgba(3, 4, 10, 0.48));
+  pointer-events: none;
+  z-index: 2;
+}
+
+@media (max-width: 860px) {
+  #startScreen,
+  #overlay,
+  #rotateHint {
+    padding: 18px;
+  }
+
+  .panel-text {
+    max-width: min(92vw, 620px);
+  }
+
+  .start-btn,
+  .actionBtn {
+    min-width: min(220px, 82vw);
+  }
+}
+
+@media (max-width: 640px) {
+  .panel-title {
+    font-size: clamp(28px, 8vw, 40px);
+  }
+
+  .panel-text {
+    font-size: clamp(14px, 3.8vw, 16px);
+    line-height: 1.45;
+    margin-bottom: 18px;
+  }
+
+  .start-btn,
+  .actionBtn {
+    width: min(86vw, 320px);
+    min-width: 0;
+    font-size: clamp(18px, 5vw, 22px);
+    padding: 12px 20px;
+  }
+
+  .overlay-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .tutorial-toggle {
+    flex-direction: row;
+    gap: 8px;
+  }
+}
+
+@media (max-height: 740px) {
+  .start-star {
+    margin-bottom: 12px;
+  }
+
+  .start-star svg {
+    width: clamp(64px, 11vh, 92px);
+  }
+
+  .panel-title {
+    margin-bottom: 10px;
+  }
+
+  .panel-text {
+    margin-bottom: 16px;
+  }
+
+  .tutorial-toggle {
+    margin-top: 10px;
+  }
+}
+
+@media (max-height: 560px) {
+  #startScreen,
+  #overlay,
+  #rotateHint {
+    justify-content: flex-start;
+    padding-top: max(18px, env(safe-area-inset-top));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  .start-star {
+    margin-top: 6px;
+    margin-bottom: 10px;
+  }
+
+  .start-star svg {
+    width: clamp(56px, 10vh, 74px);
+  }
+
+  .panel-title {
+    font-size: clamp(24px, 6vh, 34px);
+    margin-bottom: 8px;
+  }
+
+  .panel-text {
+    font-size: clamp(13px, 3.2vh, 15px);
+    line-height: 1.35;
+    margin-bottom: 12px;
+  }
+
+  .start-btn,
+  .actionBtn {
+    min-height: 42px;
+    font-size: clamp(16px, 3.5vh, 20px);
+    padding: 10px 18px;
+  }
+
+  .tutorial-toggle {
+    margin-top: 8px;
+  }
+}

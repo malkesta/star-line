@@ -1,0 +1,248 @@
+.hud {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  z-index: 4;
+  pointer-events: none;
+  width: min(1100px, calc(100vw - 40px));
+  padding: 0 10px;
+}
+
+.hud-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.hud-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at 35% 35%,
+    rgba(255, 248, 225, 0.16),
+    rgba(255, 214, 148, 0.06) 52%,
+    rgba(255, 255, 255, 0) 72%
+  );
+  filter: drop-shadow(0 0 12px rgba(255, 211, 143, 0.18));
+}
+
+.heart-icon {
+  position: relative;
+}
+
+.heart-icon svg {
+  overflow: visible;
+}
+
+#heartFillShape {
+  filter: drop-shadow(0 0 0 rgba(255, 214, 148, 0));
+  transition: filter 180ms ease;
+}
+
+@keyframes heartGoalPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.heart-icon.is-active #heartGlowShape {
+  opacity: 1;
+  stroke: rgba(255, 240, 184, 0.32);
+  filter: drop-shadow(0 0 4px rgba(255, 230, 170, 0.22))
+          drop-shadow(0 0 8px rgba(245, 182, 112, 0.16));
+}
+
+.heart-icon.is-pulsing #heartPulseGroup {
+  animation: heartGoalPulse 1.15s ease-in-out infinite;
+  transform-origin: 50% 50%;
+  transform-box: fill-box;
+}
+
+.hud-value {
+  min-width: 74px;
+  height: 46px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(149, 93, 112, 0.34), rgba(96, 55, 82, 0.28));
+  border: 1px solid rgba(255, 205, 214, 0.34);
+  box-shadow:
+    inset 0 0 12px rgba(255, 236, 214, 0.06),
+    0 0 18px rgba(222, 161, 94, 0.08);
+  color: var(--cream);
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: 0.3px;
+  text-shadow: 0 0 10px rgba(255, 214, 158, 0.18);
+}
+
+.hud-group.saved::before,
+.hud-group.score::after,
+.hud-group.lost::after,
+.hud-group.time::before,
+.hud-group.time::after {
+  content: "✦";
+  position: absolute;
+  color: rgba(255, 215, 166, 0.78);
+  font-size: 16px;
+  text-shadow: 0 0 10px rgba(255, 214, 150, 0.28);
+}
+
+.hud-group.saved::before {
+  left: -12px;
+  bottom: -4px;
+}
+
+.hud-group.time::before {
+  left: -12px;
+  top: 16px;
+}
+
+.hud-group.time::after {
+  right: -12px;
+  top: 16px;
+}
+
+.hud-group.lost::after {
+  right: -10px;
+  bottom: -4px;
+}
+
+.hud-group.score::after {
+  right: -12px;
+  bottom: -4px;
+}
+
+.time-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: min(420px, 38vw);
+}
+
+.time-bar {
+  position: relative;
+  flex: 1 1 auto;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 219, 166, 0.38);
+  background: linear-gradient(180deg, rgba(255, 234, 193, 0.08), rgba(255, 219, 163, 0.02));
+  box-shadow:
+    inset 0 0 8px rgba(255, 239, 210, 0.08),
+    0 0 16px rgba(245, 182, 112, 0.08);
+  overflow: visible;
+}
+
+.time-fill {
+  position: absolute;
+  inset: 2px;
+  right: auto;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 232, 186, 0.86),
+    rgba(245, 182, 112, 0.88),
+    rgba(255, 240, 202, 0.86),
+    rgba(245, 182, 112, 0.82)
+  );
+  background-size: 200% 100%;
+  animation: shimmerFlow 7s linear infinite;
+  box-shadow: 0 0 10px rgba(245, 182, 112, 0.22);
+  transform-origin: left center;
+}
+
+.time-dot {
+  position: absolute;
+  top: 50%;
+  right: -7px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff8e9, #f5b670 62%, #dea15e 100%);
+  box-shadow:
+    0 0 10px rgba(255, 227, 177, 0.65),
+    0 0 18px rgba(245, 182, 112, 0.32);
+  animation: pulseDot 4.5s ease-in-out infinite;
+}
+
+.instructions {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  width: min(92vw, 920px);
+  color: rgba(245, 241, 231, 0.78);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 14px;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+  z-index: 3;
+}
+
+@media (max-width: 1100px) {
+  .hud {
+    gap: 12px;
+    top: 16px;
+  }
+
+  .hud-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .hud-value {
+    min-width: 62px;
+    height: 40px;
+    padding: 0 14px;
+    font-size: 24px;
+  }
+
+  .time-wrap {
+    min-width: min(300px, 31vw);
+  }
+}
+
+@media (max-width: 860px) {
+  .hud {
+    width: calc(100vw - 20px);
+    gap: 8px;
+  }
+
+  .hud-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .hud-value {
+    min-width: 52px;
+    height: 34px;
+    padding: 0 12px;
+    font-size: 20px;
+  }
+
+  .time-wrap {
+    min-width: min(180px, 26vw);
+    gap: 8px;
+  }
+
+  .time-bar {
+    height: 11px;
+  }
+}
