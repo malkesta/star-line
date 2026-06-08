@@ -53,24 +53,27 @@
 
 #startScreen .start-star {
   margin-bottom: clamp(14px, 2.2vw, 20px);
-  transform: translateY(-2vh);
+  transform: translateY(-2.6vh);
   filter: drop-shadow(0 0 22px rgba(245, 182, 112, 0.24));
 }
 
 #startScreen .panel-title {
-  transform: translateY(-2vh);
+  transform: translateY(-2.6vh);
 }
 
 #startScreen .panel-text {
-  transform: translateY(-2vh);
+  transform: translateY(-2.6vh);
 }
 
 #startScreen .start-btn {
-  transform: translateY(-2vh);
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  transform: translateY(-2.6vh);
 }
 
 #startScreen .tutorial-toggle {
-  transform: translateY(-2vh);
+  transform: translateY(-2.6vh);
 }
 
 #overlay .panel-title,
@@ -298,7 +301,7 @@
 #introCinematic {
   position: absolute;
   inset: 0;
-  z-index: 7;
+  z-index: 30;
   display: flex;
   overflow: hidden;
   background: #050814;
@@ -377,7 +380,7 @@
   #startScreen .panel-text,
   #startScreen .start-btn,
   #startScreen .tutorial-toggle {
-    transform: translateY(-1vh);
+    transform: translateY(-1.4vh);
   }
 }
 

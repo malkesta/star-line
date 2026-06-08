@@ -8,13 +8,13 @@ export class StartScreenScene {
     this.rotateHint = document.getElementById("rotateHint");
 
     this.fullscreenBtn = null;
-    this.startRow = null;
     this.fullscreenHintTimer = null;
     this.fullscreenHintCleanupTimer = null;
 
     this.handleStartClick = this.handleStartClick.bind(this);
     this.handleFullscreenClick = this.handleFullscreenClick.bind(this);
     this.handleFullscreenChange = this.handleFullscreenChange.bind(this);
+    this.handleLayoutUpdate = this.handleLayoutUpdate.bind(this);
   }
 
   get isLandscape() {
@@ -75,6 +75,10 @@ export class StartScreenScene {
     this.toggleFullscreen();
   }
 
+  handleLayoutUpdate() {
+    this.positionFullscreenButton();
+  }
+
   handleFullscreenChange() {
     if (!this.fullscreenBtn) return;
 
@@ -88,6 +92,10 @@ export class StartScreenScene {
       "title",
       isActive ? "Выйти из полноэкранного режима" : "Полноэкранный режим"
     );
+
+    requestAnimationFrame(() => {
+      this.positionFullscreenButton();
+    });
   }
 
   ensureFullscreenStyles() {
@@ -95,22 +103,14 @@ export class StartScreenScene {
 
     const style = document.createElement("style");
     style.id = "startScreenFullscreenStyles";
-    
 
     style.textContent = `
-  #startScreen .start-primary-row {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: clamp(10px, 1.4vh, 16px);
-    margin-top: clamp(4px, 0.8vh, 10px);
-  }
-
   #startScreen .fullscreen-btn {
     --fs-btn-size: clamp(46px, 6.4vh, 58px);
     --fs-icon-size: clamp(28px, 5.7vh, 38px);
 
     appearance: none;
+    position: fixed;
     width: var(--fs-btn-size);
     height: var(--fs-btn-size);
     min-width: var(--fs-btn-size);
@@ -124,8 +124,8 @@ export class StartScreenScene {
     justify-content: center;
     cursor: pointer;
     box-shadow: 0 0 0 rgba(223, 233, 255, 0);
+    z-index: 25;
     transition:
-      transform 180ms ease,
       color 180ms ease,
       border-color 240ms ease,
       background-color 240ms ease,
@@ -137,11 +137,9 @@ export class StartScreenScene {
     color: rgba(202, 208, 220, 0.96);
     background: rgba(150, 156, 168, 0.08);
     border-color: rgba(196, 202, 212, 0.14);
-    transform: translateY(-1px);
   }
 
   #startScreen .fullscreen-btn:active {
-    transform: translateY(0);
     background: rgba(150, 156, 168, 0.12);
   }
 
@@ -242,12 +240,6 @@ export class StartScreenScene {
 
     this.ensureFullscreenStyles();
 
-    const row = document.createElement("div");
-    row.className = "start-primary-row";
-
-    this.startBtn.parentNode.insertBefore(row, this.startBtn);
-    row.appendChild(this.startBtn);
-
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "fullscreen-btn";
@@ -267,12 +259,34 @@ export class StartScreenScene {
     `;
 
     btn.addEventListener("click", this.handleFullscreenClick);
-    row.appendChild(btn);
+    this.startScreen.appendChild(btn);
 
-    this.startRow = row;
     this.fullscreenBtn = btn;
-
     this.handleFullscreenChange();
+  }
+
+  positionFullscreenButton() {
+    if (!this.startScreen || !this.startBtn || !this.fullscreenBtn) return;
+    if (!this.startScreen.classList.contains("show")) return;
+
+    const startRect = this.startBtn.getBoundingClientRect();
+    const fsRect = this.fullscreenBtn.getBoundingClientRect();
+
+    const gap = Math.max(10, Math.min(18, window.innerWidth * 0.012));
+
+    let left = startRect.right + gap;
+    let top = startRect.top + (startRect.height - fsRect.height) / 2;
+
+    const minLeft = 8;
+    const maxLeft = window.innerWidth - fsRect.width - 8;
+    const minTop = 8;
+    const maxTop = window.innerHeight - fsRect.height - 8;
+
+    left = Math.min(Math.max(left, minLeft), maxLeft);
+    top = Math.min(Math.max(top, minTop), maxTop);
+
+    this.fullscreenBtn.style.left = `${left}px`;
+    this.fullscreenBtn.style.top = `${top}px`;
   }
 
   scheduleFullscreenHint() {
@@ -326,17 +340,25 @@ export class StartScreenScene {
       this.startScreen.classList.add("show");
     }
 
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        this.positionFullscreenButton();
+      });
+    });
+
     this.scheduleFullscreenHint();
 
     this.startBtn?.addEventListener("click", this.handleStartClick);
     document.addEventListener("fullscreenchange", this.handleFullscreenChange);
     document.addEventListener("webkitfullscreenchange", this.handleFullscreenChange);
+    window.addEventListener("resize", this.handleLayoutUpdate);
   }
 
   async exit() {
     this.startBtn?.removeEventListener("click", this.handleStartClick);
     document.removeEventListener("fullscreenchange", this.handleFullscreenChange);
     document.removeEventListener("webkitfullscreenchange", this.handleFullscreenChange);
+    window.removeEventListener("resize", this.handleLayoutUpdate);
 
     clearTimeout(this.fullscreenHintTimer);
     clearTimeout(this.fullscreenHintCleanupTimer);
