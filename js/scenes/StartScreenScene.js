@@ -35,6 +35,13 @@ export class StartScreenScene {
     return document.fullscreenElement || document.webkitFullscreenElement || null;
   }
 
+removeIntroFallback() {
+    const introCinematic = document.getElementById("introCinematic");
+    if (introCinematic) {
+      introCinematic.remove();
+    }
+  }
+
   async enterFullscreen() {
     const root = document.documentElement;
 
@@ -334,6 +341,7 @@ export class StartScreenScene {
   }
 
   async enter() {
+    this.removeIntroFallback();
     this.ensureFullscreenButton();
 
     if (this.startScreen) {
