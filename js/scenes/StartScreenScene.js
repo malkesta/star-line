@@ -285,16 +285,6 @@ export class StartScreenScene {
     <path d="M46 24v-6h-6"></path>
     <path d="M18 40v6h6"></path>
     <path d="M46 40v6h-6"></path>
-
-    <text
-      x="32"
-      y="35.5"
-      text-anchor="middle"
-      dominant-baseline="middle"
-      font-size="11.5"
-      font-weight="700"
-      letter-spacing="1.1"
-    >FS</text>
   </svg>
 `;
 
