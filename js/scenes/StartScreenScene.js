@@ -6,10 +6,13 @@ export class StartScreenScene {
     this.startScreen = document.getElementById("startScreen");
     this.startBtn = document.getElementById("startBtn");
     this.rotateHint = document.getElementById("rotateHint");
+    this.introCinematic = document.getElementById("introCinematic");
 
     this.fullscreenBtn = null;
     this.fullscreenHintTimer = null;
     this.fullscreenHintCleanupTimer = null;
+    this.introCleanupTimer = null;
+    this.startUnlockTimer = null;
 
     this.handleStartClick = this.handleStartClick.bind(this);
     this.handleFullscreenClick = this.handleFullscreenClick.bind(this);
@@ -33,13 +36,6 @@ export class StartScreenScene {
 
   get fullscreenElement() {
     return document.fullscreenElement || document.webkitFullscreenElement || null;
-  }
-
-removeIntroFallback() {
-    const introCinematic = document.getElementById("introCinematic");
-    if (introCinematic) {
-      introCinematic.remove();
-    }
   }
 
   async enterFullscreen() {
@@ -113,8 +109,8 @@ removeIntroFallback() {
 
     style.textContent = `
   #startScreen .fullscreen-btn {
-    --fs-btn-size: clamp(46px, 6.4vh, 58px);
-    --fs-icon-size: clamp(28px, 5.7vh, 38px);
+  --fs-btn-size: clamp(55px, 7.6vh, 70px);
+  --fs-icon-size: clamp(50px, 7.8vh, 60px);
 
     appearance: none;
     position: fixed;
@@ -141,7 +137,7 @@ removeIntroFallback() {
   }
 
   #startScreen .fullscreen-btn:hover {
-    color: rgba(202, 208, 220, 0.96);
+    color: rgba(113, 212, 255, 0.96);
     background: rgba(150, 156, 168, 0.08);
     border-color: rgba(196, 202, 212, 0.14);
   }
@@ -152,7 +148,7 @@ removeIntroFallback() {
 
   #startScreen .fullscreen-btn:focus-visible {
     outline: none;
-    color: rgba(214, 220, 230, 0.98);
+    color: rgba(109, 238, 255, 0.98);
     border-color: rgba(210, 218, 232, 0.3);
     box-shadow:
       0 0 0 3px rgba(210, 218, 232, 0.1),
@@ -160,19 +156,48 @@ removeIntroFallback() {
   }
 
   #startScreen .fullscreen-btn svg {
-    width: var(--fs-icon-size);
-    height: var(--fs-icon-size);
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.0;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    pointer-events: none;
-  }
+  width: var(--fs-icon-size);
+  height: var(--fs-icon-size);
+  overflow: visible;
+  pointer-events: none;
+}
+
+#startScreen .fullscreen-btn svg rect,
+#startScreen .fullscreen-btn svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#startScreen .fullscreen-btn svg text {
+  fill: currentColor;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
 
   #startScreen .fullscreen-btn.is-active {
     color: rgba(176, 182, 193, 0.22);
   }
+
+  #startScreen .start-btn {
+  opacity: 1;
+  transition:
+    opacity 1500ms linear,
+    filter 220ms ease,
+    box-shadow 220ms ease;
+}
+
+#startScreen .start-btn.actionBtn-disabled {
+  opacity: 0.12;
+}
+
+#startScreen .start-btn.actionBtn-disabled.start-btn-warming {
+  opacity: 0.32;
+}
 
   #startScreen .fullscreen-btn.hint-pulse {
     animation: fullscreenHintPulse 2.9s ease-out forwards;
@@ -183,7 +208,7 @@ removeIntroFallback() {
       border-color: rgba(196, 202, 212, 0);
       background: rgba(150, 156, 168, 0);
       box-shadow: 0 0 0 rgba(223, 233, 255, 0);
-      color: rgba(176, 182, 193, 0.82);
+      color: rgba(109, 238, 255, 0.98);
     }
 
     12% {
@@ -192,7 +217,7 @@ removeIntroFallback() {
       box-shadow:
         0 0 0 2px rgba(214, 224, 241, 0.08),
         0 0 18px rgba(214, 224, 241, 0.2);
-      color: rgba(232, 238, 248, 0.96);
+      color: rgba(109, 238, 255, 0.98);
     }
 
     26% {
@@ -201,7 +226,7 @@ removeIntroFallback() {
       box-shadow:
         0 0 0 1px rgba(214, 224, 241, 0.04),
         0 0 10px rgba(214, 224, 241, 0.08);
-      color: rgba(190, 197, 209, 0.88);
+      color: rgba(109, 238, 255, 0.98);
     }
 
     45% {
@@ -210,7 +235,7 @@ removeIntroFallback() {
       box-shadow:
         0 0 0 2px rgba(214, 224, 241, 0.1),
         0 0 20px rgba(214, 224, 241, 0.22);
-      color: rgba(240, 244, 252, 0.98);
+      color: rgba(109, 238, 255, 0.98);
     }
 
     62% {
@@ -219,7 +244,7 @@ removeIntroFallback() {
       box-shadow:
         0 0 0 1px rgba(214, 224, 241, 0.04),
         0 0 10px rgba(214, 224, 241, 0.08);
-      color: rgba(190, 197, 209, 0.88);
+      color: rgba(109, 238, 255, 0.98);
     }
 
     100% {
@@ -232,9 +257,9 @@ removeIntroFallback() {
 
   @media (max-width: 640px) {
     #startScreen .fullscreen-btn {
-      --fs-btn-size: clamp(44px, 5.8vh, 52px);
-      --fs-icon-size: clamp(21px, 2.9vh, 26px);
-    }
+    --fs-btn-size: clamp(50px, 6.6vh, 60px);
+    --fs-icon-size: clamp(26px, 3.4vh, 32px);
+  }
   }
 `;
 
@@ -253,17 +278,25 @@ removeIntroFallback() {
     btn.setAttribute("aria-label", "Полноэкранный режим");
     btn.setAttribute("title", "Полноэкранный режим");
     btn.innerHTML = `
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M9 3H4v5"></path>
-        <path d="M15 3h5v5"></path>
-        <path d="M9 21H4v-5"></path>
-        <path d="M15 21h5v-5"></path>
-        <path d="M4 4l6 6"></path>
-        <path d="M20 4l-6 6"></path>
-        <path d="M4 20l6-6"></path>
-        <path d="M20 20l-6-6"></path>
-      </svg>
-    `;
+  <svg viewBox="0 0 64 64" aria-hidden="true">
+    <rect x="9" y="9" width="46" height="46" rx="9"></rect>
+
+    <path d="M18 24v-6h6"></path>
+    <path d="M46 24v-6h-6"></path>
+    <path d="M18 40v6h6"></path>
+    <path d="M46 40v6h-6"></path>
+
+    <text
+      x="32"
+      y="35.5"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-size="11.5"
+      font-weight="700"
+      letter-spacing="1.1"
+    >FS</text>
+  </svg>
+`;
 
     btn.addEventListener("click", this.handleFullscreenClick);
     this.startScreen.appendChild(btn);
@@ -317,36 +350,75 @@ removeIntroFallback() {
       }, 3000);
     }, 1000);
   }
+prepareStartButton() {
+  if (!this.startBtn) return;
 
-  async handleStartClick() {
-    try {
-      await this.audio.init();
-    } catch (e) {
-      console.warn("Audio init skipped", e);
-    }
+  clearTimeout(this.startUnlockTimer);
+  this.startUnlockTimer = null;
 
-    if (!this.audio.ambientStarted) {
-      this.audio.startAmbient();
-    }
+  this.startBtn.disabled = true;
+  this.startBtn.classList.add("actionBtn-disabled");
+  this.startBtn.classList.remove("start-btn-warming");
 
-    if (this.startScreen) {
-      this.startScreen.classList.remove("show");
-    }
+  requestAnimationFrame(() => {
+    this.startBtn?.classList.add("start-btn-warming");
+  });
 
-    if (this.rotateHint) {
-      this.rotateHint.classList.toggle("show", !this.isLandscape);
-    }
+  this.startUnlockTimer = setTimeout(() => {
+    if (!this.startBtn) return;
 
-    await this.sceneManager.next();
+    this.startBtn.disabled = false;
+    this.startBtn.classList.remove("actionBtn-disabled", "start-btn-warming");
+    this.startUnlockTimer = null;
+  }, 4000);
+}
+
+  scheduleIntroCleanup() {
+    clearTimeout(this.introCleanupTimer);
+
+    this.introCleanupTimer = setTimeout(() => {
+      if (this.introCinematic) {
+        this.introCinematic.classList.add("is-gone");
+      }
+      this.introCleanupTimer = null;
+    }, 900);
   }
 
+  async handleStartClick() {
+  if (this.startBtn?.disabled) return;
+
+  try {
+    await this.audio.init();
+  } catch (e) {
+    console.warn("Audio init skipped", e);
+  }
+
+  if (!this.audio.ambientStarted) {
+    this.audio.startAmbient();
+  }
+
+  if (this.startScreen) {
+    this.startScreen.classList.remove("show");
+  }
+
+  if (this.rotateHint) {
+    this.rotateHint.classList.toggle("show", !this.isLandscape);
+  }
+
+  await this.sceneManager.next();
+}
+
   async enter() {
-    this.removeIntroFallback();
+    this.introCinematic = document.getElementById("introCinematic");
+
     this.ensureFullscreenButton();
 
     if (this.startScreen) {
       this.startScreen.classList.add("show");
     }
+    this.prepareStartButton();
+
+    this.scheduleIntroCleanup();
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -370,6 +442,8 @@ removeIntroFallback() {
 
     clearTimeout(this.fullscreenHintTimer);
     clearTimeout(this.fullscreenHintCleanupTimer);
+    clearTimeout(this.introCleanupTimer);
+    clearTimeout(this.startUnlockTimer);
 
     if (this.fullscreenBtn) {
       this.fullscreenBtn.removeEventListener("click", this.handleFullscreenClick);
@@ -377,7 +451,12 @@ removeIntroFallback() {
     }
 
     if (this.startScreen) {
-      this.startScreen.classList.remove("show");
-    }
+  this.startScreen.classList.remove("show");
+}
+
+if (this.startBtn) {
+  this.startBtn.disabled = false;
+  this.startBtn.classList.remove("actionBtn-disabled", "start-btn-warming");
+}
   }
 }

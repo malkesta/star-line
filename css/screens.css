@@ -145,6 +145,21 @@
 .actionBtn-disabled::after {
   opacity: 0.45;
 }
+#startScreen .start-btn {
+  opacity: 1;
+  transition:
+    opacity 1500ms linear,
+    filter 220ms ease,
+    box-shadow 220ms ease;
+}
+
+#startScreen .start-btn.actionBtn-disabled {
+  opacity: 0.005;
+}
+
+#startScreen .start-btn.actionBtn-disabled.start-btn-warming {
+  opacity: 0.92; /* кадр перед полной непрозрачностью */
+}
 
 .start-btn::before,
 .start-btn::after,
@@ -312,6 +327,14 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+}
+#introCinematic.is-gone {
+  display: none;
+}
+
+#introCinematic.is-gone .intro-frame {
+  transition: none;
+  will-change: auto;
 }
 
 .intro-frame {
