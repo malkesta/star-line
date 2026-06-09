@@ -360,7 +360,7 @@ prepareStartButton() {
     this.startBtn.disabled = false;
     this.startBtn.classList.remove("actionBtn-disabled", "start-btn-warming");
     this.startUnlockTimer = null;
-  }, 4000);
+  }, 3700);
 }
 
   scheduleIntroCleanup() {
