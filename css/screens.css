@@ -99,6 +99,60 @@
   color: var(--text-soft);
 }
 
+/* --- Финальный ранг в оверлее --- */
+
+.final-rank-block {
+  width: min(92vw, 460px);
+  margin:
+    clamp(2px, 0.5vw, 4px)
+    auto
+    clamp(16px, 2.2vw, 20px);
+  padding: clamp(12px, 2vw, 18px) clamp(14px, 2.4vw, 20px);
+  border-radius: 22px;
+  border: 1px solid rgba(255, 220, 190, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(82, 49, 70, 0.26),
+    rgba(47, 27, 42, 0.22)
+  );
+  box-shadow:
+    inset 0 0 14px rgba(255, 238, 216, 0.04),
+    0 0 18px rgba(245, 182, 112, 0.05);
+}
+
+.final-rank-label {
+  font-size: clamp(26px, 4vw, 40px);
+  line-height: 1;
+  color: #fff0b8;
+  text-shadow:
+    0 0 12px rgba(255, 232, 184, 0.24),
+    0 0 22px rgba(245, 182, 112, 0.14);
+  margin-bottom: clamp(6px, 1vw, 8px);
+}
+
+.final-rank-text {
+  margin-bottom: clamp(10px, 1.8vw, 14px);
+}
+
+.final-rank-medals {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1.4vw, 12px);
+  padding: clamp(6px, 1vw, 8px) clamp(10px, 1.8vw, 14px);
+  border-radius: 999px;
+  background: rgba(255, 244, 224, 0.04);
+  border: 1px solid rgba(255, 223, 192, 0.14);
+}
+
+.final-rank-medals .rank-medal {
+  --medal-size: clamp(20px, 2.6vw, 26px);
+}
+
+#overlay .final-rank-block .panel-text {
+  max-width: none;
+}
+
 .start-btn,
 .actionBtn {
   position: relative;
@@ -107,7 +161,11 @@
   padding: clamp(12px, 1.8vw, 14px) clamp(22px, 4vw, 32px);
   border-radius: 999px;
   border: 1px solid rgba(255, 213, 188, 0.38);
-  background: linear-gradient(135deg, rgba(155, 96, 118, 0.34), rgba(97, 57, 84, 0.28));
+  background: linear-gradient(
+    135deg,
+    rgba(155, 96, 118, 0.34),
+    rgba(97, 57, 84, 0.28)
+  );
   color: var(--cream);
   font-size: clamp(20px, 3vw, 28px);
   line-height: 1;
@@ -145,6 +203,7 @@
 .actionBtn-disabled::after {
   opacity: 0.45;
 }
+
 #startScreen .start-btn {
   opacity: 1;
   transition:
@@ -225,7 +284,11 @@
   height: clamp(20px, 2.8vw, 21px);
   border-radius: 999px;
   border: 1px solid rgba(255, 233, 188, 0.42);
-  background: linear-gradient(180deg, rgba(245, 192, 102, 0.94), rgba(222, 161, 94, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(245, 192, 102, 0.94),
+    rgba(222, 161, 94, 0.92)
+  );
   box-shadow:
     inset 0 0 5px rgba(255, 247, 228, 0.16),
     0 0 6px rgba(245, 182, 112, 0.12);
@@ -260,7 +323,11 @@
 }
 
 .tutorial-toggle input:checked + .tutorial-toggle-box {
-  background: linear-gradient(180deg, rgba(245, 192, 102, 0.94), rgba(222, 161, 94, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(245, 192, 102, 0.94),
+    rgba(222, 161, 94, 0.92)
+  );
   border-color: rgba(255, 236, 194, 0.52);
   box-shadow:
     inset 0 0 5px rgba(255, 247, 228, 0.18),
@@ -274,7 +341,11 @@
 }
 
 .tutorial-toggle input:not(:checked) + .tutorial-toggle-box {
-  background: linear-gradient(180deg, rgba(150, 154, 160, 0.24), rgba(110, 114, 122, 0.2));
+  background: linear-gradient(
+    180deg,
+    rgba(150, 154, 160, 0.24),
+    rgba(110, 114, 122, 0.2)
+  );
   border-color: rgba(208, 214, 224, 0.14);
   box-shadow:
     inset 0 0 4px rgba(255, 255, 255, 0.03),
@@ -313,6 +384,8 @@
   display: block;
 }
 
+/* --- Интро --- */
+
 #introCinematic {
   position: absolute;
   inset: 0;
@@ -328,6 +401,7 @@
   visibility: hidden;
   pointer-events: none;
 }
+
 #introCinematic.is-gone {
   display: none;
 }
@@ -365,18 +439,29 @@
 
 .intro-frame.dimmed {
   opacity: 1;
-  filter: brightness(0.20) saturate(0.75);
+  filter: brightness(0.2) saturate(0.75);
 }
 
 .intro-veil {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 50% 36%, rgba(255, 255, 255, 0.05), transparent 30%),
-    linear-gradient(to bottom, rgba(3, 5, 12, 0.06), rgba(4, 6, 14, 0.22) 55%, rgba(3, 4, 10, 0.48));
+    radial-gradient(
+      circle at 50% 36%,
+      rgba(255, 255, 255, 0.05),
+      transparent 30%
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(3, 5, 12, 0.06),
+      rgba(4, 6, 14, 0.22) 55%,
+      rgba(3, 4, 10, 0.48)
+    );
   pointer-events: none;
   z-index: 2;
 }
+
+/* --- 860px --- */
 
 @media (max-width: 860px) {
   #startScreen,
@@ -405,7 +490,19 @@
   #startScreen .tutorial-toggle {
     transform: translateY(-1.4vh);
   }
+
+  .final-rank-block {
+    width: min(94vw, 420px);
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .final-rank-medals .rank-medal {
+    --medal-size: 21px;
+  }
 }
+
+/* --- 640px --- */
 
 @media (max-width: 640px) {
   .panel-title {
@@ -448,7 +545,28 @@
   #startScreen .tutorial-toggle {
     transform: none;
   }
+
+  .final-rank-block {
+    width: min(92vw, 360px);
+    margin-bottom: 16px;
+    padding: 12px 12px;
+  }
+
+  .final-rank-label {
+    font-size: clamp(22px, 7vw, 30px);
+  }
+
+  .final-rank-medals {
+    gap: 6px;
+    padding: 6px 10px;
+  }
+
+  .final-rank-medals .rank-medal {
+    --medal-size: 18px;
+  }
 }
+
+/* --- 740px высота --- */
 
 @media (max-height: 740px) {
   .start-star {
@@ -471,6 +589,8 @@
     margin-top: 10px;
   }
 }
+
+/* --- 560px высота --- */
 
 @media (max-height: 560px) {
   #startScreen,

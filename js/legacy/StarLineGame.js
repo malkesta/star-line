@@ -1034,100 +1034,111 @@ class Starlet {
       export class StarLineGame {
 
   constructor({
-    sceneManager = null,
-    audio = null,
-    onNext = null,
-    onRoundFinished = null,
-  } = {}) {
-    this.sceneManager = sceneManager;
-    this.audio = audio ?? new GameAudio();
-    this.onNext = onNext;
-    this.onRoundFinished = onRoundFinished;
-  
-    this.canvas = document.getElementById("gameCanvas");
-    this.ctx = this.canvas.getContext("2d");
-  
-    this.savedCountElement = document.getElementById("savedCount");
-    this.lostCountElement = document.getElementById("lostCount");
-    this.scoreElement = document.getElementById("scoreValue");
-    this.heartFillRect = document.getElementById("heartFillRect");
-    this.heartIconElement = document.querySelector(".heart-icon");
-    this.timeFillElement = document.getElementById("timeFill");
-  
-    this.overlay = document.getElementById("overlay");
-    this.finalScoreElement = document.getElementById("finalScore");
-    this.resultMessageElement = document.getElementById("resultMessage");
-    this.resultTitleElement = document.getElementById("resultTitle");
-    this.targetScoreElement = document.getElementById("targetScore");
-  
-    this.restartBtn = document.getElementById("restartBtn");
-    this.nextBtn = document.getElementById("nextBtn");
-  
-    this.tutorialEnabledInput = document.getElementById("tutorialEnabled");
-    this.rotateHint = document.getElementById("rotateHint");
-  
-    this.levelTargetScore = 400;
-    this.levelPassed = false;
-    this.displayedHeartProgress = 0;
-    this.targetHeartProgress = 0;
-    this.heartPulseTimeout = null;
-  
-    this.tutor = new TutorGuide();
-    this.hasPlayerInteracted = false;
-    this.tutorialEnabledForRun = true;
-  
-    this.homeStar = null;
-    this.starlets = [];
-    this.obstacles = [];
-    this.particles = [];
-  
-    this.score = 0;
-    this.savedCount = 0;
-    this.lostCount = 0;
-  
-    this.timeLeft = 90;
-    this.totalTime = 90;
-  
-    this.gameOver = false;
-    this.isRunning = false;
-    this.lastTime = performance.now();
-    this.rafId = null;
-  
-    this.obstacleTimer = 0;
-    this.obstacleInterval = 2200;
-  
-    this.isDragging = false;
-    this.mousePos = { x: 0, y: 0 };
-  
-    this.handleRestartClick = this.resetGame.bind(this);
-    this.handleNextClick = async () => {
-      if (!this.levelPassed) return;
-  
-      if (this.onNext) {
-        await this.onNext();
-        return;
-      }
-  
-      await this.sceneManager?.next?.();
-    };
-  
-    this.handleResize = this.resize.bind(this);
-  
-    this.restartBtn?.addEventListener("click", this.handleRestartClick);
-    this.nextBtn?.addEventListener("click", this.handleNextClick);
-  
-    this.resize();
-    window.addEventListener("resize", this.handleResize);
-  
-    this.setupInput();
-  
-    this.homeStar = new HomeStar(this.canvas.width, this.canvas.height);
-    this.spawnStarlets(8);
-  
-    this.updateTargetScoreUI();
-    this.updateUI();
-    this.draw();
-  }
+  sceneId = "game1",
+  sceneManager = null,
+  audio = null,
+  onNext = null,
+  onRoundFinished = null,
+} = {}) {
+  this.sceneId = sceneId;
+  this.sceneManager = sceneManager;
+  this.audio = audio ?? new GameAudio();
+  this.onNext = onNext;
+  this.onRoundFinished = onRoundFinished;
+
+  this.canvas = document.getElementById("gameCanvas");
+  this.ctx = this.canvas.getContext("2d");
+
+  this.savedCountElement = document.getElementById("savedCount");
+  this.lostCountElement = document.getElementById("lostCount");
+  this.scoreElement = document.getElementById("scoreValue");
+  this.heartFillRect = document.getElementById("heartFillRect");
+  this.heartIconElement = document.querySelector(".heart-icon");
+  this.timeFillElement = document.getElementById("timeFill");
+
+  this.overlay = document.getElementById("overlay");
+  this.finalScoreElement = document.getElementById("finalScore");
+  this.resultMessageElement = document.getElementById("resultMessage");
+  this.resultTitleElement = document.getElementById("resultTitle");
+  this.targetScoreElement = document.getElementById("targetScore");
+
+  this.rankMedalElements = Array.from(
+    document.querySelectorAll("[data-rank-medal]")
+  );
+  this.finalRankMedalElements = Array.from(
+    document.querySelectorAll("[data-final-rank-medal]")
+  );
+  this.finalRankLabelElement = document.getElementById("finalRankLabel");
+  this.finalRankTextElement = document.getElementById("finalRankText");
+
+  this.restartBtn = document.getElementById("restartBtn");
+  this.nextBtn = document.getElementById("nextBtn");
+
+  this.tutorialEnabledInput = document.getElementById("tutorialEnabled");
+  this.rotateHint = document.getElementById("rotateHint");
+
+  this.levelTargetScore = 400;
+  this.levelPassed = false;
+  this.displayedHeartProgress = 0;
+  this.targetHeartProgress = 0;
+  this.heartPulseTimeout = null;
+
+  this.tutor = new TutorGuide();
+  this.hasPlayerInteracted = false;
+  this.tutorialEnabledForRun = true;
+
+  this.homeStar = null;
+  this.starlets = [];
+  this.obstacles = [];
+  this.particles = [];
+
+  this.score = 0;
+  this.savedCount = 0;
+  this.lostCount = 0;
+
+  this.timeLeft = 90;
+  this.totalTime = 90;
+
+  this.gameOver = false;
+  this.isRunning = false;
+  this.lastTime = performance.now();
+  this.rafId = null;
+
+  this.obstacleTimer = 0;
+  this.obstacleInterval = 2200;
+
+  this.isDragging = false;
+  this.mousePos = { x: 0, y: 0 };
+
+  this.handleRestartClick = this.resetGame.bind(this);
+  this.handleNextClick = async () => {
+    if (!this.levelPassed) return;
+
+    if (this.onNext) {
+      await this.onNext();
+      return;
+    }
+
+    await this.sceneManager?.next?.();
+  };
+
+  this.handleResize = this.resize.bind(this);
+
+  this.restartBtn?.addEventListener("click", this.handleRestartClick);
+  this.nextBtn?.addEventListener("click", this.handleNextClick);
+
+  this.resize();
+  window.addEventListener("resize", this.handleResize);
+
+  this.setupInput();
+
+  this.homeStar = new HomeStar(this.canvas.width, this.canvas.height);
+  this.spawnStarlets(8);
+
+  this.updateTargetScoreUI();
+  this.updateUI();
+  this.draw();
+}
   
               isLandscape() { return window.innerWidth >= window.innerHeight; }
   
@@ -1250,58 +1261,147 @@ class Starlet {
                   }
                 }
               }
-              resetGame = () => {
-    this.starlets = [];
-    this.obstacles = [];
-    this.particles = [];
-  
-    this.score = 0;
-    this.savedCount = 0;
-    this.lostCount = 0;
-  
-    this.displayedHeartProgress = 0;
-    this.targetHeartProgress = 0;
-  
-    if (this.heartPulseTimeout) {
-      clearTimeout(this.heartPulseTimeout);
-      this.heartPulseTimeout = null;
-    }
-  
-    if (this.heartFillRect) {
-      this.heartFillRect.setAttribute("width", 0);
-    }
-  
-    if (this.heartIconElement) {
-      this.heartIconElement.classList.remove("is-active", "is-complete", "is-pulsing");
-    }
-  
-    this.timeLeft = this.totalTime;
-    this.levelPassed = false;
-  
-    this.gameOver = false;
-    this.isRunning = true;
-    this.lastTime = performance.now();
-  
-    this.obstacleTimer = 0;
-    this.obstacleInterval = 2200;
-  
-    this.isDragging = false;
-    this.mousePos = { x: 0, y: 0 };
-  
-    this.hasPlayerInteracted = false;
-  
-    // По ТЗ после "Играть снова" тутор всегда выключен.
-    this.tutorialEnabledForRun = false;
-    this.tutor.reset({ enabled: false });
-  
-    this.overlay.classList.remove("show");
-    this.nextBtn.classList.add("actionBtn-disabled");
-  
-    this.homeStar = new HomeStar(this.canvas.width, this.canvas.height);
-    this.spawnStarlets(12);
-    this.updateUI();
-    this.startGameLoop();
+
+              getRankThresholds() {
+  return {
+    oneMedalScore: Math.ceil(this.levelTargetScore * 1.25),
+    twoMedalScore: Math.ceil(this.levelTargetScore * 1.6),
+    threeMedalScore: 1200,
   };
+}
+
+getSceneRank() {
+  if (!this.levelPassed) return 0;
+
+  const { oneMedalScore, twoMedalScore, threeMedalScore } =
+    this.getRankThresholds();
+
+  if (this.score >= threeMedalScore) return 3;
+  if (this.score >= twoMedalScore) return 2;
+  if (this.score >= oneMedalScore) return 1;
+  return 0;
+}
+
+getSceneRankLabel(rank = this.getSceneRank()) {
+  switch (rank) {
+    case 3:
+      return "★★★";
+    case 2:
+      return "★★";
+    case 1:
+      return "★";
+    default:
+      return "—";
+  }
+}
+
+getSceneRankTitle(rank = this.getSceneRank()) {
+  switch (rank) {
+    case 3:
+      return "Три медали";
+    case 2:
+      return "Две медали";
+    case 1:
+      return "Одна медаль";
+    default:
+      return "Без медали";
+  }
+}
+
+updateRankUI() {
+  const passedByScore = this.score >= this.levelTargetScore;
+  const { oneMedalScore, twoMedalScore, threeMedalScore } =
+    this.getRankThresholds();
+
+  let liveMedalCount = 0;
+  if (passedByScore && this.score >= oneMedalScore) liveMedalCount = 1;
+  if (passedByScore && this.score >= twoMedalScore) liveMedalCount = 2;
+  if (passedByScore && this.score >= threeMedalScore) liveMedalCount = 3;
+
+  this.rankMedalElements.forEach((element, index) => {
+    const medalIndex = index + 1;
+    element.classList.toggle("is-lit", liveMedalCount >= medalIndex);
+    element.classList.toggle("is-locked", liveMedalCount < medalIndex);
+  });
+
+  const finalRank = this.getSceneRank();
+
+  this.finalRankMedalElements.forEach((element, index) => {
+    const medalIndex = index + 1;
+    element.classList.toggle("is-lit", finalRank >= medalIndex);
+    element.classList.toggle("is-locked", finalRank < medalIndex);
+  });
+
+  if (this.finalRankLabelElement) {
+    this.finalRankLabelElement.textContent = this.getSceneRankLabel(finalRank);
+  }
+
+  if (this.finalRankTextElement) {
+    this.finalRankTextElement.textContent = this.levelPassed
+      ? this.getSceneRankTitle(finalRank)
+      : "Уровень не пройден";
+  }
+}
+            resetGame = () => {
+  this.starlets = [];
+  this.obstacles = [];
+  this.particles = [];
+
+  this.score = 0;
+  this.savedCount = 0;
+  this.lostCount = 0;
+
+  this.displayedHeartProgress = 0;
+  this.targetHeartProgress = 0;
+
+  if (this.heartPulseTimeout) {
+    clearTimeout(this.heartPulseTimeout);
+    this.heartPulseTimeout = null;
+  }
+
+  if (this.heartFillRect) {
+    this.heartFillRect.setAttribute("width", 0);
+  }
+
+  if (this.heartIconElement) {
+    this.heartIconElement.classList.remove(
+      "is-active",
+      "is-complete",
+      "is-pulsing"
+    );
+  }
+
+  this.timeLeft = this.totalTime;
+  this.levelPassed = false;
+
+  this.gameOver = false;
+  this.isRunning = true;
+  this.lastTime = performance.now();
+
+  this.obstacleTimer = 0;
+  this.obstacleInterval = 2200;
+
+  this.isDragging = false;
+  this.mousePos = { x: 0, y: 0 };
+
+  this.hasPlayerInteracted = false;
+
+  this.tutorialEnabledForRun = false;
+  this.tutor.reset({ enabled: false });
+
+  if (this.overlay) {
+    this.overlay.classList.remove("show");
+  }
+
+  if (this.nextBtn) {
+    this.nextBtn.classList.add("actionBtn-disabled");
+  }
+
+  this.homeStar = new HomeStar(this.canvas.width, this.canvas.height);
+  this.spawnStarlets(12);
+  this.updateUI();
+  this.startGameLoop();
+};  
   
               spawnStarlets(count) {
                   for (let i = 0; i < count; i++) {
@@ -1397,40 +1497,62 @@ class Starlet {
   
     this.timeLeft -= delta;
     if (this.timeLeft <= 0) {
-    this.timeLeft = 0;
-    this.gameOver = true;
-    this.isRunning = false;
-  
-    this.levelPassed = this.score >= this.levelTargetScore;
-  
+  this.timeLeft = 0;
+  this.gameOver = true;
+  this.isRunning = false;
+
+  this.levelPassed = this.score >= this.levelTargetScore;
+
+  const sceneRank = this.getSceneRank();
+  const sceneRankLabel = this.getSceneRankLabel(sceneRank);
+  const sceneRankTitle = this.getSceneRankTitle(sceneRank);
+
+  if (this.finalScoreElement) {
     this.finalScoreElement.textContent = this.score;
+  }
+
+  if (this.resultTitleElement) {
     this.resultTitleElement.textContent = this.levelPassed
       ? "Уровень пройден"
       : "Почти получилось";
-  
-    if (this.levelPassed) {
-      this.resultMessageElement.textContent =
-        "Девочка спасла так много звёзд и теперь невероятно счастлива";
-      this.nextBtn.classList.remove("actionBtn-disabled");
-    } else {
-      this.resultMessageElement.textContent =
-        "Девочка надеялась спасти больше звёзд";
-      this.nextBtn.classList.add("actionBtn-disabled");
-    }
-  
-    this.onRoundFinished?.({
-      score: this.score,
-      savedCount: this.savedCount,
-      lostCount: this.lostCount,
-      levelPassed: this.levelPassed,
-      levelTargetScore: this.levelTargetScore,
-    });
-  
-    this.audio.playGameOverSound();
-    this.overlay.classList.add("show");
-    this.updateUI();
-    return;
   }
+
+  if (this.levelPassed) {
+    if (this.resultMessageElement) {
+      this.resultMessageElement.textContent =
+        sceneRank > 0
+          ? `Цель достигнута. Награда уровня: ${sceneRankTitle}.`
+          : "Цель достигнута. Можно двигаться дальше.";
+    }
+
+    this.nextBtn?.classList.remove("actionBtn-disabled");
+  } else {
+    if (this.resultMessageElement) {
+      this.resultMessageElement.textContent =
+        "Цель не достигнута. Попробуй ещё раз, чтобы открыть путь дальше.";
+    }
+
+    this.nextBtn?.classList.add("actionBtn-disabled");
+  }
+
+  this.updateRankUI();
+
+  this.onRoundFinished?.({
+    sceneId: this.sceneId,
+    score: this.score,
+    savedCount: this.savedCount,
+    lostCount: this.lostCount,
+    levelPassed: this.levelPassed,
+    levelTargetScore: this.levelTargetScore,
+    sceneRank,
+    sceneRankLabel,
+  });
+
+  this.audio.playGameOverSound();
+  this.overlay?.classList.add("show");
+  this.updateUI();
+  return;
+}
   
     let swarmCenter = null;
     if (this.starlets.length > 0) {
@@ -1525,49 +1647,70 @@ this.starlets.forEach((s) => {
     }
   }
   
-              updateUI() {
-                this.savedCountElement.textContent = this.savedCount;
+            updateUI() {
+  if (this.savedCountElement) {
+    this.savedCountElement.textContent = this.savedCount;
+  }
+
+  if (this.lostCountElement) {
     this.lostCountElement.textContent = this.lostCount;
+  }
+
+  if (this.scoreElement) {
     this.scoreElement.textContent = this.score;
-  
+  }
+
+  if (this.timeFillElement) {
     const progress = Math.max(0, Math.min(1, this.timeLeft / this.totalTime));
     this.timeFillElement.style.width = `${progress * 100}%`;
   }
-  
-              drawBackgroundDust() {
-                  const g = this.ctx.createRadialGradient(this.canvas.width * 0.32, this.canvas.height * 0.5, 40, this.canvas.width * 0.32, this.canvas.height * 0.5, Math.max(this.canvas.width, this.canvas.height) * 0.85);
-                  g.addColorStop(0, 'rgba(53, 97, 132, 0.08)');
-                  g.addColorStop(0.35, 'rgba(12, 43, 74, 0.03)');
-                  g.addColorStop(1, 'rgba(0,0,0,0)');
-                  this.ctx.fillStyle = g;
-                  this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-              }
-  
-              draw() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.drawBackgroundDust();
-  
-    if (this.homeStar) this.homeStar.draw(this.ctx);
-    this.obstacles.forEach((o) => o.draw(this.ctx));
-    this.starlets.forEach((s) => s.draw(this.ctx));
-    this.particles.forEach((p) => p.draw(this.ctx));
-  
-    this.tutor.draw(this.ctx);
-  
-    if (this.isDragging && this.isRunning && !this.gameOver) {
-      this.ctx.strokeStyle = "rgba(53, 97, 132, 0.55)";
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath();
-      this.ctx.arc(this.mousePos.x, this.mousePos.y, 28, 0, Math.PI * 2);
-      this.ctx.stroke();
-  
-      this.ctx.beginPath();
-      this.ctx.arc(this.mousePos.x, this.mousePos.y, 20, 0, Math.PI * 2);
-      this.ctx.lineWidth = 0.8;
-      this.ctx.strokeStyle = "rgba(12, 43, 74, 0.6)";
-      this.ctx.stroke();
-    }
+
+  this.updateRankUI();
+}
+
+drawBackgroundDust() {
+  const g = this.ctx.createRadialGradient(
+    this.canvas.width * 0.32,
+    this.canvas.height * 0.5,
+    40,
+    this.canvas.width * 0.32,
+    this.canvas.height * 0.5,
+    Math.max(this.canvas.width, this.canvas.height) * 0.85
+  );
+
+  g.addColorStop(0, "rgba(53, 97, 132, 0.08)");
+  g.addColorStop(0.35, "rgba(12, 43, 74, 0.03)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+
+  this.ctx.fillStyle = g;
+  this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+}
+
+draw() {
+  this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  this.drawBackgroundDust();
+
+  if (this.homeStar) this.homeStar.draw(this.ctx);
+  this.obstacles.forEach((o) => o.draw(this.ctx));
+  this.starlets.forEach((s) => s.draw(this.ctx));
+  this.particles.forEach((p) => p.draw(this.ctx));
+
+  this.tutor.draw(this.ctx);
+
+  if (this.isDragging && this.isRunning && !this.gameOver) {
+    this.ctx.strokeStyle = "rgba(53, 97, 132, 0.55)";
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.arc(this.mousePos.x, this.mousePos.y, 28, 0, Math.PI * 2);
+    this.ctx.stroke();
+
+    this.ctx.beginPath();
+    this.ctx.arc(this.mousePos.x, this.mousePos.y, 20, 0, Math.PI * 2);
+    this.ctx.lineWidth = 0.8;
+    this.ctx.strokeStyle = "rgba(12, 43, 74, 0.6)";
+    this.ctx.stroke();
   }
+} 
   
   startGameLoop() {
     if (this.rafId) {
