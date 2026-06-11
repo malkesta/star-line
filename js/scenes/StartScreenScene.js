@@ -340,28 +340,29 @@ export class StartScreenScene {
       }, 3000);
     }, 1000);
   }
-prepareStartButton() {
-  if (!this.startBtn) return;
 
-  clearTimeout(this.startUnlockTimer);
-  this.startUnlockTimer = null;
-
-  this.startBtn.disabled = true;
-  this.startBtn.classList.add("actionBtn-disabled");
-  this.startBtn.classList.remove("start-btn-warming");
-
-  requestAnimationFrame(() => {
-    this.startBtn?.classList.add("start-btn-warming");
-  });
-
-  this.startUnlockTimer = setTimeout(() => {
+  prepareStartButton() {
     if (!this.startBtn) return;
 
-    this.startBtn.disabled = false;
-    this.startBtn.classList.remove("actionBtn-disabled", "start-btn-warming");
+    clearTimeout(this.startUnlockTimer);
     this.startUnlockTimer = null;
-  }, 3700);
-}
+
+    this.startBtn.disabled = true;
+    this.startBtn.classList.add("actionBtn-disabled");
+    this.startBtn.classList.remove("start-btn-warming");
+
+    requestAnimationFrame(() => {
+      this.startBtn?.classList.add("start-btn-warming");
+    });
+
+    this.startUnlockTimer = setTimeout(() => {
+      if (!this.startBtn) return;
+
+      this.startBtn.disabled = false;
+      this.startBtn.classList.remove("actionBtn-disabled", "start-btn-warming");
+      this.startUnlockTimer = null;
+    }, 3700);
+  }
 
   scheduleIntroCleanup() {
     clearTimeout(this.introCleanupTimer);
@@ -375,28 +376,30 @@ prepareStartButton() {
   }
 
   async handleStartClick() {
-  if (this.startBtn?.disabled) return;
+    if (this.startBtn?.disabled) return;
 
-  try {
-    await this.audio.init();
-  } catch (e) {
-    console.warn("Audio init skipped", e);
+    try {
+      await this.audio.init();
+    } catch (e) {
+      console.warn("Audio init skipped", e);
+    }
+
+    if (!this.audio.ambientStarted) {
+      this.audio.startAmbient();
+    }
+
+    this.sceneManager?.resetProgress?.();
+
+    if (this.startScreen) {
+      this.startScreen.classList.remove("show");
+    }
+
+    if (this.rotateHint) {
+      this.rotateHint.classList.toggle("show", !this.isLandscape);
+    }
+
+    await this.sceneManager.next();
   }
-
-  if (!this.audio.ambientStarted) {
-    this.audio.startAmbient();
-  }
-
-  if (this.startScreen) {
-    this.startScreen.classList.remove("show");
-  }
-
-  if (this.rotateHint) {
-    this.rotateHint.classList.toggle("show", !this.isLandscape);
-  }
-
-  await this.sceneManager.next();
-}
 
   async enter() {
     this.introCinematic = document.getElementById("introCinematic");
@@ -406,8 +409,8 @@ prepareStartButton() {
     if (this.startScreen) {
       this.startScreen.classList.add("show");
     }
-    this.prepareStartButton();
 
+    this.prepareStartButton();
     this.scheduleIntroCleanup();
 
     requestAnimationFrame(() => {
@@ -441,12 +444,12 @@ prepareStartButton() {
     }
 
     if (this.startScreen) {
-  this.startScreen.classList.remove("show");
-}
+      this.startScreen.classList.remove("show");
+    }
 
-if (this.startBtn) {
-  this.startBtn.disabled = false;
-  this.startBtn.classList.remove("actionBtn-disabled", "start-btn-warming");
-}
+    if (this.startBtn) {
+      this.startBtn.disabled = false;
+      this.startBtn.classList.remove("actionBtn-disabled", "start-btn-warming");
+    }
   }
 }

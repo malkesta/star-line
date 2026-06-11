@@ -1,8 +1,19 @@
+import { GameProgress } from "./GameProgress.js";
+
 export class SceneManager {
   constructor({ scenes = [] } = {}) {
     this.scenes = scenes;
     this.currentIndex = -1;
     this.currentScene = null;
+    this.gameProgress = new GameProgress();
+  }
+
+  resetProgress() {
+    this.gameProgress.reset();
+  }
+
+  getProgressSummary() {
+    return this.gameProgress.getSummary();
   }
 
   async start() {

@@ -252,6 +252,7 @@ function drawStarPath(ctx, cx, cy, outerRadius, innerRadius, points = 5) {
     this.following = false;
     this.lagFactor = 0.07;
     this.dragRadius = 28;
+    this.trailTimer = 0;
 
     this.phase = Math.random() * Math.PI * 2;
     this.wander = Math.random() * 0.22 + 0.08;
@@ -373,25 +374,52 @@ function drawStarPath(ctx, cx, cy, outerRadius, innerRadius, points = 5) {
             }
         }
 
-        class Particle {
-            constructor(x, y, color, cool = false) {
-                this.x = x; this.y = y;
-                this.vx = (Math.random() - 0.5) * 4; this.vy = (Math.random() - 0.5) * 4;
-                this.life = 1; this.decay = 0.03 + Math.random() * 0.02;
-                this.color = color; this.size = 2 + Math.random() * 3; this.cool = cool;
-            }
-            update() { this.x += this.vx; this.y += this.vy; this.life -= this.decay; }
-            draw(ctx) {
-                ctx.globalAlpha = this.life;
-                ctx.fillStyle = this.color;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
-                if (this.cool) {
-                    ctx.strokeStyle = 'rgba(53, 97, 132, 0.6)'; ctx.lineWidth = 0.8;
-                    ctx.beginPath(); ctx.arc(this.x, this.y, this.size + 1.6, 0, Math.PI * 2); ctx.stroke();
-                }
-                ctx.globalAlpha = 1;
-            }
-        }
+       class Particle {
+  constructor(x, y, color, cool = false, options = {}) {
+    this.x = x;
+    this.y = y;
+
+    this.vx = options.vx ?? (Math.random() - 0.5) * 4;
+    this.vy = options.vy ?? (Math.random() - 0.5) * 4;
+
+    this.life = options.life ?? 1;
+    this.decay = options.decay ?? (0.03 + Math.random() * 0.02);
+
+    this.color = color;
+    this.size = options.size ?? (2 + Math.random() * 3);
+    this.cool = cool;
+
+    this.gravity = options.gravity ?? 0;
+    this.shrink = options.shrink ?? 0;
+    this.alphaBoost = options.alphaBoost ?? 1;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += this.gravity;
+    this.life -= this.decay;
+    this.size = Math.max(0.2, this.size - this.shrink);
+  }
+
+  draw(ctx) {
+    ctx.globalAlpha = Math.max(0, this.life) * this.alphaBoost;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (this.cool) {
+      ctx.strokeStyle = 'rgba(53, 97, 132, 0.6)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size + 1.6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.globalAlpha = 1;
+  }
+} 
 
         class HomeStar {
   constructor(canvasWidth, canvasHeight, side = "left", phaseOffset = 0) {
@@ -1316,6 +1344,47 @@ function drawStarPath(ctx, cx, cy, outerRadius, innerRadius, points = 5) {
                 for (let i = 0; i < 12; i++) this.particles.push(new Particle(x, y, color, cool));
             }
 
+            emitFollowingTrail(starlet, followingCount, delta) {
+  if (!starlet.following) {
+    starlet.trailTimer = 0;
+    return;
+  }
+
+  const intensity = Math.min(1, 0.45 + followingCount * 0.18);
+  const interval = Math.max(0.035, 0.085 - followingCount * 0.008);
+
+  starlet.trailTimer += delta;
+
+  while (starlet.trailTimer >= interval) {
+    starlet.trailTimer -= interval;
+
+    const burstCount =
+      followingCount >= 4 ? 2 :
+      followingCount >= 2 && Math.random() < 0.45 ? 2 : 1;
+
+    for (let i = 0; i < burstCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = starlet.radius * (0.2 + Math.random() * 0.9);
+
+      const px = starlet.x + Math.cos(angle) * radius * 0.55;
+      const py = starlet.y + Math.sin(angle) * radius * 0.55;
+
+      this.particles.push(
+        new Particle(px, py, "rgba(255, 236, 176, 0.95)", false, {
+          vx: (Math.random() - 0.5) * 0.45 - 0.15,
+          vy: (Math.random() - 0.5) * 0.45 + 0.08,
+          life: 0.7 + Math.random() * 0.25,
+          decay: 0.04 + Math.random() * 0.025,
+          size: 0.9 + Math.random() * 1.5 * intensity,
+          gravity: -0.002,
+          shrink: 0.01,
+          alphaBoost: 0.65 + intensity * 0.25,
+        })
+      );
+    }
+  }
+}
+
             setupInput() {
   const handleMove = (x, y) => {
     this.mousePos = { x, y };
@@ -1404,10 +1473,17 @@ function drawStarPath(ctx, cx, cy, outerRadius, innerRadius, points = 5) {
     };
   }
 
-  this.starlets.forEach((s) => {
-    const justCaught = s.update(this.mousePos, this.isDragging, swarmCenter);
-    if (justCaught) this.audio.playCatchSound();
-  });
+  const followingCount = this.starlets.reduce(
+  (count, s) => count + (s.following ? 1 : 0),
+  0
+);
+
+this.starlets.forEach((s) => {
+  const justCaught = s.update(this.mousePos, this.isDragging, swarmCenter);
+  if (justCaught) this.audio.playCatchSound();
+
+  this.emitFollowingTrail(s, followingCount, delta);
+});
 
   this.obstacles.forEach((o) => {
   o.update();
