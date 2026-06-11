@@ -101,13 +101,17 @@
 
 /* --- Финальный ранг в оверлее --- */
 
+:root {
+  --overlay-control-height: 56px;
+}
+
 .final-rank-block {
   width: min(92vw, 460px);
   margin:
     clamp(2px, 0.5vw, 4px)
     auto
     clamp(16px, 2.2vw, 20px);
-  padding: clamp(12px, 2vw, 18px) clamp(14px, 2.4vw, 20px);
+  padding: clamp(10px, 1.6vw, 14px) clamp(14px, 2.4vw, 20px);
   border-radius: 22px;
   border: 1px solid rgba(255, 220, 190, 0.22);
   background: linear-gradient(
@@ -121,32 +125,45 @@
 }
 
 .final-rank-label {
-  font-size: clamp(26px, 4vw, 40px);
+  font-size: clamp(24px, 3.4vw, 34px);
   line-height: 1;
   color: #fff0b8;
   text-shadow:
     0 0 12px rgba(255, 232, 184, 0.24),
     0 0 22px rgba(245, 182, 112, 0.14);
-  margin-bottom: clamp(6px, 1vw, 8px);
+  margin-bottom: clamp(4px, 0.8vw, 6px);
 }
 
 .final-rank-text {
-  margin-bottom: clamp(10px, 1.8vw, 14px);
+  margin-bottom: clamp(8px, 1.2vw, 10px);
 }
 
 .final-rank-medals {
+  min-height: var(--overlay-control-height);
+  max-height: var(--overlay-control-height);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: clamp(8px, 1.4vw, 12px);
-  padding: clamp(6px, 1vw, 8px) clamp(10px, 1.8vw, 14px);
+  padding: 0 clamp(10px, 1.8vw, 14px);
   border-radius: 999px;
   background: rgba(255, 244, 224, 0.04);
   border: 1px solid rgba(255, 223, 192, 0.14);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .final-rank-medals .rank-medal {
-  --medal-size: clamp(20px, 2.6vw, 26px);
+  --medal-size: clamp(18px, 2.2vw, 22px);
+  flex: 0 0 auto;
+}
+
+#overlay .actionBtn {
+  min-height: var(--overlay-control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 #overlay .final-rank-block .panel-text {
