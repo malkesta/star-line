@@ -79,7 +79,7 @@
 #overlay .panel-title,
 #overlay .panel-text,
 #overlay .overlay-actions,
-#overlay .final-rank-block {
+#overlay .result-summary-card {
   transform: none;
 }
 
@@ -107,57 +107,119 @@
 }
 
 #overlay .panel-text {
-  margin-bottom: clamp(8px, 1.2vw, 12px);
-}
-
-#overlay #resultMessage {
   margin-bottom: clamp(10px, 1.4vw, 14px);
 }
 
-/* --- Финальный ранг в оверлее --- */
+#overlay #resultMessage {
+  margin-bottom: clamp(12px, 1.6vw, 16px);
+}
+
+/* --- Карточка результата --- */
 
 :root {
   --overlay-control-height: 56px;
 }
 
-.final-rank-block {
-  width: min(78vw, 308px);
+.result-summary-card {
+  width: min(92vw, 500px);
   margin:
-    clamp(12px, 1.8vw, 16px)
+    clamp(14px, 2vw, 18px)
     auto
     0;
-  padding: clamp(10px, 1.4vw, 12px) clamp(12px, 1.8vw, 14px);
-  border-radius: 18px;
-  border: 1px solid rgba(255, 220, 190, 0.18);
+  padding: clamp(14px, 2vw, 18px);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: clamp(12px, 2vw, 18px);
+  align-items: center;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 220, 190, 0.22);
   background: linear-gradient(
     180deg,
-    rgba(82, 49, 70, 0.22),
-    rgba(47, 27, 42, 0.18)
+    rgba(82, 49, 70, 0.3),
+    rgba(47, 27, 42, 0.24)
   );
   box-shadow:
-    inset 0 0 12px rgba(255, 238, 216, 0.03),
-    0 0 14px rgba(245, 182, 112, 0.04);
+    inset 0 0 14px rgba(255, 238, 216, 0.04),
+    0 0 18px rgba(245, 182, 112, 0.05);
+}
+
+.result-summary-icon {
+  width: clamp(54px, 8vw, 72px);
+  height: clamp(54px, 8vw, 72px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 40%,
+    rgba(255, 244, 224, 0.16),
+    rgba(255, 244, 224, 0.04) 65%,
+    rgba(255, 244, 224, 0.01) 100%
+  );
+  box-shadow: 0 0 20px rgba(245, 182, 112, 0.08);
+}
+
+.result-summary-content {
+  min-width: 0;
+}
+
+.result-summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 223, 192, 0.08);
+}
+
+.result-summary-row:last-of-type {
+  border-bottom: none;
+}
+
+.result-summary-name {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: clamp(14px, 2vw, 16px);
+  color: rgba(245, 241, 231, 0.72);
+  line-height: 1.25;
+}
+
+.result-summary-value {
+  font-size: clamp(22px, 3vw, 30px);
+  color: var(--cream);
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(255, 211, 152, 0.14);
+}
+
+.result-summary-rank {
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.result-summary-rank .result-summary-name {
+  margin-bottom: 0;
 }
 
 .final-rank-label {
-  font-size: clamp(18px, 2.6vw, 24px);
-  line-height: 1.05;
+  font-size: clamp(24px, 3.4vw, 34px);
+  line-height: 1;
   color: #fff0b8;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
   text-shadow:
-    0 0 10px rgba(255, 232, 184, 0.22),
-    0 0 18px rgba(245, 182, 112, 0.1);
+    0 0 12px rgba(255, 232, 184, 0.24),
+    0 0 22px rgba(245, 182, 112, 0.14);
 }
 
 .final-rank-medals {
-  margin: 0 auto;
-  min-height: 44px;
-  max-height: 44px;
+  min-height: var(--overlay-control-height);
+  max-height: var(--overlay-control-height);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 0 10px;
+  gap: clamp(8px, 1.4vw, 12px);
+  padding: 0 clamp(10px, 1.8vw, 14px);
   border-radius: 999px;
   background: rgba(255, 244, 224, 0.04);
   border: 1px solid rgba(255, 223, 192, 0.14);
@@ -166,7 +228,7 @@
 }
 
 .final-rank-medals .rank-medal {
-  --medal-size: clamp(16px, 2vw, 20px);
+  --medal-size: clamp(18px, 2.2vw, 22px);
   flex: 0 0 auto;
 }
 
@@ -210,7 +272,7 @@
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: 0;
   margin-bottom: 0;
   width: min(100%, 560px);
 }
@@ -243,7 +305,7 @@
 }
 
 #startScreen .start-btn.actionBtn-disabled.start-btn-warming {
-  opacity: 0.92; /* кадр перед полной непрозрачностью */
+  opacity: 0.92;
 }
 
 .start-btn::before,
@@ -517,10 +579,10 @@
     transform: translateY(-1.4vh);
   }
 
-  .final-rank-block {
-    width: min(82vw, 300px);
-    padding: 10px 12px;
-    border-radius: 16px;
+  .result-summary-card {
+    width: min(94vw, 440px);
+    padding: 12px 14px;
+    border-radius: 20px;
   }
 }
 
@@ -572,21 +634,39 @@
     transform: none;
   }
 
-  .final-rank-block {
-    width: min(86vw, 280px);
-    padding: 10px 12px;
-    margin-top: 12px;
+  .result-summary-card {
+    width: min(92vw, 360px);
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    padding: 14px 12px;
+    margin-top: 14px;
+  }
+
+  .result-summary-content {
+    width: 100%;
+  }
+
+  .result-summary-row {
+    gap: 12px;
+  }
+
+  .result-summary-rank {
+    align-items: center;
+    padding-top: 12px;
   }
 
   .final-rank-label {
-    font-size: clamp(18px, 6vw, 22px);
+    font-size: clamp(22px, 7vw, 30px);
   }
 
   .final-rank-medals {
-    min-height: 40px;
-    max-height: 40px;
     gap: 6px;
-    padding: 0 8px;
+    padding: 6px 10px;
+  }
+
+  .final-rank-medals .rank-medal {
+    --medal-size: 18px;
   }
 }
 
@@ -672,7 +752,7 @@
     margin-top: 8px;
   }
 
-  .final-rank-block {
+  .result-summary-card {
     margin-top: 10px;
   }
 

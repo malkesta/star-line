@@ -152,34 +152,53 @@
   </div>
 
   <div id="overlay">
-  <div class="panel-title" id="resultTitle">Конец игры</div>
+    <div class="panel-title" id="resultTitle">Ночь закончилась</div>
 
-  <div class="panel-text" id="resultMessage"></div>
+    <div class="panel-text" id="resultMessage"></div>
 
-  <div class="panel-text">
-    Очки: <span id="finalScore">0</span>
-  </div>
-  <div class="panel-text">
-    Цель уровня: <span id="targetScore">300</span>
-  </div>
+    <div class="overlay-actions">
+      <button id="restartBtn" class="actionBtn">Играть снова</button>
+      <button id="nextBtn" class="actionBtn actionBtn-disabled">Дальше</button>
+    </div>
 
-  <div class="overlay-actions">
-    <button id="restartBtn" class="actionBtn">Играть заново</button>
-    <button id="nextBtn" class="actionBtn actionBtn-disabled">Дальше</button>
-  </div>
+    <div class="result-summary-card">
+      <div class="result-summary-icon" aria-hidden="true">
+        <svg width="54" height="54" viewBox="0 0 54 54" fill="none">
+          <circle cx="27" cy="27" r="21" stroke="rgba(245,182,112,0.34)" stroke-width="1.2"/>
+          <path d="M27 10.5L31.8 20.1L42.4 21.7L34.7 29.1L36.5 39.7L27 34.7L17.5 39.7L19.3 29.1L11.6 21.7L22.2 20.1L27 10.5Z" fill="#FFF0B8" stroke="#F5B670" stroke-width="1.4"/>
+          <path d="M22.4 20.2C23.55 18.55 25.05 17.7 27 17.7C28.95 17.7 30.45 18.55 31.6 20.2" stroke="#DEA15E" stroke-width="1.1" stroke-linecap="round"/>
+          <circle cx="23.7" cy="24.6" r="1.15" fill="#DEA15E"/>
+          <circle cx="30.3" cy="24.6" r="1.15" fill="#DEA15E"/>
+          <path d="M24.1 29.2C25.2 30.45 26.15 30.95 27 30.95C27.85 30.95 28.8 30.45 29.9 29.2" stroke="#DEA15E" stroke-width="1.1" stroke-linecap="round"/>
+        </svg>
+      </div>
 
-  <div class="final-rank-block">
-    <div id="finalRankLabel" class="final-rank-label">—</div>
+      <div class="result-summary-content">
+        <div class="result-summary-row">
+          <span class="result-summary-name">Очки</span>
+          <span class="result-summary-value" id="finalScore">0</span>
+        </div>
 
-    <div class="final-rank-medals" aria-label="Итоговые награды">
-      <span class="rank-medal is-locked" data-final-rank-medal></span>
-      <span class="rank-medal is-locked" data-final-rank-medal></span>
-      <span class="rank-medal is-locked" data-final-rank-medal></span>
+        <div class="result-summary-row">
+          <span class="result-summary-name">Цель</span>
+          <span class="result-summary-value" id="targetScore">300</span>
+        </div>
+
+        <div class="result-summary-rank">
+          <div class="result-summary-name">Ранг</div>
+          <div id="finalRankLabel" class="final-rank-label">—</div>
+
+          <div class="final-rank-medals" aria-label="Итоговые награды">
+            <span class="rank-medal is-locked" data-final-rank-medal></span>
+            <span class="rank-medal is-locked" data-final-rank-medal></span>
+            <span class="rank-medal is-locked" data-final-rank-medal></span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
-<canvas id="gameCanvas"></canvas>
+  <canvas id="gameCanvas"></canvas>
 
   <script type="module" src="./js/main.js"></script>
 </body>

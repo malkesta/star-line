@@ -1335,6 +1335,50 @@ updateRankUI() {
     this.finalRankLabelElement.textContent = this.getSceneRankLabel(finalRank);
   }
 }
+
+showRoundResult() {
+  // levelPassed уже считается перед вызовом этого метода
+  if (this.finalScoreElement) {
+    this.finalScoreElement.textContent = this.score;
+  }
+
+  if (this.targetScoreElement) {
+    this.targetScoreElement.textContent = this.levelTargetScore;
+  }
+
+  // Заголовок: пройден / почти получилось
+  if (this.resultTitleElement) {
+    this.resultTitleElement.textContent = this.levelPassed
+      ? 'Ночь закончилась'
+      : 'Почти получилось';
+  }
+
+  // Фраза про девочку
+  if (this.resultMessageElement) {
+    this.resultMessageElement.textContent = this.levelPassed
+      ? 'Девочка счастлива — она спасла так много звёзд!'
+      : 'Девочка надеялась спасти больше звёзд.';
+  }
+
+  // Обновляем ранги (HUD + финальный блок)
+  this.updateRankUI();
+
+  // Кнопка "Дальше" доступна только если уровень пройден
+  if (this.nextBtn) {
+    if (this.levelPassed) {
+      this.nextBtn.classList.remove('actionBtn-disabled');
+    } else {
+      this.nextBtn.classList.add('actionBtn-disabled');
+    }
+  }
+
+  // Показываем оверлей
+  this.audio.playGameOverSound();
+  this.overlay?.classList.add('show');
+  this.updateUI();
+}
+
+
             resetGame = () => {
   this.starlets = [];
   this.obstacles = [];
@@ -1489,7 +1533,7 @@ updateRankUI() {
     this.lastTime = currentTime;
   
     this.timeLeft -= delta;
-    if (this.timeLeft <= 0) {
+if (this.timeLeft <= 0) {
   this.timeLeft = 0;
   this.gameOver = true;
   this.isRunning = false;
@@ -1500,30 +1544,7 @@ updateRankUI() {
   const sceneRankLabel = this.getSceneRankLabel(sceneRank);
   const sceneRankTitle = this.getSceneRankTitle(sceneRank);
 
-  if (this.finalScoreElement) {
-    this.finalScoreElement.textContent = this.score;
-  }
-
-  if (this.resultTitleElement) {
-  this.resultTitleElement.textContent = "Ночь закончилась";
-}
-
-if (this.levelPassed) {
-  if (this.resultMessageElement) {
-    this.resultMessageElement.textContent =
-      "Девочка спасла так много звезд и невероятно счастлива!";
-  }
-  this.nextBtn?.classList.remove("actionBtn-disabled");
-} else {
-  if (this.resultMessageElement) {
-    this.resultMessageElement.textContent =
-      "Попробуй ещё раз, чтобы спасти больше звёзд и открыть следующий уровень.";
-  }
-  this.nextBtn?.classList.add("actionBtn-disabled");
-}
-
-  this.updateRankUI();
-
+  // Сообщаем наружу о завершении раунда
   this.onRoundFinished?.({
     sceneId: this.sceneId,
     score: this.score,
@@ -1533,11 +1554,11 @@ if (this.levelPassed) {
     levelTargetScore: this.levelTargetScore,
     sceneRank,
     sceneRankLabel,
+    sceneRankTitle,
   });
 
-  this.audio.playGameOverSound();
-  this.overlay?.classList.add("show");
-  this.updateUI();
+  // Заполняем финальный экран и показываем оверлей
+  this.showRoundResult();
   return;
 }
   
