@@ -78,7 +78,8 @@
 
 #overlay .panel-title,
 #overlay .panel-text,
-#overlay .overlay-actions {
+#overlay .overlay-actions,
+#overlay .final-rank-block {
   transform: none;
 }
 
@@ -99,6 +100,20 @@
   color: var(--text-soft);
 }
 
+/* --- Компактный оверлей --- */
+
+#overlay .panel-title {
+  margin-bottom: clamp(8px, 1.2vw, 10px);
+}
+
+#overlay .panel-text {
+  margin-bottom: clamp(8px, 1.2vw, 12px);
+}
+
+#overlay #resultMessage {
+  margin-bottom: clamp(10px, 1.4vw, 14px);
+}
+
 /* --- Финальный ранг в оверлее --- */
 
 :root {
@@ -106,46 +121,43 @@
 }
 
 .final-rank-block {
-  width: min(92vw, 460px);
+  width: min(78vw, 308px);
   margin:
-    clamp(2px, 0.5vw, 4px)
+    clamp(12px, 1.8vw, 16px)
     auto
-    clamp(16px, 2.2vw, 20px);
-  padding: clamp(10px, 1.6vw, 14px) clamp(14px, 2.4vw, 20px);
-  border-radius: 22px;
-  border: 1px solid rgba(255, 220, 190, 0.22);
+    0;
+  padding: clamp(10px, 1.4vw, 12px) clamp(12px, 1.8vw, 14px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 220, 190, 0.18);
   background: linear-gradient(
     180deg,
-    rgba(82, 49, 70, 0.26),
-    rgba(47, 27, 42, 0.22)
+    rgba(82, 49, 70, 0.22),
+    rgba(47, 27, 42, 0.18)
   );
   box-shadow:
-    inset 0 0 14px rgba(255, 238, 216, 0.04),
-    0 0 18px rgba(245, 182, 112, 0.05);
+    inset 0 0 12px rgba(255, 238, 216, 0.03),
+    0 0 14px rgba(245, 182, 112, 0.04);
 }
 
 .final-rank-label {
-  font-size: clamp(24px, 3.4vw, 34px);
-  line-height: 1;
+  font-size: clamp(18px, 2.6vw, 24px);
+  line-height: 1.05;
   color: #fff0b8;
+  margin-bottom: 8px;
   text-shadow:
-    0 0 12px rgba(255, 232, 184, 0.24),
-    0 0 22px rgba(245, 182, 112, 0.14);
-  margin-bottom: clamp(4px, 0.8vw, 6px);
-}
-
-.final-rank-text {
-  margin-bottom: clamp(8px, 1.2vw, 10px);
+    0 0 10px rgba(255, 232, 184, 0.22),
+    0 0 18px rgba(245, 182, 112, 0.1);
 }
 
 .final-rank-medals {
-  min-height: var(--overlay-control-height);
-  max-height: var(--overlay-control-height);
+  margin: 0 auto;
+  min-height: 44px;
+  max-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(8px, 1.4vw, 12px);
-  padding: 0 clamp(10px, 1.8vw, 14px);
+  gap: 8px;
+  padding: 0 10px;
   border-radius: 999px;
   background: rgba(255, 244, 224, 0.04);
   border: 1px solid rgba(255, 223, 192, 0.14);
@@ -154,7 +166,7 @@
 }
 
 .final-rank-medals .rank-medal {
-  --medal-size: clamp(18px, 2.2vw, 22px);
+  --medal-size: clamp(16px, 2vw, 20px);
   flex: 0 0 auto;
 }
 
@@ -164,10 +176,6 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-}
-
-#overlay .final-rank-block .panel-text {
-  max-width: none;
 }
 
 .start-btn,
@@ -202,7 +210,8 @@
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
-  margin-top: 12px;
+  margin-top: 8px;
+  margin-bottom: 0;
   width: min(100%, 560px);
 }
 
@@ -509,13 +518,9 @@
   }
 
   .final-rank-block {
-    width: min(94vw, 420px);
-    padding: 12px 14px;
-    border-radius: 18px;
-  }
-
-  .final-rank-medals .rank-medal {
-    --medal-size: 21px;
+    width: min(82vw, 300px);
+    padding: 10px 12px;
+    border-radius: 16px;
   }
 }
 
@@ -530,6 +535,10 @@
     font-size: clamp(14px, 3.8vw, 16px);
     line-height: 1.45;
     margin-bottom: 16px;
+  }
+
+  #overlay .panel-text {
+    margin-bottom: 10px;
   }
 
   .start-star svg {
@@ -564,22 +573,20 @@
   }
 
   .final-rank-block {
-    width: min(92vw, 360px);
-    margin-bottom: 16px;
-    padding: 12px 12px;
+    width: min(86vw, 280px);
+    padding: 10px 12px;
+    margin-top: 12px;
   }
 
   .final-rank-label {
-    font-size: clamp(22px, 7vw, 30px);
+    font-size: clamp(18px, 6vw, 22px);
   }
 
   .final-rank-medals {
+    min-height: 40px;
+    max-height: 40px;
     gap: 6px;
-    padding: 6px 10px;
-  }
-
-  .final-rank-medals .rank-medal {
-    --medal-size: 18px;
+    padding: 0 8px;
   }
 }
 
@@ -600,6 +607,10 @@
 
   .panel-text {
     margin-bottom: 14px;
+  }
+
+  #overlay .panel-text {
+    margin-bottom: 10px;
   }
 
   .tutorial-toggle {
@@ -641,6 +652,10 @@
     transform: none !important;
   }
 
+  #overlay .panel-text {
+    margin-bottom: 8px;
+  }
+
   .start-btn,
   .actionBtn {
     min-height: 42px;
@@ -655,5 +670,14 @@
 
   .tutorial-toggle {
     margin-top: 8px;
+  }
+
+  .final-rank-block {
+    margin-top: 10px;
+  }
+
+  .final-rank-medals {
+    min-height: 38px;
+    max-height: 38px;
   }
 }

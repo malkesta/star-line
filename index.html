@@ -152,36 +152,34 @@
   </div>
 
   <div id="overlay">
-    <div class="panel-title" id="resultTitle">Конец игры</div>
+  <div class="panel-title" id="resultTitle">Конец игры</div>
 
-    <div class="panel-text" id="resultMessage"></div>
+  <div class="panel-text" id="resultMessage"></div>
 
-    <div class="panel-text">
-      Очки: <span id="finalScore">0</span>
-    </div>
-
-    <div class="final-rank-block">
-      <div id="finalRankLabel" class="final-rank-label">—</div>
-      <div id="finalRankText" class="panel-text final-rank-text">Без медали</div>
-
-      <div class="final-rank-medals" aria-label="Итоговые награды">
-        <span class="rank-medal is-locked" data-final-rank-medal></span>
-        <span class="rank-medal is-locked" data-final-rank-medal></span>
-        <span class="rank-medal is-locked" data-final-rank-medal></span>
-      </div>
-    </div>
-
-    <div class="panel-text">
-      Цель уровня: <span id="targetScore">300</span>
-    </div>
-
-    <div class="overlay-actions">
-      <button id="restartBtn" class="actionBtn">Играть заново</button>
-      <button id="nextBtn" class="actionBtn actionBtn-disabled">Дальше</button>
-    </div>
+  <div class="panel-text">
+    Очки: <span id="finalScore">0</span>
+  </div>
+  <div class="panel-text">
+    Цель уровня: <span id="targetScore">300</span>
   </div>
 
-  <canvas id="gameCanvas"></canvas>
+  <div class="overlay-actions">
+    <button id="restartBtn" class="actionBtn">Играть заново</button>
+    <button id="nextBtn" class="actionBtn actionBtn-disabled">Дальше</button>
+  </div>
+
+  <div class="final-rank-block">
+    <div id="finalRankLabel" class="final-rank-label">—</div>
+
+    <div class="final-rank-medals" aria-label="Итоговые награды">
+      <span class="rank-medal is-locked" data-final-rank-medal></span>
+      <span class="rank-medal is-locked" data-final-rank-medal></span>
+      <span class="rank-medal is-locked" data-final-rank-medal></span>
+    </div>
+  </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
 
   <script type="module" src="./js/main.js"></script>
 </body>

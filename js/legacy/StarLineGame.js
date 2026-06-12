@@ -1069,7 +1069,6 @@ class Starlet {
     document.querySelectorAll("[data-final-rank-medal]")
   );
   this.finalRankLabelElement = document.getElementById("finalRankLabel");
-  this.finalRankTextElement = document.getElementById("finalRankText");
 
   this.restartBtn = document.getElementById("restartBtn");
   this.nextBtn = document.getElementById("nextBtn");
@@ -1285,13 +1284,13 @@ getSceneRank() {
 getSceneRankLabel(rank = this.getSceneRank()) {
   switch (rank) {
     case 3:
-      return "★★★";
+      return "Три медали";
     case 2:
-      return "★★";
+      return "Две медали";
     case 1:
-      return "★";
+      return "Одна медаль";
     default:
-      return "—";
+      return "Без медали";
   }
 }
 
@@ -1334,12 +1333,6 @@ updateRankUI() {
 
   if (this.finalRankLabelElement) {
     this.finalRankLabelElement.textContent = this.getSceneRankLabel(finalRank);
-  }
-
-  if (this.finalRankTextElement) {
-    this.finalRankTextElement.textContent = this.levelPassed
-      ? this.getSceneRankTitle(finalRank)
-      : "Уровень не пройден";
   }
 }
             resetGame = () => {
@@ -1512,28 +1505,22 @@ updateRankUI() {
   }
 
   if (this.resultTitleElement) {
-    this.resultTitleElement.textContent = this.levelPassed
-      ? "Уровень пройден"
-      : "Почти получилось";
+  this.resultTitleElement.textContent = "Ночь закончилась";
+}
+
+if (this.levelPassed) {
+  if (this.resultMessageElement) {
+    this.resultMessageElement.textContent =
+      "Девочка спасла так много звезд и невероятно счастлива!";
   }
-
-  if (this.levelPassed) {
-    if (this.resultMessageElement) {
-      this.resultMessageElement.textContent =
-        sceneRank > 0
-          ? `Цель достигнута. Награда уровня: ${sceneRankTitle}.`
-          : "Цель достигнута. Можно двигаться дальше.";
-    }
-
-    this.nextBtn?.classList.remove("actionBtn-disabled");
-  } else {
-    if (this.resultMessageElement) {
-      this.resultMessageElement.textContent =
-        "Цель не достигнута. Попробуй ещё раз, чтобы открыть путь дальше.";
-    }
-
-    this.nextBtn?.classList.add("actionBtn-disabled");
+  this.nextBtn?.classList.remove("actionBtn-disabled");
+} else {
+  if (this.resultMessageElement) {
+    this.resultMessageElement.textContent =
+      "Попробуй ещё раз, чтобы спасти больше звёзд и открыть следующий уровень.";
   }
+  this.nextBtn?.classList.add("actionBtn-disabled");
+}
 
   this.updateRankUI();
 
