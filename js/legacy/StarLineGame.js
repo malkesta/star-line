@@ -1295,17 +1295,17 @@ class Obstacle {
     homeOrbitX: width * 0.016,
     homeOrbitY: height * 0.045,
 
-    starletBaseRadius: clamp(7.5, 8 * playScale, 10.5),
+    starletBaseRadius: clamp(6.6, 7.0 * playScale, 9.2),
     starletDragRadius: clamp(24, 28 * playScale, 34),
 
     homeRadius: clamp(30, 34 * playScale, 42),
     homeRingRadius: clamp(52, 60 * playScale, 74),
     homeGlowRadius: clamp(116, 140 * playScale, 170),
 
-    obstacleMinWidth: clamp(42, 50 * playScale, 64),
-    obstacleMaxWidth: clamp(84, 100 * playScale, 118),
-    obstacleMinHeight: clamp(68, 80 * playScale, 96),
-    obstacleMaxHeight: clamp(118, 140 * playScale, 164),
+    obstacleMinWidth: clamp(37, 44 * playScale, 56),
+obstacleMaxWidth: clamp(74, 88 * playScale, 104),
+obstacleMinHeight: clamp(60, 70 * playScale, 84),
+obstacleMaxHeight: clamp(104, 123 * playScale, 144),
 
     obstacleCullOffset: width * 0.16,
   };
