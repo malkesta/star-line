@@ -1378,6 +1378,10 @@ class BrokenRingObstacle {
   this.restartBtn = document.getElementById("restartBtn");
   this.nextBtn = document.getElementById("nextBtn");
 
+ this.rankMedalElements = Array.from(document.querySelectorAll("[data-rank-medal]"));
+this.finalRankMedalElements = Array.from(document.querySelectorAll("[data-final-rank-medal]"));
+this.finalRankLabelElement = document.getElementById("finalRankLabel"); 
+
   this.tutorialEnabledInput = document.getElementById("tutorialEnabled");
   this.rotateHint = document.getElementById("rotateHint");
 
@@ -1587,6 +1591,119 @@ this.brokenRing = new BrokenRingObstacle(this.homeStars[0]);
                 }
               }
             }
+
+          getRankThresholds() {
+  return {
+    oneMedalScore: Math.ceil(this.levelTargetScore * 1.25),
+    twoMedalScore: Math.ceil(this.levelTargetScore * 1.6),
+    threeMedalScore: 1200,
+  };
+}
+
+getSceneRank() {
+  if (!this.levelPassed) return 0;
+
+  const { oneMedalScore, twoMedalScore, threeMedalScore } = this.getRankThresholds();
+
+  if (this.score >= threeMedalScore) return 3;
+  if (this.score >= twoMedalScore) return 2;
+  if (this.score >= oneMedalScore) return 1;
+  return 0;
+}
+
+getSceneRankLabel(rank = this.getSceneRank()) {
+  switch (rank) {
+    case 3:
+      return "Три звезды";
+    case 2:
+      return "Две звезды";
+    case 1:
+      return "Одна звезда";
+    default:
+      return "Без звёзд";
+  }
+}
+
+getSceneRankTitle(rank = this.getSceneRank()) {
+  switch (rank) {
+    case 3:
+      return "Идеальная ночь";
+    case 2:
+      return "Прекрасная ночь";
+    case 1:
+      return "Добрая ночь";
+    default:
+      return "Ночь только начинается";
+  }
+}
+
+updateRankUI() {
+  const passedByScore = this.score >= this.levelTargetScore;
+  const { oneMedalScore, twoMedalScore, threeMedalScore } = this.getRankThresholds();
+
+  let liveMedalCount = 0;
+  if (passedByScore && this.score >= oneMedalScore) liveMedalCount = 1;
+  if (passedByScore && this.score >= twoMedalScore) liveMedalCount = 2;
+  if (passedByScore && this.score >= threeMedalScore) liveMedalCount = 3;
+
+  if (this.rankMedalElements) {
+    this.rankMedalElements.forEach((element, index) => {
+      const medalIndex = index + 1;
+      element.classList.toggle("is-lit", liveMedalCount >= medalIndex);
+      element.classList.toggle("is-locked", liveMedalCount < medalIndex);
+    });
+  }
+
+  const finalRank = this.getSceneRank();
+
+  if (this.finalRankMedalElements) {
+    this.finalRankMedalElements.forEach((element, index) => {
+      const medalIndex = index + 1;
+      element.classList.toggle("is-lit", finalRank >= medalIndex);
+      element.classList.toggle("is-locked", finalRank < medalIndex);
+    });
+  }
+
+  if (this.finalRankLabelElement) {
+    this.finalRankLabelElement.textContent = this.getSceneRankLabel(finalRank);
+  }
+} 
+
+showRoundResult() {
+  if (this.finalScoreElement) {
+    this.finalScoreElement.textContent = this.score;
+  }
+
+  if (this.targetScoreElement) {
+    this.targetScoreElement.textContent = this.levelTargetScore;
+  }
+
+  if (this.resultTitleElement) {
+    this.resultTitleElement.textContent = this.levelPassed
+      ? "Ночь закончилась"
+      : "Почти получилось";
+  }
+
+  if (this.resultMessageElement) {
+    this.resultMessageElement.textContent = this.levelPassed
+      ? "Девочка счастлива — она спасла так много звёзд!"
+      : "Девочка надеялась спасти больше звёзд.";
+  }
+
+  this.updateRankUI();
+
+  if (this.nextBtn) {
+    if (this.levelPassed) {
+      this.nextBtn.classList.remove("actionBtn-disabled");
+    } else {
+      this.nextBtn.classList.add("actionBtn-disabled");
+    }
+  }
+
+  this.audio.playGameOverSound();
+  this.overlay?.classList.add("show");
+  this.updateUI();
+}
             resetGame = () => {
   this.starlets = [];
   this.obstacles = [];
@@ -1738,27 +1855,16 @@ this.brokenRing = new BrokenRingObstacle(this.homeStars[0]);
   this.lastTime = currentTime;
 
   this.timeLeft -= delta;
-  if (this.timeLeft <= 0) {
+if (this.timeLeft <= 0) {
   this.timeLeft = 0;
   this.gameOver = true;
   this.isRunning = false;
 
   this.levelPassed = this.score >= this.levelTargetScore;
 
-  this.finalScoreElement.textContent = this.score;
-  this.resultTitleElement.textContent = this.levelPassed
-    ? "Уровень пройден"
-    : "Почти получилось";
-
-  if (this.levelPassed) {
-    this.resultMessageElement.textContent =
-      "Девочка спасла так много звёзд и теперь невероятно счастлива";
-    this.nextBtn.classList.remove("actionBtn-disabled");
-  } else {
-    this.resultMessageElement.textContent =
-      "Девочка надеялась спасти больше звёзд";
-    this.nextBtn.classList.add("actionBtn-disabled");
-  }
+  const sceneRank = this.getSceneRank();
+  const sceneRankLabel = this.getSceneRankLabel(sceneRank);
+  const sceneRankTitle = this.getSceneRankTitle(sceneRank);
 
   this.onRoundFinished?.({
     score: this.score,
@@ -1766,11 +1872,12 @@ this.brokenRing = new BrokenRingObstacle(this.homeStars[0]);
     lostCount: this.lostCount,
     levelPassed: this.levelPassed,
     levelTargetScore: this.levelTargetScore,
+    sceneRank,
+    sceneRankLabel,
+    sceneRankTitle,
   });
 
-  this.audio.playGameOverSound();
-  this.overlay.classList.add("show");
-  this.updateUI();
+  this.showRoundResult();
   return;
 }
 
@@ -1893,14 +2000,18 @@ this.obstacles.forEach((o) => {
   }
 }
 
-            updateUI() {
-              this.savedCountElement.textContent = this.savedCount;
-  this.lostCountElement.textContent = this.lostCount;
-  this.scoreElement.textContent = this.score;
+       updateUI() {
+  if (this.savedCountElement) this.savedCountElement.textContent = this.savedCount;
+  if (this.lostCountElement) this.lostCountElement.textContent = this.lostCount;
+  if (this.scoreElement) this.scoreElement.textContent = this.score;
 
-  const progress = Math.max(0, Math.min(1, this.timeLeft / this.totalTime));
-  this.timeFillElement.style.width = `${progress * 100}%`;
-}
+  if (this.timeFillElement) {
+    const progress = Math.max(0, Math.min(1, this.timeLeft / this.totalTime));
+    this.timeFillElement.style.width = `${progress * 100}%`;
+  }
+
+  this.updateRankUI();
+}     
 
             drawBackgroundDust() {
                 const g = this.ctx.createRadialGradient(this.canvas.width * 0.32, this.canvas.height * 0.5, 40, this.canvas.width * 0.32, this.canvas.height * 0.5, Math.max(this.canvas.width, this.canvas.height) * 0.85);
