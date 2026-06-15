@@ -412,55 +412,111 @@ class Starlet {
     }
 }
         
+class Obstacle {
+  constructor(sceneMetrics) {
+    this.sceneMetrics = sceneMetrics;
 
-        class Obstacle {
-            constructor(canvasWidth, canvasHeight) {
-                const edges = ['top', 'bottom', 'left', 'right'];
-                this.edge = edges[Math.floor(Math.random() * edges.length)];
-                if (this.edge === 'top' || this.edge === 'bottom') {
-                    this.x = Math.random() * canvasWidth;
-                    this.y = this.edge === 'top' ? -80 : canvasHeight + 80;
-                    this.vx = (Math.random() - 0.5) * 0.5;
-                    this.vy = this.edge === 'top' ? 0.55 : -0.55;
-                } else {
-                    this.x = this.edge === 'left' ? -80 : canvasWidth + 80;
-                    this.y = Math.random() * canvasHeight;
-                    this.vx = this.edge === 'left' ? 0.65 : -0.65;
-                    this.vy = (Math.random() - 0.5) * 0.4;
-                }
-                this.width = 50 + Math.random() * 50;
-                this.height = 80 + Math.random() * 60;
-                this.rotation = Math.random() * Math.PI * 2;
-                this.rotationSpeed = (Math.random() - 0.5) * 0.02;
-                this.starRadius = Math.max(this.width, this.height) * 0.24;
-                this.ringRadius = Math.max(this.width, this.height) * 0.42;
-            }
+    const {
+      width,
+      height,
+      laneInsetX,
+      offscreenOffset,
+      obstacleMinWidth,
+      obstacleMaxWidth,
+      obstacleMinHeight,
+      obstacleMaxHeight,
+    } = sceneMetrics;
 
-            update() { this.x += this.vx; this.y += this.vy; this.rotation += this.rotationSpeed; }
+    const edges = ["top", "bottom", "left", "right"];
+    this.edge = edges[Math.floor(Math.random() * edges.length)];
 
-            draw(ctx) {
-                const cx = this.x, cy = this.y;
-                ctx.save();
-                ctx.translate(cx, cy); ctx.rotate(this.rotation); ctx.translate(-cx, -cy);
-                ctx.beginPath(); ctx.arc(cx, cy, this.ringRadius, 0, Math.PI * 2); ctx.lineWidth = 1.1; ctx.strokeStyle = 'rgba(126, 60, 72, 0.92)'; ctx.stroke();
-                ctx.beginPath(); ctx.arc(cx, cy, this.ringRadius - 5, 0, Math.PI * 2); ctx.lineWidth = 0.75; ctx.strokeStyle = 'rgba(126, 60, 72, 0.62)'; ctx.stroke();
-                drawStarPath(ctx, cx, cy, this.starRadius, this.starRadius * 0.48, 5);
-                ctx.fillStyle = '#0d1427'; ctx.fill();
-                drawStarPath(ctx, cx, cy, this.starRadius, this.starRadius * 0.48, 5);
-                ctx.lineWidth = 1; ctx.strokeStyle = '#7e3c48'; ctx.stroke();
-                ctx.restore();
-            }
+    const sizeMix = Math.random();
+    this.width =
+      obstacleMinWidth + (obstacleMaxWidth - obstacleMinWidth) * sizeMix;
+    this.height =
+      obstacleMinHeight + (obstacleMaxHeight - obstacleMinHeight) * sizeMix;
 
-            collidesWith(starlet) {
-                const dx = starlet.x - this.x, dy = starlet.y - this.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                return dist < this.ringRadius + starlet.radius;
-            }
+    const drift = 0.18 + Math.random() * 0.22;
+    const travel = 0.42 + Math.random() * 0.2;
+    const spawnDepth = offscreenOffset * (0.7 + Math.random() * 0.7);
 
-            isOffscreen(canvasHeight) {
-                return this.x < -220 || this.x > window.innerWidth + 220 || this.y < -220 || this.y > canvasHeight + 220;
-            }
-        }
+    if (this.edge === "top" || this.edge === "bottom") {
+      this.x = laneInsetX + Math.random() * (width - laneInsetX * 2);
+      this.y = this.edge === "top" ? -spawnDepth : height + spawnDepth;
+      this.vx = (Math.random() - 0.5) * drift;
+      this.vy = this.edge === "top" ? travel : -travel;
+    } else {
+      this.x = this.edge === "left" ? -spawnDepth : width + spawnDepth;
+      this.y = Math.random() * height;
+      this.vx = this.edge === "left" ? travel * 1.08 : -travel * 1.08;
+      this.vy = (Math.random() - 0.5) * drift;
+    }
+
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotationSpeed = (Math.random() - 0.5) * 0.016;
+
+    const maxSide = Math.max(this.width, this.height);
+    this.starRadius = maxSide * 0.24;
+    this.ringRadius = maxSide * 0.42;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.rotation += this.rotationSpeed;
+  }
+
+  draw(ctx) {
+    const cx = this.x;
+    const cy = this.y;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(this.rotation);
+    ctx.translate(-cx, -cy);
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, this.ringRadius, 0, Math.PI * 2);
+    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = "rgba(126, 60, 72, 0.92)";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, this.ringRadius - 5, 0, Math.PI * 2);
+    ctx.lineWidth = 0.75;
+    ctx.strokeStyle = "rgba(126, 60, 72, 0.62)";
+    ctx.stroke();
+
+    drawStarPath(ctx, cx, cy, this.starRadius, this.starRadius * 0.48, 5);
+    ctx.fillStyle = "#0d1427";
+    ctx.fill();
+
+    drawStarPath(ctx, cx, cy, this.starRadius, this.starRadius * 0.48, 5);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#7e3c48";
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  collidesWith(starlet) {
+    const dx = starlet.x - this.x;
+    const dy = starlet.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < this.ringRadius + starlet.radius;
+  }
+
+  isOffscreen() {
+    const { width, height, obstacleCullOffset } = this.sceneMetrics;
+    return (
+      this.x < -obstacleCullOffset ||
+      this.x > width + obstacleCullOffset ||
+      this.y < -obstacleCullOffset ||
+      this.y > height + obstacleCullOffset
+    );
+  }
+}
+        
 
        class Particle {
   constructor(x, y, color, cool = false, options = {}) {
@@ -509,69 +565,139 @@ class Starlet {
   }
 } 
 
-        class HomeStar {
-            constructor(canvasWidth, canvasHeight) {
-                this.baseX = canvasWidth * 0.18; this.baseY = canvasHeight * 0.5;
-                this.x = this.baseX; this.y = this.baseY;
-                this.radius = 34; this.ringRadius = 60; this.glowRadius = 140;
-                this.flicker = Math.random() * Math.PI * 2; this.rotation = 0; this.orbitPhase = Math.random() * Math.PI * 2;
-            }
+    class HomeStar {
+  constructor(sceneMetrics) {
+    this.flicker = Math.random() * Math.PI * 2;
+    this.rotation = 0;
+    this.orbitPhase = Math.random() * Math.PI * 2;
 
-            setBounds(canvasWidth, canvasHeight) { this.baseX = canvasWidth * 0.18; this.baseY = canvasHeight * 0.5; }
+    this.setBounds(sceneMetrics);
+    this.x = this.baseX;
+    this.y = this.baseY;
+  }
 
-            update() {
-                this.flicker += 0.035; this.rotation += 0.006; this.orbitPhase += 0.004;
-                this.x = this.baseX + Math.cos(this.orbitPhase) * 22;
-                this.y = this.baseY + Math.sin(this.orbitPhase * 0.9) * 34;
-            }
+  setBounds(sceneMetrics) {
+    this.sceneMetrics = sceneMetrics;
 
-            draw(ctx) {
-                this.update();
-                const glowPulse = 0.92 + Math.sin(this.flicker) * 0.05;
-                const outerGlow = ctx.createRadialGradient(this.x, this.y, 10, this.x, this.y, this.glowRadius);
-                outerGlow.addColorStop(0, `rgba(245, 182, 112, ${0.28 * glowPulse})`);
-                outerGlow.addColorStop(0.5, `rgba(222, 161, 94, ${0.16 * glowPulse})`);
-                outerGlow.addColorStop(1, 'rgba(222, 161, 94, 0)');
-                ctx.fillStyle = outerGlow; ctx.beginPath(); ctx.arc(this.x, this.y, this.glowRadius, 0, Math.PI * 2); ctx.fill();
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.ringRadius, 0, Math.PI * 2); ctx.lineWidth = 1.25; ctx.strokeStyle = 'rgba(245, 182, 112, 0.92)'; ctx.stroke();
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.ringRadius - 6, 0, Math.PI * 2); ctx.lineWidth = 0.85; ctx.strokeStyle = 'rgba(222, 161, 94, 0.7)'; ctx.stroke();
-                ctx.save();
-                ctx.translate(this.x, this.y); ctx.rotate(this.rotation); ctx.translate(-this.x, -this.y);
-                drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
-                const core = ctx.createRadialGradient(this.x - 8, this.y - 10, 4, this.x, this.y, this.radius);
-                core.addColorStop(0, '#FFF2D4'); core.addColorStop(0.48, '#F5B670'); core.addColorStop(1, '#DEA15E');
-                ctx.shadowBlur = 24; ctx.shadowColor = 'rgba(222, 161, 94, 0.72)'; ctx.fillStyle = core; ctx.fill(); ctx.shadowBlur = 0;
-                drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
-                ctx.lineWidth = 1.1; ctx.strokeStyle = '#FFF4DA'; ctx.stroke();
-                drawStarPath(ctx, this.x - 4, this.y - 6, this.radius * 0.35, this.radius * 0.15, 5);
-                ctx.fillStyle = 'rgba(255,255,255,0.20)'; ctx.fill();
-                ctx.restore();
-            }
+    this.baseX = sceneMetrics.homeBaseX;
+    this.baseY = sceneMetrics.homeBaseY;
 
-            isHit(starlet) {
-                const dx = starlet.x - this.x, dy = starlet.y - this.y;
-                return Math.sqrt(dx * dx + dy * dy) < this.radius + starlet.radius;
-            }
+    this.radius = sceneMetrics.homeRadius;
+    this.ringRadius = sceneMetrics.homeRingRadius;
+    this.glowRadius = sceneMetrics.homeGlowRadius;
 
-            blocksObstacle(obstacle) {
-                const dx = obstacle.x - this.x, dy = obstacle.y - this.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                return dist < this.ringRadius + obstacle.ringRadius;
-            }
+    this.orbitX = sceneMetrics.homeOrbitX;
+    this.orbitY = sceneMetrics.homeOrbitY;
+  }
 
-            repelObstacle(obstacle) {
-                const dx = obstacle.x - this.x, dy = obstacle.y - this.y;
-                const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
-                const overlap = this.ringRadius + obstacle.ringRadius - dist;
-                if (overlap > 0) {
-                    const nx = dx / dist, ny = dy / dist;
-                    obstacle.x += nx * overlap; obstacle.y += ny * overlap;
-                    const dot = obstacle.vx * nx + obstacle.vy * ny;
-                    if (dot < 0) { obstacle.vx -= 2 * dot * nx; obstacle.vy -= 2 * dot * ny; }
-                    obstacle.vx += nx * 0.03; obstacle.vy += ny * 0.03;
-                }
-            }
-        }
+  update() {
+    this.flicker += 0.035;
+    this.rotation += 0.006;
+    this.orbitPhase += 0.004;
+
+    this.x = this.baseX + Math.cos(this.orbitPhase) * this.orbitX;
+    this.y = this.baseY + Math.sin(this.orbitPhase * 0.9) * this.orbitY;
+  }
+
+  draw(ctx) {
+    this.update();
+
+    const glowPulse = 0.92 + Math.sin(this.flicker) * 0.05;
+    const outerGlow = ctx.createRadialGradient(
+      this.x, this.y, 10,
+      this.x, this.y, this.glowRadius
+    );
+
+    outerGlow.addColorStop(0, `rgba(245, 182, 112, ${0.28 * glowPulse})`);
+    outerGlow.addColorStop(0.5, `rgba(222, 161, 94, ${0.16 * glowPulse})`);
+    outerGlow.addColorStop(1, "rgba(222, 161, 94, 0)");
+
+    ctx.fillStyle = outerGlow;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.glowRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.ringRadius, 0, Math.PI * 2);
+    ctx.lineWidth = 1.25;
+    ctx.strokeStyle = "rgba(245, 182, 112, 0.92)";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.ringRadius - 6, 0, Math.PI * 2);
+    ctx.lineWidth = 0.85;
+    ctx.strokeStyle = "rgba(222, 161, 94, 0.7)";
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+    ctx.translate(-this.x, -this.y);
+
+    drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
+
+    const core = ctx.createRadialGradient(
+      this.x - 8, this.y - 10, 4,
+      this.x, this.y, this.radius
+    );
+    core.addColorStop(0, "#FFF2D4");
+    core.addColorStop(0.48, "#F5B670");
+    core.addColorStop(1, "#DEA15E");
+
+    ctx.shadowBlur = 24;
+    ctx.shadowColor = "rgba(222, 161, 94, 0.72)";
+    ctx.fillStyle = core;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
+    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = "#FFF4DA";
+    ctx.stroke();
+
+    drawStarPath(ctx, this.x - 4, this.y - 6, this.radius * 0.35, this.radius * 0.15, 5);
+    ctx.fillStyle = "rgba(255,255,255,0.20)";
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  isHit(starlet) {
+    const dx = starlet.x - this.x;
+    const dy = starlet.y - this.y;
+    return Math.sqrt(dx * dx + dy * dy) < this.radius + starlet.radius;
+  }
+
+  blocksObstacle(obstacle) {
+    const dx = obstacle.x - this.x;
+    const dy = obstacle.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < this.ringRadius + obstacle.ringRadius;
+  }
+
+  repelObstacle(obstacle) {
+    const dx = obstacle.x - this.x;
+    const dy = obstacle.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
+    const overlap = this.ringRadius + obstacle.ringRadius - dist;
+
+    if (overlap > 0) {
+      const nx = dx / dist;
+      const ny = dy / dist;
+      obstacle.x += nx * overlap;
+      obstacle.y += ny * overlap;
+
+      const dot = obstacle.vx * nx + obstacle.vy * ny;
+      if (dot < 0) {
+        obstacle.vx -= 2 * dot * nx;
+        obstacle.vy -= 2 * dot * ny;
+      }
+
+      obstacle.vx += nx * 0.03;
+      obstacle.vy += ny * 0.03;
+    }
+  }
+}    
 
         class TutorGuide {
   constructor() {
@@ -1131,7 +1257,7 @@ class Starlet {
 
   this.setupInput();
 
-  this.homeStar = new HomeStar(this.canvas.width, this.canvas.height);
+  this.homeStar = new HomeStar(this.sceneMetrics);
   this.spawnStarlets(8);
 
   this.updateTargetScoreUI();
@@ -1140,14 +1266,62 @@ class Starlet {
 }
   
               isLandscape() { return window.innerWidth >= window.innerHeight; }
+
+              computeSceneMetrics() {
+  const width = this.canvas.width;
+  const height = this.canvas.height;
+
+  const clamp = (min, value, max) => Math.max(min, Math.min(max, value));
+  const playScale = clamp(0.9, width / 1366, 1.18);
+
+  this.sceneMetrics = {
+    width,
+    height,
+    playScale,
+
+    laneInsetX: width * 0.04,
+    offscreenOffset: width * 0.06,
+
+    homeBaseX: width * 0.18,
+    homeBaseY: height * 0.5,
+
+    homeOrbitX: width * 0.016,
+    homeOrbitY: height * 0.045,
+
+    starletBaseRadius: clamp(7.5, 8 * playScale, 10.5),
+    starletDragRadius: clamp(24, 28 * playScale, 34),
+
+    homeRadius: clamp(30, 34 * playScale, 42),
+    homeRingRadius: clamp(52, 60 * playScale, 74),
+    homeGlowRadius: clamp(116, 140 * playScale, 170),
+
+    obstacleMinWidth: clamp(42, 50 * playScale, 64),
+    obstacleMaxWidth: clamp(84, 100 * playScale, 118),
+    obstacleMinHeight: clamp(68, 80 * playScale, 96),
+    obstacleMaxHeight: clamp(118, 140 * playScale, 164),
+
+    obstacleCullOffset: width * 0.16,
+  };
+}
   
+         resize() {
+  this.canvas.width = window.innerWidth;
+  this.canvas.height = window.innerHeight;
+
+  this.computeSceneMetrics();
+
+  if (this.homeStar) {
+    this.homeStar.setBounds(this.sceneMetrics);
+  }
+
+  if (this.rotateHint) {
+    this.rotateHint.classList.toggle(
+      "show",
+      !this.isLandscape() && !this.gameOver && !this.isRunning
+    );
+  }
+}     
               
-              resize() {
-                  this.canvas.width = window.innerWidth;
-                  this.canvas.height = window.innerHeight;
-                  if (this.homeStar) this.homeStar.setBounds(this.canvas.width, this.canvas.height);
-                  if (this.rotateHint) this.rotateHint.classList.toggle('show', !this.isLandscape() && !this.gameOver && !this.isRunning);
-              }
   
              async start() {
   console.log("START STATE", {
@@ -1192,25 +1366,27 @@ class Starlet {
   console.log("game loop started");
 }
   
-              createSpawnPoint() {
-    const margin = 36;
-    const mode = Math.random() < 0.5 ? "top" : "bottom";
-    const x = margin + Math.random() * (this.canvas.width - margin * 2);
-  
-    if (mode === "top") {
-      return {
-        x,
-        y: -30 - Math.random() * 80,
-        side: "top"
-      };
-    }
-  
+ createSpawnPoint() {
+  const { width, height, laneInsetX, offscreenOffset } = this.sceneMetrics;
+
+  const mode = Math.random() < 0.5 ? "top" : "bottom";
+  const x = laneInsetX + Math.random() * (width - laneInsetX * 2);
+  const depth = offscreenOffset * (0.4 + Math.random() * 1.2);
+
+  if (mode === "top") {
     return {
       x,
-      y: this.canvas.height + 30 + Math.random() * 80,
-      side: "bottom"
+      y: -depth,
+      side: "top"
     };
   }
+
+  return {
+    x,
+    y: height + depth,
+    side: "bottom"
+  };
+}             
   
               getHeartProgress() {
                 return Math.max(0, Math.min(1, this.score / this.levelTargetScore));
@@ -1434,7 +1610,7 @@ showRoundResult() {
     this.nextBtn.classList.add("actionBtn-disabled");
   }
 
-  this.homeStar = new HomeStar(this.canvas.width, this.canvas.height);
+  this.homeStar = new HomeStar(this.sceneMetrics);
   this.spawnStarlets(12);
   this.updateUI();
   this.startGameLoop();
@@ -1447,7 +1623,9 @@ showRoundResult() {
                   }
               }
   
-              spawnObstacle() { this.obstacles.push(new Obstacle(this.canvas.width, this.canvas.height)); }
+              spawnObstacle() {
+  this.obstacles.push(new Obstacle(this.sceneMetrics));
+}
   
               spawnScatterEffect(x, y, color, cool = false) {
                   for (let i = 0; i < 12; i++) this.particles.push(new Particle(x, y, color, cool));
@@ -1599,7 +1777,7 @@ this.starlets.forEach((s) => {
   
     this.tutor.update(delta, this);
   
-    this.obstacles = this.obstacles.filter((o) => !o.isOffscreen(this.canvas.height));
+    this.obstacles = this.obstacles.filter((o) => !o.isOffscreen());
   
     this.checkCollisions();
     this.checkHomeHits();
