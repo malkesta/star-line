@@ -318,98 +318,103 @@ function drawStarPath(ctx, cx, cy, outerRadius, innerRadius, points = 5) {
             }
         }
 class Starlet {
-    constructor(x, y, entrySide = 'right') {
-        this.x = x;
-        this.y = y;
-        this.targetX = x;
-        this.targetY = y;
-        this.entrySide = entrySide;
+  constructor(x, y, entrySide = "right", sceneMetrics) {
+    this.sceneMetrics = sceneMetrics;
 
-        if (entrySide === 'right') {
-            this.vx = -0.42 - Math.random() * 0.24;
-            this.vy = (Math.random() - 0.5) * 0.20;
-        } else if (entrySide === 'top') {
-            this.vx = -0.26 - Math.random() * 0.22;
-            this.vy = 0.22 + Math.random() * 0.14;
-        } else {
-            this.vx = -0.26 - Math.random() * 0.22;
-            this.vy = -0.22 - Math.random() * 0.14;
-        }
+    this.x = x;
+    this.y = y;
+    this.targetX = x;
+    this.targetY = y;
+    this.entrySide = entrySide;
 
-        this.following = false;
-        this.lagFactor = 0.07;
-        this.dragRadius = 28;
-        this.trailTimer = 0;
+    const moveScale = 0.92 + (sceneMetrics?.playScale ?? 1) * 0.12;
 
-        this.phase = Math.random() * Math.PI * 2;
-        this.wander = Math.random() * 0.22 + 0.08;
-        this.rotation = Math.random() * Math.PI * 2;
-
-        const sizes = [0.66, 1, 1.33];
-        this.sizeFactor = sizes[Math.floor(Math.random() * sizes.length)];
-        this.radius = 8 * this.sizeFactor;
-
-        const colors = ['#f5b670', '#DEA15E', '#FFF0B8'];
-        this.outerColor = colors[Math.floor(Math.random() * colors.length)];
-        this.highlightColor = this.outerColor === '#FFF0B8' ? '#FFF7D6' : '#FFF0D0';
+    if (entrySide === "right") {
+      this.vx = (-0.42 - Math.random() * 0.24) * moveScale;
+      this.vy = ((Math.random() - 0.5) * 0.20) * moveScale;
+    } else if (entrySide === "top") {
+      this.vx = (-0.26 - Math.random() * 0.22) * moveScale;
+      this.vy = (0.22 + Math.random() * 0.14) * moveScale;
+    } else {
+      this.vx = (-0.26 - Math.random() * 0.22) * moveScale;
+      this.vy = (-0.22 - Math.random() * 0.14) * moveScale;
     }
 
-    update(mousePos, isDragging, swarmCenter = null) {
-        let justCaught = false;
+    this.following = false;
+    this.lagFactor = 0.07;
+    this.dragRadius = sceneMetrics?.starletDragRadius ?? 28;
+    this.trailTimer = 0;
 
-        if (isDragging && !this.following) {
-            const dx = this.x - mousePos.x;
-            const dy = this.y - mousePos.y;
-            if (Math.sqrt(dx * dx + dy * dy) < this.dragRadius) {
-                this.following = true;
-                justCaught = true;
-            }
-        }
+    this.phase = Math.random() * Math.PI * 2;
+    this.wander = (Math.random() * 0.22 + 0.08) * moveScale;
+    this.rotation = Math.random() * Math.PI * 2;
 
-        if (this.following) {
-            this.targetX = mousePos.x;
-            this.targetY = mousePos.y;
-            this.x += (this.targetX - this.x) * this.lagFactor;
-            this.y += (this.targetY - this.y) * this.lagFactor;
-        } else {
-            this.x += this.vx;
-            this.y += this.vy;
+    const sizes = [0.66, 1, 1.33];
+    this.sizeFactor = sizes[Math.floor(Math.random() * sizes.length)];
+    this.radius = (sceneMetrics?.starletBaseRadius ?? 8) * this.sizeFactor;
 
-            const t = performance.now();
+    const colors = ["#f5b670", "#DEA15E", "#FFF0B8"];
+    this.outerColor = colors[Math.floor(Math.random() * colors.length)];
+    this.highlightColor =
+      this.outerColor === "#FFF0B8" ? "#FFF7D6" : "#FFF0D0";
+  }
 
-            this.x += Math.sin(t * 0.0012 + this.phase) * this.wander;
-            this.y += Math.cos(t * 0.0011 + this.phase) * 0.06;
+  update(mousePos, isDragging, swarmCenter = null) {
+    let justCaught = false;
 
-            if (swarmCenter) {
-                this.x += (swarmCenter.x - this.x) * 0.0012;
-                this.y += (swarmCenter.y - this.y) * 0.0008;
-            }
-        }
-
-        this.rotation += 0.015;
-        return justCaught;
+    if (isDragging && !this.following) {
+      const dx = this.x - mousePos.x;
+      const dy = this.y - mousePos.y;
+      if (Math.sqrt(dx * dx + dy * dy) < this.dragRadius) {
+        this.following = true;
+        justCaught = true;
+      }
     }
 
-    draw(ctx) {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.rotation);
+    if (this.following) {
+      this.targetX = mousePos.x;
+      this.targetY = mousePos.y;
+      this.x += (this.targetX - this.x) * this.lagFactor;
+      this.y += (this.targetY - this.y) * this.lagFactor;
+    } else {
+      this.x += this.vx;
+      this.y += this.vy;
 
-        drawStarPath(ctx, 0, 0, this.radius + 2.4, this.radius * 0.48, 5);
-        ctx.fillStyle = this.outerColor;
-        ctx.fill();
+      const t = performance.now();
 
-        drawStarPath(ctx, 0, 0, this.radius + 2.4, this.radius * 0.48, 5);
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(255, 244, 220, 0.95)';
-        ctx.stroke();
+      this.x += Math.sin(t * 0.0012 + this.phase) * this.wander;
+      this.y += Math.cos(t * 0.0011 + this.phase) * (this.wander * 0.28);
 
-        drawStarPath(ctx, -1, -1, this.radius * 0.56, this.radius * 0.24, 5);
-        ctx.fillStyle = this.highlightColor;
-        ctx.fill();
-
-        ctx.restore();
+      if (swarmCenter) {
+        this.x += (swarmCenter.x - this.x) * 0.0012;
+        this.y += (swarmCenter.y - this.y) * 0.0008;
+      }
     }
+
+    this.rotation += 0.015;
+    return justCaught;
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+
+    drawStarPath(ctx, 0, 0, this.radius + 2.4, this.radius * 0.48, 5);
+    ctx.fillStyle = this.outerColor;
+    ctx.fill();
+
+    drawStarPath(ctx, 0, 0, this.radius + 2.4, this.radius * 0.48, 5);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(255, 244, 220, 0.95)";
+    ctx.stroke();
+
+    drawStarPath(ctx, -1, -1, this.radius * 0.56, this.radius * 0.24, 5);
+    ctx.fillStyle = this.highlightColor;
+    ctx.fill();
+
+    ctx.restore();
+  }
 }
         
 class Obstacle {
@@ -441,11 +446,13 @@ class Obstacle {
     const spawnDepth = offscreenOffset * (0.7 + Math.random() * 0.7);
 
     if (this.edge === "top" || this.edge === "bottom") {
-      this.x = laneInsetX + Math.random() * (width - laneInsetX * 2);
-      this.y = this.edge === "top" ? -spawnDepth : height + spawnDepth;
-      this.vx = (Math.random() - 0.5) * drift;
-      this.vy = this.edge === "top" ? travel : -travel;
-    } else {
+  const minX = laneInsetX;
+  const maxX = width * (2 / 3) - laneInsetX;
+  this.x = minX + Math.random() * Math.max(24, maxX - minX);
+  this.y = this.edge === "top" ? -spawnDepth : height + spawnDepth;
+  this.vx = (Math.random() - 0.5) * drift;
+  this.vy = this.edge === "top" ? travel : -travel;
+} else {
       this.x = this.edge === "left" ? -spawnDepth : width + spawnDepth;
       this.y = Math.random() * height;
       this.vx = this.edge === "left" ? travel * 1.08 : -travel * 1.08;
@@ -1367,11 +1374,15 @@ class Obstacle {
 }
   
  createSpawnPoint() {
-  const { width, height, laneInsetX, offscreenOffset } = this.sceneMetrics;
+  const { width, height, offscreenOffset } = this.sceneMetrics;
 
   const mode = Math.random() < 0.5 ? "top" : "bottom";
-  const x = laneInsetX + Math.random() * (width - laneInsetX * 2);
-  const depth = offscreenOffset * (0.4 + Math.random() * 1.2);
+
+  const minX = width * (2 / 3);
+  const maxX = width - offscreenOffset * 0.35;
+  const x = minX + Math.random() * Math.max(24, maxX - minX);
+
+  const depth = offscreenOffset * (0.55 + Math.random() * 0.9);
 
   if (mode === "top") {
     return {
@@ -1386,7 +1397,7 @@ class Obstacle {
     y: height + depth,
     side: "bottom"
   };
-}             
+}
   
               getHeartProgress() {
                 return Math.max(0, Math.min(1, this.score / this.levelTargetScore));
@@ -1616,12 +1627,14 @@ showRoundResult() {
   this.startGameLoop();
 };  
   
-              spawnStarlets(count) {
-                  for (let i = 0; i < count; i++) {
-                      const spawn = this.createSpawnPoint();
-                      this.starlets.push(new Starlet(spawn.x, spawn.y, spawn.side));
-                  }
-              }
+             spawnStarlets(count) {
+  for (let i = 0; i < count; i++) {
+    const spawn = this.createSpawnPoint();
+    this.starlets.push(
+      new Starlet(spawn.x, spawn.y, spawn.side, this.sceneMetrics)
+    );
+  }
+} 
   
               spawnObstacle() {
   this.obstacles.push(new Obstacle(this.sceneMetrics));
