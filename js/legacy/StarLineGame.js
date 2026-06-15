@@ -1297,13 +1297,13 @@ getSceneRankLabel(rank = this.getSceneRank()) {
 getSceneRankTitle(rank = this.getSceneRank()) {
   switch (rank) {
     case 3:
-      return "Три медали";
+      return "Космический друг";
     case 2:
-      return "Две медали";
+      return "Звездочет";
     case 1:
-      return "Одна медаль";
+      return "Проводник звезд";
     default:
-      return "Без медали";
+      return "Юный проводник";
   }
 }
 
