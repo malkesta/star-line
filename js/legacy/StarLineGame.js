@@ -327,17 +327,15 @@ class Starlet {
     this.targetY = y;
     this.entrySide = entrySide;
 
-    const moveScale = 1.08;
-
     if (entrySide === "right") {
-      this.vx = (-0.56 - Math.random() * 0.26) * moveScale;
-      this.vy = ((Math.random() - 0.5) * 0.22) * moveScale;
+      this.vx = -0.42 - Math.random() * 0.24;
+      this.vy = (Math.random() - 0.5) * 0.20;
     } else if (entrySide === "top") {
-      this.vx = (-0.32 - Math.random() * 0.24) * moveScale;
-      this.vy = (0.30 + Math.random() * 0.16) * moveScale;
+      this.vx = -0.26 - Math.random() * 0.22;
+      this.vy = 0.22 + Math.random() * 0.14;
     } else {
-      this.vx = (-0.32 - Math.random() * 0.24) * moveScale;
-      this.vy = (-0.30 - Math.random() * 0.16) * moveScale;
+      this.vx = -0.26 - Math.random() * 0.22;
+      this.vy = -0.22 - Math.random() * 0.14;
     }
 
     this.following = false;
@@ -346,7 +344,7 @@ class Starlet {
     this.trailTimer = 0;
 
     this.phase = Math.random() * Math.PI * 2;
-    this.wander = Math.random() * 0.24 + 0.1;
+    this.wander = Math.random() * 0.22 + 0.08;
     this.wanderY = this.wander * 0.28;
     this.rotation = Math.random() * Math.PI * 2;
 
