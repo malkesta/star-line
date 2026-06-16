@@ -1295,7 +1295,7 @@ class Obstacle {
     homeOrbitX: width * 0.016,
     homeOrbitY: height * 0.045,
 
-    starletBaseRadius: clamp(6.6, 7.0 * playScale, 9.2),
+    starletBaseRadius: clamp(6.6, 7.0 * playScale, 8.9),
     starletDragRadius: clamp(24, 28 * playScale, 34),
 
     homeRadius: clamp(30, 34 * playScale, 42),
@@ -1374,28 +1374,49 @@ obstacleMaxHeight: clamp(104, 123 * playScale, 144),
 }
   
  createSpawnPoint() {
-  const { width, height, offscreenOffset } = this.sceneMetrics;
+  const {
+    width,
+    height,
+    offscreenOffset,
+    homeBaseX,
+    homeRingRadius,
+    laneInsetX
+  } = this.sceneMetrics;
 
-  const mode = Math.random() < 0.5 ? "top" : "bottom";
-
-  const minX = width * (2 / 3);
-  const maxX = width - offscreenOffset * 0.35;
-  const x = minX + Math.random() * Math.max(24, maxX - minX);
+  const spawnSides = ["top", "bottom", "right"];
+  const side = spawnSides[Math.floor(Math.random() * spawnSides.length)];
 
   const depth = offscreenOffset * (0.55 + Math.random() * 0.9);
 
-  if (mode === "top") {
+  const forbiddenRightEdge =
+    homeBaseX + homeRingRadius + laneInsetX;
+
+  const minSpawnX = Math.max(
+    forbiddenRightEdge,
+    width * 0.28
+  );
+  const maxSpawnX = width - laneInsetX;
+
+  if (side === "top") {
     return {
-      x,
+      x: minSpawnX + Math.random() * Math.max(24, maxSpawnX - minSpawnX),
       y: -depth,
       side: "top"
     };
   }
 
+  if (side === "bottom") {
+    return {
+      x: minSpawnX + Math.random() * Math.max(24, maxSpawnX - minSpawnX),
+      y: height + depth,
+      side: "bottom"
+    };
+  }
+
   return {
-    x,
-    y: height + depth,
-    side: "bottom"
+    x: width + depth,
+    y: laneInsetX + Math.random() * Math.max(24, height - laneInsetX * 2),
+    side: "right"
   };
 }
   
