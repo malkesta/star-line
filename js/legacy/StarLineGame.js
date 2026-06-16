@@ -327,26 +327,27 @@ class Starlet {
     this.targetY = y;
     this.entrySide = entrySide;
 
-    const moveScale = 0.92 + (sceneMetrics?.playScale ?? 1) * 0.12;
+    const moveScale = 1.08;
 
     if (entrySide === "right") {
-      this.vx = (-0.42 - Math.random() * 0.24) * moveScale;
-      this.vy = ((Math.random() - 0.5) * 0.20) * moveScale;
+      this.vx = (-0.56 - Math.random() * 0.26) * moveScale;
+      this.vy = ((Math.random() - 0.5) * 0.22) * moveScale;
     } else if (entrySide === "top") {
-      this.vx = (-0.26 - Math.random() * 0.22) * moveScale;
-      this.vy = (0.22 + Math.random() * 0.14) * moveScale;
+      this.vx = (-0.32 - Math.random() * 0.24) * moveScale;
+      this.vy = (0.30 + Math.random() * 0.16) * moveScale;
     } else {
-      this.vx = (-0.26 - Math.random() * 0.22) * moveScale;
-      this.vy = (-0.22 - Math.random() * 0.14) * moveScale;
+      this.vx = (-0.32 - Math.random() * 0.24) * moveScale;
+      this.vy = (-0.30 - Math.random() * 0.16) * moveScale;
     }
 
     this.following = false;
-    this.lagFactor = 0.07;
-    this.dragRadius = sceneMetrics?.starletDragRadius ?? 28;
+    this.lagFactor = 0.082;
+    this.dragRadius = 28;
     this.trailTimer = 0;
 
     this.phase = Math.random() * Math.PI * 2;
-    this.wander = (Math.random() * 0.22 + 0.08) * moveScale;
+    this.wander = Math.random() * 0.24 + 0.1;
+    this.wanderY = this.wander * 0.28;
     this.rotation = Math.random() * Math.PI * 2;
 
     const sizes = [0.66, 1, 1.33];
@@ -383,7 +384,7 @@ class Starlet {
       const t = performance.now();
 
       this.x += Math.sin(t * 0.0012 + this.phase) * this.wander;
-      this.y += Math.cos(t * 0.0011 + this.phase) * (this.wander * 0.28);
+      this.y += Math.cos(t * 0.0011 + this.phase) * this.wanderY;
 
       if (swarmCenter) {
         this.x += (swarmCenter.x - this.x) * 0.0012;
@@ -1265,7 +1266,7 @@ class Obstacle {
   this.setupInput();
 
   this.homeStar = new HomeStar(this.sceneMetrics);
-  this.spawnStarlets(8);
+  this.spawnStarlets(10);
 
   this.updateTargetScoreUI();
   this.updateUI();
@@ -1386,7 +1387,7 @@ obstacleMaxHeight: clamp(104, 123 * playScale, 144),
   const spawnSides = ["top", "bottom", "right"];
   const side = spawnSides[Math.floor(Math.random() * spawnSides.length)];
 
-  const depth = offscreenOffset * (0.55 + Math.random() * 0.9);
+  const depth = offscreenOffset * (0.18 + Math.random() * 0.28);
 
   const forbiddenRightEdge =
     homeBaseX + homeRingRadius + laneInsetX;
@@ -1817,19 +1818,19 @@ this.starlets.forEach((s) => {
     this.checkHomeHits();
   
     this.obstacleTimer += delta * 1000;
-    if (this.obstacleTimer >= this.obstacleInterval) {
-      this.spawnObstacle();
-      this.obstacleTimer = 0;
-    }
-  
-    if (this.score >= 60) this.obstacleInterval = 2000;
-    if (this.score >= 140) this.obstacleInterval = 1800;
-    if (this.score >= 260) this.obstacleInterval = 1600;
-  
-    if (this.starlets.length < 6) this.spawnStarlets(4);
-  
-    this.updateHeartProgress(delta);
-    this.updateUI();
+if (this.obstacleTimer >= this.obstacleInterval) {
+  this.spawnObstacle();
+  this.obstacleTimer = 0;
+}
+
+if (this.score >= 60) this.obstacleInterval = 2000;
+if (this.score >= 140) this.obstacleInterval = 1800;
+if (this.score >= 260) this.obstacleInterval = 1600;
+
+if (this.starlets.length < 8) this.spawnStarlets(4);
+
+this.updateHeartProgress(delta);
+this.updateUI();
   }
   
               checkCollisions() {
