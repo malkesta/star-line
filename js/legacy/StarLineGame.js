@@ -1245,67 +1245,163 @@ class Obstacle {
   this.timeLeft = 90;
   this.totalTime = 90;
 
-  this.gameOver = false;
-  this.isRunning = false;
-  this.lastTime = performance.now();
-  this.rafId = null;
+   this.gameOver = false;
+    this.isRunning = false;
+    this.isTransitioning = false;
+    this.lastTime = performance.now();
+    this.rafId = null;
 
   this.obstacleTimer = 0;
   this.obstacleInterval = 2200;
 
-  this.isDragging = false;
-  this.mousePos = { x: 0, y: 0 };
+ this.isDragging = false;
+    this.mousePos = { x: 0, y: 0 };
 
-       this.handleRestartClick = async () => {
-      console.log("[StarLine] restart click", {
-        sceneId: this.sceneId,
-        levelPassed: this.levelPassed,
-        onNext: !!this.onNext,
-        hasSceneManagerNext: !!this.sceneManager?.next,
-      });
+    this.inputBound = false;
+    this.handlePointerMoveCore = null;
+    this.handlePointerDown = null;
+    this.handlePointerMove = null;
+    this.handlePointerEnd = null;
 
-      const fadeDuration = 0.45;
 
-      if (this.restartBtn) {
-        this.restartBtn.classList.add("actionBtn-disabled");
-        this.restartBtn.disabled = true;
-        this.playButtonFadeGlow(this.restartBtn, fadeDuration);
-      }
+    // Рестарт
+this.handleRestartClick = async () => {
+  if (this.isTransitioning) return;
 
-      await this.audio.fadeOutAmbient(fadeDuration);
+  console.log("[StarLine] restart click", {
+    sceneId: this.sceneId,
+    levelPassed: this.levelPassed,
+    onNext: !!this.onNext,
+    hasSceneManagerNext: !!this.sceneManager?.next,
+  });
 
-      console.log("[StarLine] restart -> resetGame()");
-      this.resetGame();
-    };
+  this.isTransitioning = true;
 
-       this.handleNextClick = async () => {
-      console.log("[StarLine] next click", {
-        sceneId: this.sceneId,
-        levelPassed: this.levelPassed,
-        onNext: !!this.onNext,
-        hasSceneManagerNext: !!this.sceneManager?.next,
-      });
+  const fadeDuration = 1.15;
 
-      if (!this.levelPassed) return;
+  try {
+    if (this.restartBtn) {
+      this.restartBtn.classList.add("actionBtn-disabled");
+      this.restartBtn.disabled = true;
+      this.playButtonFadeGlow(this.restartBtn, fadeDuration);
+    }
 
-      const fadeDuration = 0.6;
+    if (this.nextBtn) {
+      this.nextBtn.classList.add("actionBtn-disabled");
+      this.nextBtn.disabled = true;
+    }
 
-      if (this.nextBtn) {
-        this.nextBtn.classList.add("actionBtn-disabled");
-        this.nextBtn.disabled = true;
-        this.playButtonFadeGlow(this.nextBtn, fadeDuration);
-      }
+    this.isDragging = false;
+    this.gameOver = false;
+    this.isRunning = false;
 
-      await this.audio.fadeOutAmbient(fadeDuration);
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
 
-      console.log("[StarLine] next -> transition");
-      if (this.onNext) {
-        await this.onNext();
-        return;
-      }
+    await this.audio.fadeOutAmbient(fadeDuration);
+    await new Promise((resolve) => setTimeout(resolve, 120));
 
-      await this.sceneManager?.next?.();
-    }; 
+    if (this.overlay) {
+      this.overlay.classList.remove("show");
+    }
+
+    console.log("[StarLine] restart -> resetGame()");
+    this.resetGame({ restartAmbient: false });
+
+    this.audio.startAmbient({ restart: true });
+  } catch (error) {
+    console.error("[StarLine] restart transition failed", error);
+
+    if (this.overlay) {
+      this.overlay.classList.remove("show");
+    }
+
+    this.resetGame({ restartAmbient: false });
+    this.audio.startAmbient({ restart: true });
+  } finally {
+    this.isTransitioning = false;
+  }
+};
+
+// Кнопка дальше
+this.handleNextClick = async () => {
+  if (this.isTransitioning) return;
+
+  console.log("[StarLine] next click", {
+    sceneId: this.sceneId,
+    levelPassed: this.levelPassed,
+    onNext: !!this.onNext,
+    hasSceneManagerNext: !!this.sceneManager?.next,
+  });
+
+  if (!this.levelPassed) return;
+
+  this.isTransitioning = true;
+
+  const fadeDuration = 1.15;
+
+  try {
+    if (this.nextBtn) {
+      this.nextBtn.classList.add("actionBtn-disabled");
+      this.nextBtn.disabled = true;
+      this.playButtonFadeGlow(this.nextBtn, fadeDuration);
+    }
+
+    if (this.restartBtn) {
+      this.restartBtn.classList.add("actionBtn-disabled");
+      this.restartBtn.disabled = true;
+    }
+
+    this.isDragging = false;
+    this.isRunning = false;
+
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+
+    await this.audio.fadeOutAmbient(fadeDuration);
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
+    if (this.overlay) {
+      this.overlay.classList.remove("show");
+    }
+
+    console.log("[StarLine] next -> transition");
+
+    if (this.onNext) {
+      await this.onNext();
+    } else if (this.sceneManager?.next) {
+      await this.sceneManager.next();
+    }
+  } catch (error) {
+    console.error("[StarLine] next transition failed", error);
+
+    if (this.overlay) {
+      this.overlay.classList.add("show");
+    }
+
+    if (this.nextBtn) {
+      this.nextBtn.classList.remove("actionBtn-disabled");
+      this.nextBtn.disabled = false;
+      this.nextBtn.classList.remove("actionBtn-fade-glow");
+      this.nextBtn.style.removeProperty("--fade-glow-duration");
+    }
+
+    if (this.restartBtn) {
+      this.restartBtn.classList.remove("actionBtn-disabled");
+      this.restartBtn.disabled = false;
+    }
+  } finally {
+    this.isTransitioning = false;
+  }
+};
+
+
+
+
 
   this.handleResize = this.resize.bind(this);
 
@@ -1391,14 +1487,16 @@ obstacleMaxHeight: clamp(104, 123 * playScale, 144),
     button.classList.add("actionBtn-fade-glow");
   }
 
-  async start() {       
-  console.log("START STATE", {
-    isRunning: this.isRunning,
-    gameOver: this.gameOver,
-    startScreenShown: this.startScreen?.classList.contains("show"),
-  });
+   async start() {
+    console.log("START STATE", {
+      isRunning: this.isRunning,
+      gameOver: this.gameOver,
+      isTransitioning: this.isTransitioning,
+      startScreenShown: this.startScreen?.classList.contains("show"),
+    });
 
-  if (this.isRunning && !this.gameOver) return;
+    if (this.isTransitioning) return;
+    if (this.isRunning && !this.gameOver) return;
 
   try {
   await this.audio.init();
@@ -1606,9 +1704,11 @@ updateRankUI() {
   }
 }
 
-showRoundResult() {
-  // levelPassed уже считается перед вызовом этого метода
-  if (this.finalScoreElement) {
+  showRoundResult() {
+    if (this.isTransitioning) return;
+
+    // levelPassed уже считается перед вызовом этого метода
+    if (this.finalScoreElement) {
     this.finalScoreElement.textContent = this.score;
   }
 
@@ -1660,65 +1760,63 @@ showRoundResult() {
   this.updateUI();
 }
 
+  resetGame = ({ restartAmbient = false } = {}) => {
 
-            resetGame = () => {
-
-      console.log("[StarLine] resetGame()", {
+    console.log("[StarLine] resetGame()", {
       sceneId: this.sceneId,
       overlayShown: this.overlay?.classList.contains("show"),
       isRunning: this.isRunning,
       gameOver: this.gameOver,
+      isTransitioning: this.isTransitioning,
     });
-    
-  this.audio.resetAmbient();
 
-  this.starlets = [];
-  this.obstacles = [];
-  this.particles = [];
+    this.starlets = [];
+    this.obstacles = [];
+    this.particles = [];
 
-  this.score = 0;
-  this.savedCount = 0;
-  this.lostCount = 0;
+    this.score = 0;
+    this.savedCount = 0;
+    this.lostCount = 0;
 
-  this.displayedHeartProgress = 0;
-  this.targetHeartProgress = 0;
+    this.displayedHeartProgress = 0;
+    this.targetHeartProgress = 0;
 
-  if (this.heartPulseTimeout) {
-    clearTimeout(this.heartPulseTimeout);
-    this.heartPulseTimeout = null;
-  }
+    if (this.heartPulseTimeout) {
+      clearTimeout(this.heartPulseTimeout);
+      this.heartPulseTimeout = null;
+    }
 
-  if (this.heartFillRect) {
-    this.heartFillRect.setAttribute("width", 0);
-  }
+    if (this.heartFillRect) {
+      this.heartFillRect.setAttribute("width", 0);
+    }
 
-  if (this.heartIconElement) {
-    this.heartIconElement.classList.remove(
-      "is-active",
-      "is-complete",
-      "is-pulsing"
-    );
-  }
+    if (this.heartIconElement) {
+      this.heartIconElement.classList.remove(
+        "is-active",
+        "is-complete",
+        "is-pulsing"
+      );
+    }
 
-  this.timeLeft = this.totalTime;
-  this.levelPassed = false;
+    this.timeLeft = this.totalTime;
+    this.levelPassed = false;
 
-  this.gameOver = false;
-  this.isRunning = true;
-  this.lastTime = performance.now();
+    this.gameOver = false;
+    this.isRunning = true;
+    this.lastTime = performance.now();
 
-  this.obstacleTimer = 0;
-  this.obstacleInterval = 2200;
+    this.obstacleTimer = 0;
+    this.obstacleInterval = 2200;
 
-  this.isDragging = false;
-  this.mousePos = { x: 0, y: 0 };
+    this.isDragging = false;
+    this.mousePos = { x: 0, y: 0 };
 
-  this.hasPlayerInteracted = false;
+    this.hasPlayerInteracted = false;
 
-  this.tutorialEnabledForRun = false;
-  this.tutor.reset({ enabled: false });
+    this.tutorialEnabledForRun = false;
+    this.tutor.reset({ enabled: false });
 
-      if (this.overlay) {
+    if (this.overlay) {
       this.overlay.classList.remove("show");
     }
 
@@ -1736,11 +1834,17 @@ showRoundResult() {
     }
 
     this.homeStar = new HomeStar(this.sceneMetrics);
-this.spawnStarlets(12);
-this.updateUI();
-this.audio.startAmbient();
-this.startGameLoop();
-};  
+    this.spawnStarlets(12);
+    this.updateUI();
+    this.draw();
+
+    if (restartAmbient) {
+      this.audio.startAmbient({ restart: true });
+    }
+
+    this.startGameLoop();
+  };
+            
   
              spawnStarlets(count) {
   for (let i = 0; i < count; i++) {
@@ -1800,36 +1904,45 @@ this.startGameLoop();
   }
 }
   
-              setupInput() {
-    const handleMove = (x, y) => {
+        setupInput() {
+    if (this.inputBound) return;
+
+    this.handlePointerMoveCore = (x, y) => {
       this.mousePos = { x, y };
       this.isDragging = true;
     };
-  
-    const handleEnd = () => {
+
+    this.handlePointerEnd = (e) => {
       this.isDragging = false;
+      if (e?.pointerId != null && this.canvas?.hasPointerCapture?.(e.pointerId)) {
+        this.canvas.releasePointerCapture(e.pointerId);
+      }
     };
-  
-    this.canvas.addEventListener("pointerdown", (e) => {
+
+    this.handlePointerDown = (e) => {
       if (!this.isRunning || this.gameOver) return;
-      this.canvas.setPointerCapture(e.pointerId);
-      handleMove(e.clientX, e.clientY);
+      this.canvas.setPointerCapture?.(e.pointerId);
+      this.handlePointerMoveCore(e.clientX, e.clientY);
       this.hasPlayerInteracted = true;
-    });
-  
-    this.canvas.addEventListener("pointermove", (e) => {
+    };
+
+    this.handlePointerMove = (e) => {
       if (!this.isRunning || this.gameOver) return;
       if (e.pointerType === "mouse" && e.buttons === 0 && !this.isDragging) return;
-      handleMove(e.clientX, e.clientY);
-    });
+      this.handlePointerMoveCore(e.clientX, e.clientY);
+    };
+
+    this.canvas.addEventListener("pointerdown", this.handlePointerDown);
+    this.canvas.addEventListener("pointermove", this.handlePointerMove);
+    this.canvas.addEventListener("pointerup", this.handlePointerEnd);
+    this.canvas.addEventListener("pointercancel", this.handlePointerEnd);
+    this.canvas.addEventListener("pointerleave", this.handlePointerEnd);
+
+    this.inputBound = true;
+  }        
   
-    this.canvas.addEventListener("pointerup", handleEnd);
-    this.canvas.addEventListener("pointercancel", handleEnd);
-    this.canvas.addEventListener("pointerleave", handleEnd);
-  }
-  
-              update(currentTime) {
-    if (!this.isRunning || this.gameOver) return;
+        update(currentTime) {
+    if (!this.isRunning || this.gameOver || this.isTransitioning) return;       
   
     if (this.rotateHint) {
     this.rotateHint.classList.toggle("show", !this.isLandscape());
@@ -1869,8 +1982,10 @@ if (this.timeLeft <= 0) {
   });
 
   // Заполняем финальный экран и показываем оверлей
-  this.showRoundResult();
-  return;
+        if (!this.isTransitioning) {
+        this.showRoundResult();
+      }
+      return;
 }
   
     let swarmCenter = null;
@@ -2031,29 +2146,35 @@ draw() {
   }
 } 
   
-  startGameLoop() {
+   startGameLoop() {
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
-  
+
     const loop = (time) => {
+      if (this.isTransitioning) {
+        this.rafId = null;
+        return;
+      }
+
       this.update(time);
       this.draw();
-  
-      if (this.isRunning && !this.gameOver) {
+
+      if (this.isRunning && !this.gameOver && !this.isTransitioning) {
         this.rafId = requestAnimationFrame(loop);
       } else {
         this.rafId = null;
       }
     };
-  
+
     this.rafId = requestAnimationFrame(loop);
-  }
+  } 
   
-  async enter() {
+    async enter() {
     this.isRunning = false;
     this.gameOver = false;
+    this.isTransitioning = false;
     this.isDragging = false;
   
        if (this.overlay) {
@@ -2088,53 +2209,68 @@ draw() {
     this.destroy();
   }
   
-  destroy() {
-  this.isRunning = false;
-  this.gameOver = true;
-  this.isDragging = false;
-  
-    if (this.rafId) {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = null;
-    }
-  
-    if (this.heartPulseTimeout) {
-      clearTimeout(this.heartPulseTimeout);
-      this.heartPulseTimeout = null;
-    }
-  
-    if (this.restartBtn && this.handleRestartClick) {
-      this.restartBtn.removeEventListener("click", this.handleRestartClick);
-    }
-  
-    if (this.nextBtn && this.handleNextClick) {
-      this.nextBtn.removeEventListener("click", this.handleNextClick);
-    }
-  
-    window.removeEventListener("resize", this.handleResize);
-  
-    if (this.overlay) {
-      this.overlay.classList.remove("show");
-    }
-  
-    if (this.startScreen) {
-      this.startScreen.classList.remove("show");
-    }
-  
-    if (this.rotateHint) {
-      this.rotateHint.classList.remove("show");
+   destroy() {
+    this.isRunning = false;
+    this.gameOver = true;
+    this.isTransitioning = false;
+    this.isDragging = false;
+
+  if (this.rafId) {
+    cancelAnimationFrame(this.rafId);
+    this.rafId = null;
+  }
+
+  if (this.heartPulseTimeout) {
+    clearTimeout(this.heartPulseTimeout);
+    this.heartPulseTimeout = null;
+  }
+
+  if (this.canvas) {
+    if (this.handlePointerDown) {
+      this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
     }
 
-        if (this.restartBtn) {
-      this.restartBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
-      this.restartBtn.disabled = false;
-      this.restartBtn.style.removeProperty("--fade-glow-duration");
+    if (this.handlePointerMove) {
+      this.canvas.removeEventListener("pointermove", this.handlePointerMove);
     }
 
-    if (this.nextBtn) {
-      this.nextBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
-      this.nextBtn.disabled = false;
-      this.nextBtn.style.removeProperty("--fade-glow-duration");
+    if (this.handlePointerEnd) {
+      this.canvas.removeEventListener("pointerup", this.handlePointerEnd);
+      this.canvas.removeEventListener("pointercancel", this.handlePointerEnd);
+      this.canvas.removeEventListener("pointerleave", this.handlePointerEnd);
     }
   }
+
+  this.inputBound = false;
+  this.handlePointerMoveCore = null;
+  this.handlePointerDown = null;
+  this.handlePointerMove = null;
+  this.handlePointerEnd = null;
+
+    window.removeEventListener("resize", this.handleResize);
+
+  if (this.overlay) {
+    this.overlay.classList.remove("show");
+  }
+
+  if (this.startScreen) {
+    this.startScreen.classList.remove("show");
+  }
+
+  if (this.rotateHint) {
+    this.rotateHint.classList.remove("show");
+  }
+
+  if (this.restartBtn) {
+    this.restartBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
+    this.restartBtn.disabled = false;
+    this.restartBtn.style.removeProperty("--fade-glow-duration");
+  }
+
+  if (this.nextBtn) {
+    this.nextBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
+    this.nextBtn.disabled = false;
+    this.nextBtn.style.removeProperty("--fade-glow-duration");
+  }
+}
   }
