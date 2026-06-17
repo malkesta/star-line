@@ -12,223 +12,489 @@ function drawStarPath(ctx, cx, cy, outerRadius, innerRadius, points = 5) {
         }
 
         export class GameAudio {
-            constructor() {
-                this.ctx = null;
-                this.master = null;
-                this.ambientGain = null;
-                this.ambientStarted = false;
-                this.lastCatchTime = 0;
-                this.lastScoreTime = 0;
-                this.lastHitTime = 0;
-                this.ambientTimer = null;
-            }
+    constructor() {
+        this.ctx = null;
+        this.master = null;
+        this.ambientGain = null;
+        this.ambientStarted = false;
+        this.ambientTimer = null;
 
-            async init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                    this.master = this.ctx.createGain();
-                    this.master.gain.value = 0.22;
-                    this.master.connect(this.ctx.destination);
-                    this.ambientGain = this.ctx.createGain();
-                    this.ambientGain.gain.value = 0.0001;
-                    this.ambientGain.connect(this.master);
-                }
-                if (this.ctx.state === 'suspended') await this.ctx.resume();
-            }
+        this.ambientFadeRaf = null;
+        this.ambientDefaultVolume = 1.0;
+        this.ambientOverlayVolume = this.ambientDefaultVolume * 0.38;
 
-            now() { return this.ctx ? this.ctx.currentTime : 0; }
+        this.lastCatchTime = 0;
+        this.lastScoreTime = 0;
+        this.lastHitTime = 0;
+    }
 
-            createReverb(seconds = 2.8, decay = 2.6) {
-                const rate = this.ctx.sampleRate;
-                const length = rate * seconds;
-                const impulse = this.ctx.createBuffer(2, length, rate);
-                for (let c = 0; c < 2; c++) {
-                    const data = impulse.getChannelData(c);
-                    for (let i = 0; i < length; i++) {
-                        const n = Math.random() * 2 - 1;
-                        data[i] = n * Math.pow(1 - i / length, decay);
-                    }
-                }
-                const convolver = this.ctx.createConvolver();
-                convolver.buffer = impulse;
-                return convolver;
-            }
+    async init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.master = this.ctx.createGain();
+            this.master.gain.value = 0.22;
+            this.master.connect(this.ctx.destination);
 
-            startAmbient() {
-                if (!this.ctx || this.ambientStarted) return;
-                this.ambientStarted = true;
-                const ctx = this.ctx;
-                const loopLength = 24;
-                let nextCycleTime = ctx.currentTime + 0.12;
-                const reverb = this.createReverb(4.2, 2.8);
-                const wet = ctx.createGain(); wet.gain.value = 0.24; reverb.connect(wet); wet.connect(this.ambientGain);
-                const dry = ctx.createGain(); dry.gain.value = 0.55; dry.connect(this.ambientGain);
-                const melodyBus = ctx.createGain(); melodyBus.gain.value = 0.7; melodyBus.connect(dry); melodyBus.connect(reverb);
-                const padBus = ctx.createGain(); padBus.gain.value = 0.9; padBus.connect(dry); padBus.connect(reverb);
+            this.ambientGain = this.ctx.createGain();
+            this.ambientGain.gain.value = 0.0001;
+            this.ambientGain.connect(this.master);
+        }
 
-                const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-                const noiseData = noiseBuffer.getChannelData(0);
-                for (let i = 0; i < noiseData.length; i++) noiseData[i] = (Math.random() * 2 - 1) * 0.22;
-                const noise = ctx.createBufferSource(); noise.buffer = noiseBuffer; noise.loop = true;
-                const noiseFilter = ctx.createBiquadFilter(); noiseFilter.type = 'bandpass'; noiseFilter.frequency.value = 950; noiseFilter.Q.value = 0.5;
-                const noiseGain = ctx.createGain(); noiseGain.gain.value = 0.0001;
-                noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(reverb);
-                noiseGain.gain.setValueAtTime(0.0001, nextCycleTime); noiseGain.gain.linearRampToValueAtTime(0.014, nextCycleTime + 4);
-                noise.start(nextCycleTime);
-                this.ambientGain.gain.setValueAtTime(0.0001, nextCycleTime); this.ambientGain.gain.linearRampToValueAtTime(1.0, nextCycleTime + 4);
+        if (this.ctx.state === "suspended") {
+            await this.ctx.resume();
+        }
+    }
 
-                const chords = [
-                    { root: 220.00, notes: [220.00, 261.63, 329.63, 392.00], dur: 6 },
-                    { root: 174.61, notes: [174.61, 220.00, 261.63, 349.23], dur: 6 },
-                    { root: 196.00, notes: [196.00, 246.94, 293.66, 392.00], dur: 6 },
-                    { root: 164.81, notes: [164.81, 220.00, 261.63, 329.63], dur: 6 }
-                ];
-                const melody = [
-                    { f: 659.25, t: 0.30, d: 1.8, v: 0.018 }, { f: 587.33, t: 2.60, d: 1.4, v: 0.014 },
-                    { f: 523.25, t: 4.20, d: 1.5, v: 0.016 }, { f: 493.88, t: 6.40, d: 1.8, v: 0.017 },
-                    { f: 523.25, t: 8.80, d: 1.4, v: 0.014 }, { f: 440.00, t: 10.30, d: 1.6, v: 0.015 },
-                    { f: 493.88, t: 12.30, d: 1.7, v: 0.017 }, { f: 587.33, t: 14.80, d: 1.5, v: 0.015 },
-                    { f: 523.25, t: 16.60, d: 1.7, v: 0.015 }, { f: 440.00, t: 18.50, d: 1.8, v: 0.016 },
-                    { f: 392.00, t: 20.90, d: 1.7, v: 0.013 }, { f: 523.25, t: 22.20, d: 1.5, v: 0.014 }
-                ];
+    now() {
+        return this.ctx ? this.ctx.currentTime : 0;
+    }
 
-                const playPadNote = (freq, startTime, duration, volume, detune = 0, type = 'triangle') => {
-                    const osc = ctx.createOscillator();
-                    const filter = ctx.createBiquadFilter();
-                    const gain = ctx.createGain();
-                    osc.type = type; osc.frequency.setValueAtTime(freq, startTime); osc.detune.value = detune;
-                    filter.type = 'lowpass'; filter.frequency.value = 1800; filter.Q.value = 0.18;
-                    gain.gain.setValueAtTime(0.0001, startTime);
-                    gain.gain.linearRampToValueAtTime(volume, startTime + 2.2);
-                    gain.gain.linearRampToValueAtTime(volume * 0.82, startTime + duration - 1.6);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
-                    osc.connect(filter); filter.connect(gain); gain.connect(padBus);
-                    osc.start(startTime); osc.stop(startTime + duration + 0.05);
-                };
+    createReverb(seconds = 2.8, decay = 2.6) {
+        const rate = this.ctx.sampleRate;
+        const length = rate * seconds;
+        const impulse = this.ctx.createBuffer(2, length, rate);
 
-                const playMelodyNote = (freq, startTime, duration, volume) => {
-                    const osc = ctx.createOscillator();
-                    const vibrato = ctx.createOscillator();
-                    const vibratoGain = ctx.createGain();
-                    const filter = ctx.createBiquadFilter();
-                    const gain = ctx.createGain();
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(freq, startTime);
-                    vibrato.type = 'sine'; vibrato.frequency.value = 4.8; vibratoGain.gain.value = 7;
-                    filter.type = 'lowpass'; filter.frequency.value = 2400; filter.Q.value = 0.3;
-                    gain.gain.setValueAtTime(0.0001, startTime);
-                    gain.gain.linearRampToValueAtTime(volume, startTime + 0.35);
-                    gain.gain.linearRampToValueAtTime(volume * 0.75, startTime + duration - 0.45);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
-                    vibrato.connect(vibratoGain); vibratoGain.connect(osc.frequency);
-                    osc.connect(filter); filter.connect(gain); gain.connect(melodyBus);
-                    osc.start(startTime); vibrato.start(startTime); osc.stop(startTime + duration + 0.05); vibrato.stop(startTime + duration + 0.05);
-                };
-
-                const scheduleCycle = (cycleStart) => {
-                    let chordTime = cycleStart;
-                    chords.forEach((chord, chordIndex) => {
-                        chord.notes.forEach((freq, noteIndex) => {
-                            const baseVolume = noteIndex === 0 ? 0.028 : 0.02 - noteIndex * 0.0025;
-                            const wave = noteIndex === 0 ? 'triangle' : 'sine';
-                            const detune = noteIndex % 2 === 0 ? -3 : 3;
-                            playPadNote(freq, chordTime, chord.dur + 0.4, baseVolume, detune, wave);
-                            if (noteIndex === 0) playPadNote(freq / 2, chordTime, chord.dur + 0.2, 0.018, 0, 'sine');
-                        });
-                        if (chordIndex === 1 || chordIndex === 3) playPadNote(chord.root * 2, chordTime + 1.5, chord.dur - 1.2, 0.011, 2, 'sine');
-                        chordTime += chord.dur;
-                    });
-                    melody.forEach(note => playMelodyNote(note.f, cycleStart + note.t, note.d, note.v));
-                };
-
-                scheduleCycle(nextCycleTime);
-                if (this.ambientTimer) clearInterval(this.ambientTimer);
-                this.ambientTimer = setInterval(() => {
-                    while (nextCycleTime < ctx.currentTime + 1.5) {
-                        nextCycleTime += loopLength;
-                        scheduleCycle(nextCycleTime);
-                    }
-                }, 800);
-            }
-
-            playCatchSound() {
-                if (!this.ctx) return;
-                const now = this.now();
-                if (now - this.lastCatchTime < 0.07) return;
-                this.lastCatchTime = now;
-                const osc = this.ctx.createOscillator();
-                const mod = this.ctx.createOscillator();
-                const modGain = this.ctx.createGain();
-                const gain = this.ctx.createGain();
-                const filter = this.ctx.createBiquadFilter();
-                osc.type = 'sine'; osc.frequency.setValueAtTime(980, now); osc.frequency.exponentialRampToValueAtTime(860, now + 0.12);
-                mod.type = 'sine'; mod.frequency.value = 18; modGain.gain.value = 8;
-                filter.type = 'highpass'; filter.frequency.value = 500;
-                gain.gain.setValueAtTime(0.0001, now); gain.gain.linearRampToValueAtTime(0.018, now + 0.01); gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-                mod.connect(modGain); modGain.connect(osc.frequency); osc.connect(filter); filter.connect(gain); gain.connect(this.master);
-                osc.start(now); mod.start(now); osc.stop(now + 0.18); mod.stop(now + 0.18);
-            }
-
-            playScoreSound() {
-                if (!this.ctx) return;
-                const now = this.now();
-                if (now - this.lastScoreTime < 0.1) return;
-                this.lastScoreTime = now;
-                const reverb = this.createReverb(1.8, 2.2);
-                const wet = this.ctx.createGain(); wet.gain.value = 0.18; reverb.connect(wet); wet.connect(this.master);
-                const notes = [1046.5, 1318.5];
-                notes.forEach((freq, i) => {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = i === 0 ? 'sine' : 'triangle';
-                    osc.frequency.setValueAtTime(freq, now + i * 0.015);
-                    osc.frequency.exponentialRampToValueAtTime(freq * 0.96, now + 0.24 + i * 0.015);
-                    gain.gain.setValueAtTime(0.0001, now + i * 0.015);
-                    gain.gain.linearRampToValueAtTime(0.04 - i * 0.01, now + 0.02 + i * 0.015);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35 + i * 0.015);
-                    osc.connect(gain); gain.connect(this.master); gain.connect(reverb);
-                    osc.start(now + i * 0.015); osc.stop(now + 0.38 + i * 0.015);
-                });
-            }
-
-            playHitSound() {
-                if (!this.ctx) return;
-                const now = this.now();
-                if (now - this.lastHitTime < 0.09) return;
-                this.lastHitTime = now;
-                const osc = this.ctx.createOscillator();
-                const osc2 = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                const band = this.ctx.createBiquadFilter();
-                osc.type = 'triangle'; osc2.type = 'square';
-                osc.frequency.setValueAtTime(1320, now); osc.frequency.exponentialRampToValueAtTime(540, now + 0.14);
-                osc2.frequency.setValueAtTime(1880, now); osc2.frequency.exponentialRampToValueAtTime(720, now + 0.11);
-                band.type = 'bandpass'; band.frequency.value = 1800; band.Q.value = 2.4;
-                gain.gain.setValueAtTime(0.0001, now); gain.gain.linearRampToValueAtTime(0.05, now + 0.004); gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-                osc.connect(band); osc2.connect(band); band.connect(gain); gain.connect(this.master);
-                osc.start(now); osc2.start(now); osc.stop(now + 0.18); osc2.stop(now + 0.18);
-            }
-
-            playGameOverSound() {
-                if (!this.ctx) return;
-                const now = this.now();
-                const reverb = this.createReverb(3.8, 2.8);
-                const wet = this.ctx.createGain(); wet.gain.value = 0.28; reverb.connect(wet); wet.connect(this.master);
-                const notes = [1174.66, 1567.98, 2093.0];
-                notes.forEach((freq, i) => {
-                    const osc = this.ctx.createOscillator();
-                    const mod = this.ctx.createOscillator();
-                    const modGain = this.ctx.createGain();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(freq, now + i * 0.05);
-                    mod.type = 'sine'; mod.frequency.value = 9 + i * 2; modGain.gain.value = 10 - i * 2;
-                    gain.gain.setValueAtTime(0.0001, now + i * 0.05);
-                    gain.gain.linearRampToValueAtTime(0.035 - i * 0.007, now + 0.04 + i * 0.05);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1 + i * 0.08);
-                    mod.connect(modGain); modGain.connect(osc.frequency); osc.connect(gain); gain.connect(this.master); gain.connect(reverb);
-                    osc.start(now + i * 0.05); mod.start(now + i * 0.05); osc.stop(now + 1.2 + i * 0.08); mod.stop(now + 1.2 + i * 0.08);
-                });
+        for (let c = 0; c < 2; c++) {
+            const data = impulse.getChannelData(c);
+            for (let i = 0; i < length; i++) {
+                const n = Math.random() * 2 - 1;
+                data[i] = n * Math.pow(1 - i / length, decay);
             }
         }
+
+        const convolver = this.ctx.createConvolver();
+        convolver.buffer = impulse;
+        return convolver;
+    }
+
+    startAmbient({ restart = false, volume = this.ambientDefaultVolume } = {}) {
+        if (!this.ctx) return;
+
+        if (this.ambientFadeRaf) {
+            cancelAnimationFrame(this.ambientFadeRaf);
+            this.ambientFadeRaf = null;
+        }
+
+        const targetVolume = Math.max(0, Math.min(this.ambientDefaultVolume, volume));
+
+        if (this.ambientStarted && !restart) {
+            if (this.ambientGain) {
+                this.ambientGain.gain.cancelScheduledValues(this.ctx.currentTime);
+                this.ambientGain.gain.setValueAtTime(this.ambientGain.gain.value, this.ctx.currentTime);
+                this.ambientGain.gain.linearRampToValueAtTime(targetVolume, this.ctx.currentTime + 0.35);
+            }
+            return;
+        }
+
+        if (restart) {
+            this.stopAmbient();
+        }
+
+        this.ambientStarted = true;
+
+        const ctx = this.ctx;
+        const loopLength = 24;
+        let nextCycleTime = ctx.currentTime + 0.12;
+
+        const reverb = this.createReverb(4.2, 2.8);
+        const wet = ctx.createGain();
+        wet.gain.value = 0.24;
+        reverb.connect(wet);
+        wet.connect(this.ambientGain);
+
+        const dry = ctx.createGain();
+        dry.gain.value = 0.55;
+        dry.connect(this.ambientGain);
+
+        const melodyBus = ctx.createGain();
+        melodyBus.gain.value = 0.7;
+        melodyBus.connect(dry);
+        melodyBus.connect(reverb);
+
+        const padBus = ctx.createGain();
+        padBus.gain.value = 0.9;
+        padBus.connect(dry);
+        padBus.connect(reverb);
+
+        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+        const noiseData = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noiseData.length; i++) {
+            noiseData[i] = (Math.random() * 2 - 1) * 0.22;
+        }
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        noise.loop = true;
+
+        const noiseFilter = ctx.createBiquadFilter();
+        noiseFilter.type = "bandpass";
+        noiseFilter.frequency.value = 950;
+        noiseFilter.Q.value = 0.5;
+
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.value = 0.0001;
+
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(reverb);
+
+        noiseGain.gain.setValueAtTime(0.0001, nextCycleTime);
+        noiseGain.gain.linearRampToValueAtTime(0.014, nextCycleTime + 4);
+        noise.start(nextCycleTime);
+
+        this.ambientGain.gain.setValueAtTime(0.0001, nextCycleTime);
+        this.ambientGain.gain.linearRampToValueAtTime(targetVolume, nextCycleTime + 4);
+
+        const chords = [
+            { root: 220.0, notes: [220.0, 261.63, 329.63, 392.0], dur: 6 },
+            { root: 174.61, notes: [174.61, 220.0, 261.63, 349.23], dur: 6 },
+            { root: 196.0, notes: [196.0, 246.94, 293.66, 392.0], dur: 6 },
+            { root: 164.81, notes: [164.81, 220.0, 261.63, 329.63], dur: 6 }
+        ];
+
+        const melody = [
+            { f: 659.25, t: 0.30, d: 1.8, v: 0.018 },
+            { f: 587.33, t: 2.60, d: 1.4, v: 0.014 },
+            { f: 523.25, t: 4.20, d: 1.5, v: 0.016 },
+            { f: 493.88, t: 6.40, d: 1.8, v: 0.017 },
+            { f: 523.25, t: 8.80, d: 1.4, v: 0.014 },
+            { f: 440.0, t: 10.30, d: 1.6, v: 0.015 },
+            { f: 493.88, t: 12.30, d: 1.7, v: 0.017 },
+            { f: 587.33, t: 14.80, d: 1.5, v: 0.015 },
+            { f: 523.25, t: 16.60, d: 1.7, v: 0.015 },
+            { f: 440.0, t: 18.50, d: 1.8, v: 0.016 },
+            { f: 392.0, t: 20.90, d: 1.7, v: 0.013 },
+            { f: 523.25, t: 22.20, d: 1.5, v: 0.014 }
+        ];
+
+        const playPadNote = (freq, startTime, duration, volume, detune = 0, type = "triangle") => {
+            const osc = ctx.createOscillator();
+            const filter = ctx.createBiquadFilter();
+            const gain = ctx.createGain();
+
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, startTime);
+            osc.detune.value = detune;
+
+            filter.type = "lowpass";
+            filter.frequency.value = 1800;
+            filter.Q.value = 0.18;
+
+            gain.gain.setValueAtTime(0.0001, startTime);
+            gain.gain.linearRampToValueAtTime(volume, startTime + 2.2);
+            gain.gain.linearRampToValueAtTime(volume * 0.82, startTime + duration - 1.6);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(padBus);
+
+            osc.start(startTime);
+            osc.stop(startTime + duration + 0.05);
+        };
+
+        const playMelodyNote = (freq, startTime, duration, volume) => {
+            const osc = ctx.createOscillator();
+            const vibrato = ctx.createOscillator();
+            const vibratoGain = ctx.createGain();
+            const filter = ctx.createBiquadFilter();
+            const gain = ctx.createGain();
+
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            vibrato.type = "sine";
+            vibrato.frequency.value = 4.8;
+            vibratoGain.gain.value = 7;
+
+            filter.type = "lowpass";
+            filter.frequency.value = 2400;
+            filter.Q.value = 0.3;
+
+            gain.gain.setValueAtTime(0.0001, startTime);
+            gain.gain.linearRampToValueAtTime(volume, startTime + 0.35);
+            gain.gain.linearRampToValueAtTime(volume * 0.75, startTime + duration - 0.45);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+            vibrato.connect(vibratoGain);
+            vibratoGain.connect(osc.frequency);
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(melodyBus);
+
+            osc.start(startTime);
+            vibrato.start(startTime);
+            osc.stop(startTime + duration + 0.05);
+            vibrato.stop(startTime + duration + 0.05);
+        };
+
+        const scheduleCycle = (cycleStart) => {
+            let chordTime = cycleStart;
+
+            chords.forEach((chord, chordIndex) => {
+                chord.notes.forEach((freq, noteIndex) => {
+                    const baseVolume = noteIndex === 0 ? 0.028 : 0.02 - noteIndex * 0.0025;
+                    const wave = noteIndex === 0 ? "triangle" : "sine";
+                    const detune = noteIndex % 2 === 0 ? -3 : 3;
+
+                    playPadNote(freq, chordTime, chord.dur + 0.4, baseVolume, detune, wave);
+
+                    if (noteIndex === 0) {
+                        playPadNote(freq / 2, chordTime, chord.dur + 0.2, 0.018, 0, "sine");
+                    }
+                });
+
+                if (chordIndex === 1 || chordIndex === 3) {
+                    playPadNote(chord.root * 2, chordTime + 1.5, chord.dur - 1.2, 0.011, 2, "sine");
+                }
+
+                chordTime += chord.dur;
+            });
+
+            melody.forEach((note) => {
+                playMelodyNote(note.f, cycleStart + note.t, note.d, note.v);
+            });
+        };
+
+        scheduleCycle(nextCycleTime);
+
+        if (this.ambientTimer) {
+            clearInterval(this.ambientTimer);
+        }
+
+        this.ambientTimer = setInterval(() => {
+            while (nextCycleTime < ctx.currentTime + 1.5) {
+                nextCycleTime += loopLength;
+                scheduleCycle(nextCycleTime);
+            }
+        }, 800);
+    }
+
+    fadeAmbientTo(targetVolume = 0, duration = 4) {
+        if (!this.ctx || !this.ambientGain) return Promise.resolve();
+
+        const clampedTarget = Math.max(0, Math.min(this.ambientDefaultVolume, targetVolume));
+
+        if (this.ambientFadeRaf) {
+            cancelAnimationFrame(this.ambientFadeRaf);
+            this.ambientFadeRaf = null;
+        }
+
+        const startVolume = this.ambientGain.gain.value;
+        const startTime = performance.now();
+
+        return new Promise((resolve) => {
+            const step = (now) => {
+                if (!this.ambientGain) {
+                    resolve();
+                    return;
+                }
+
+                const elapsed = (now - startTime) / 1000;
+                const t = duration <= 0 ? 1 : Math.min(1, elapsed / duration);
+                const eased = 1 - Math.pow(1 - t, 3);
+
+                this.ambientGain.gain.value =
+                    startVolume + (clampedTarget - startVolume) * eased;
+
+                if (t < 1) {
+                    this.ambientFadeRaf = requestAnimationFrame(step);
+                } else {
+                    this.ambientGain.gain.value = clampedTarget;
+                    this.ambientFadeRaf = null;
+
+                    if (clampedTarget <= 0.0001) {
+                        this.stopAmbient();
+                    }
+
+                    resolve();
+                }
+            };
+
+            this.ambientFadeRaf = requestAnimationFrame(step);
+        });
+    }
+
+    fadeOutAmbient(duration = 4) {
+        return this.fadeAmbientTo(0, duration);
+    }
+
+    duckAmbientForOverlay(duration = 4) {
+        return this.fadeAmbientTo(this.ambientOverlayVolume, duration);
+    }
+
+    stopAmbient() {
+        if (this.ambientFadeRaf) {
+            cancelAnimationFrame(this.ambientFadeRaf);
+            this.ambientFadeRaf = null;
+        }
+
+        if (this.ambientTimer) {
+            clearInterval(this.ambientTimer);
+            this.ambientTimer = null;
+        }
+
+        this.ambientStarted = false;
+
+        if (!this.ctx || !this.ambientGain) return;
+
+        this.ambientGain.gain.cancelScheduledValues(this.ctx.currentTime);
+        this.ambientGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+    }
+
+    playCatchSound() {
+        if (!this.ctx) return;
+        const now = this.now();
+        if (now - this.lastCatchTime < 0.07) return;
+        this.lastCatchTime = now;
+
+        const osc = this.ctx.createOscillator();
+        const mod = this.ctx.createOscillator();
+        const modGain = this.ctx.createGain();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(980, now);
+        osc.frequency.exponentialRampToValueAtTime(860, now + 0.12);
+
+        mod.type = "sine";
+        mod.frequency.value = 18;
+        modGain.gain.value = 8;
+
+        filter.type = "highpass";
+        filter.frequency.value = 500;
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(0.018, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+
+        mod.connect(modGain);
+        modGain.connect(osc.frequency);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.master);
+
+        osc.start(now);
+        mod.start(now);
+        osc.stop(now + 0.18);
+        mod.stop(now + 0.18);
+    }
+
+    playScoreSound() {
+        if (!this.ctx) return;
+        const now = this.now();
+        if (now - this.lastScoreTime < 0.1) return;
+        this.lastScoreTime = now;
+
+        const reverb = this.createReverb(1.8, 2.2);
+        const wet = this.ctx.createGain();
+        wet.gain.value = 0.18;
+        reverb.connect(wet);
+        wet.connect(this.master);
+
+        const notes = [1046.5, 1318.5];
+        notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = i === 0 ? "sine" : "triangle";
+            osc.frequency.setValueAtTime(freq, now + i * 0.015);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.96, now + 0.24 + i * 0.015);
+
+            gain.gain.setValueAtTime(0.0001, now + i * 0.015);
+            gain.gain.linearRampToValueAtTime(0.04 - i * 0.01, now + 0.02 + i * 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35 + i * 0.015);
+
+            osc.connect(gain);
+            gain.connect(this.master);
+            gain.connect(reverb);
+
+            osc.start(now + i * 0.015);
+            osc.stop(now + 0.38 + i * 0.015);
+        });
+    }
+
+    playHitSound() {
+        if (!this.ctx) return;
+        const now = this.now();
+        if (now - this.lastHitTime < 0.09) return;
+        this.lastHitTime = now;
+
+        const osc = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const band = this.ctx.createBiquadFilter();
+
+        osc.type = "triangle";
+        osc2.type = "square";
+
+        osc.frequency.setValueAtTime(1320, now);
+        osc.frequency.exponentialRampToValueAtTime(540, now + 0.14);
+
+        osc2.frequency.setValueAtTime(1880, now);
+        osc2.frequency.exponentialRampToValueAtTime(720, now + 0.11);
+
+        band.type = "bandpass";
+        band.frequency.value = 1800;
+        band.Q.value = 2.4;
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(0.05, now + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+
+        osc.connect(band);
+        osc2.connect(band);
+        band.connect(gain);
+        gain.connect(this.master);
+
+        osc.start(now);
+        osc2.start(now);
+        osc.stop(now + 0.18);
+        osc2.stop(now + 0.18);
+    }
+
+    playGameOverSound() {
+        if (!this.ctx) return;
+        const now = this.now();
+
+        const reverb = this.createReverb(3.8, 2.8);
+        const wet = this.ctx.createGain();
+        wet.gain.value = 0.28;
+        reverb.connect(wet);
+        wet.connect(this.master);
+
+        const notes = [1174.66, 1567.98, 2093.0];
+        notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const mod = this.ctx.createOscillator();
+            const modGain = this.ctx.createGain();
+            const gain = this.ctx.createGain();
+
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, now + i * 0.05);
+
+            mod.type = "sine";
+            mod.frequency.value = 9 + i * 2;
+            modGain.gain.value = 10 - i * 2;
+
+            gain.gain.setValueAtTime(0.0001, now + i * 0.05);
+            gain.gain.linearRampToValueAtTime(0.035 - i * 0.007, now + 0.04 + i * 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1 + i * 0.08);
+
+            mod.connect(modGain);
+            modGain.connect(osc.frequency);
+            osc.connect(gain);
+            gain.connect(this.master);
+            gain.connect(reverb);
+
+            osc.start(now + i * 0.05);
+            mod.start(now + i * 0.05);
+            osc.stop(now + 1.2 + i * 0.08);
+            mod.stop(now + 1.2 + i * 0.08);
+        });
+    }
+}
 
         class Starlet {
   constructor(x, y, entrySide = "top", sceneMetrics) {
@@ -1149,17 +1415,26 @@ this.finalRankLabelElement = document.getElementById("finalRankLabel");
   this.isDragging = false;
   this.mousePos = { x: 0, y: 0 };
 
-  this.handleRestartClick = this.resetGame.bind(this);
+  this.handleRestartClick = async () => {
+  await this.resetGame();
+};
   this.handleNextClick = async () => {
-    if (!this.levelPassed) return;
+  if (!this.levelPassed) return;
 
-    if (this.onNext) {
-      await this.onNext();
-      return;
-    }
+  if (this.nextBtn) {
+    this.nextBtn.classList.add("actionBtn-disabled");
+    this.nextBtn.disabled = true;
+  }
 
-    await this.sceneManager?.next?.();
-  };
+  await this.audio.fadeOutAmbient(1.1);
+
+  if (this.onNext) {
+    await this.onNext();
+    return;
+  }
+
+  await this.sceneManager?.next?.();
+};
 
   this.handleResize = this.resize.bind(this);
 
@@ -1451,12 +1726,14 @@ showRoundResult() {
     }
   }
 
-  this.audio.playGameOverSound();
-  this.overlay?.classList.add("show");
-  this.updateUI();
+   this.audio.playGameOverSound();
+    this.audio.duckAmbientForOverlay(1.8);
+    this.overlay?.classList.add("show");
+    this.updateUI();
 }
 
-            resetGame = () => {
+            resetGame = async () => {
+  await this.audio.fadeOutAmbient(0.6);
   this.starlets = [];
   this.obstacles = [];
   this.particles = [];
@@ -1505,8 +1782,10 @@ showRoundResult() {
 
     this.homeStar = new HomeStar(this.sceneMetrics);
     this.spawnStarlets(12);
-  this.updateUI();
-  this.startGameLoop();
+    this.updateUI();
+
+    this.audio.startAmbient({ restart: true });
+    this.startGameLoop();
 };
 
               spawnStarlets(count) {

@@ -10,313 +10,328 @@ function drawStarPath(ctx, cx, cy, outerRadius, innerRadius, points = 5) {
             }
             ctx.closePath();
         }
+export class GameAudio {
+  constructor() {
+    this.ctx = null;
+    this.master = null;
 
-        export class GameAudio {
-            constructor() {
-                this.ctx = null;
-                this.master = null;
-                this.ambientGain = null;
-                this.ambientStarted = false;
-                this.lastCatchTime = 0;
-                this.lastScoreTime = 0;
-                this.lastHitTime = 0;
-                this.ambientTimer = null;
-            }
+    this.music = null;
+    this.musicStarted = false;
+    this.musicFadeRaf = null;
+    this.musicDefaultVolume = 0.18;
+    this.musicOverlayVolume = this.musicDefaultVolume * 0.38;
 
-            async init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                    this.master = this.ctx.createGain();
-                    this.master.gain.value = 0.22;
-                    this.master.connect(this.ctx.destination);
-                    this.ambientGain = this.ctx.createGain();
-                    this.ambientGain.gain.value = 0.0001;
-                    this.ambientGain.connect(this.master);
-                }
-                if (this.ctx.state === 'suspended') await this.ctx.resume();
-            }
-
-            now() { return this.ctx ? this.ctx.currentTime : 0; }
-
-            createReverb(seconds = 2.8, decay = 2.6) {
-                const rate = this.ctx.sampleRate;
-                const length = rate * seconds;
-                const impulse = this.ctx.createBuffer(2, length, rate);
-                for (let c = 0; c < 2; c++) {
-                    const data = impulse.getChannelData(c);
-                    for (let i = 0; i < length; i++) {
-                        const n = Math.random() * 2 - 1;
-                        data[i] = n * Math.pow(1 - i / length, decay);
-                    }
-                }
-                const convolver = this.ctx.createConvolver();
-                convolver.buffer = impulse;
-                return convolver;
-            }
-
-            startAmbient() {
-  if (!this.ctx || this.ambientStarted) return;
-  this.ambientStarted = true;
-
-  const ctx = this.ctx;
-  const loopLength = 24;
-  let nextCycleTime = ctx.currentTime + 0.12;
-
-  const reverb = this.createReverb(4.2, 2.8);
-
-  const wet = ctx.createGain();
-  wet.gain.value = 0.32;
-  reverb.connect(wet);
-  wet.connect(this.ambientGain);
-
-  const dry = ctx.createGain();
-  dry.gain.value = 0.92;
-  dry.connect(this.ambientGain);
-
-  const melodyBus = ctx.createGain();
-  melodyBus.gain.value = 1.15;
-  melodyBus.connect(dry);
-  melodyBus.connect(reverb);
-
-  const padBus = ctx.createGain();
-  padBus.gain.value = 1.05;
-  padBus.connect(dry);
-  padBus.connect(reverb);
-
-  const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-  const noiseData = noiseBuffer.getChannelData(0);
-  for (let i = 0; i < noiseData.length; i++) {
-    noiseData[i] = (Math.random() * 2 - 1) * 0.22;
+    this.lastCatchTime = 0;
+    this.lastScoreTime = 0;
+    this.lastHitTime = 0;
   }
 
-  const noise = ctx.createBufferSource();
-  noise.buffer = noiseBuffer;
-  noise.loop = true;
+  async init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.22;
+      this.master.connect(this.ctx.destination);
+    }
 
-  const noiseFilter = ctx.createBiquadFilter();
-  noiseFilter.type = "bandpass";
-  noiseFilter.frequency.value = 950;
-  noiseFilter.Q.value = 0.5;
+    if (this.ctx.state === "suspended") {
+      await this.ctx.resume();
+    }
 
-  const noiseGain = ctx.createGain();
-  noiseGain.gain.value = 0.0001;
+    if (!this.music) {
+      const musicUrl = new URL("../../assets/audio/game1.mp3", import.meta.url);
+      this.music = new Audio(musicUrl.href);
+      this.music.preload = "auto";
+      this.music.loop = true;
+      this.music.volume = this.musicDefaultVolume;
+    }
+  }
 
-  noise.connect(noiseFilter);
-  noiseFilter.connect(noiseGain);
-  noiseGain.connect(reverb);
+  now() {
+    return this.ctx ? this.ctx.currentTime : 0;
+  }
 
-  noiseGain.gain.setValueAtTime(0.0001, nextCycleTime);
-  noiseGain.gain.linearRampToValueAtTime(0.020, nextCycleTime + 4);
-  noise.start(nextCycleTime);
+  createReverb(seconds = 2.8, decay = 2.6) {
+    const rate = this.ctx.sampleRate;
+    const length = rate * seconds;
+    const impulse = this.ctx.createBuffer(2, length, rate);
 
-  this.ambientGain.gain.setValueAtTime(0.0001, nextCycleTime);
-  this.ambientGain.gain.linearRampToValueAtTime(1.0, nextCycleTime + 3.2);
+    for (let c = 0; c < 2; c++) {
+      const data = impulse.getChannelData(c);
+      for (let i = 0; i < length; i++) {
+        const n = Math.random() * 2 - 1;
+        data[i] = n * Math.pow(1 - i / length, decay);
+      }
+    }
 
-  const chords = [
-    { root: 220.0, notes: [220.0, 261.63, 329.63, 392.0], dur: 6 },
-    { root: 174.61, notes: [174.61, 220.0, 261.63, 349.23], dur: 6 },
-    { root: 196.0, notes: [196.0, 246.94, 293.66, 392.0], dur: 6 },
-    { root: 164.81, notes: [164.81, 220.0, 261.63, 329.63], dur: 6 },
-  ];
+    const convolver = this.ctx.createConvolver();
+    convolver.buffer = impulse;
+    return convolver;
+  }
 
-  const melody = [
-    { f: 659.25, t: 0.3, d: 1.8, v: 0.032 },
-    { f: 587.33, t: 2.6, d: 1.4, v: 0.026 },
-    { f: 523.25, t: 4.2, d: 1.5, v: 0.029 },
-    { f: 493.88, t: 6.4, d: 1.8, v: 0.03 },
-    { f: 523.25, t: 8.8, d: 1.4, v: 0.026 },
-    { f: 440.0, t: 10.3, d: 1.6, v: 0.027 },
-    { f: 493.88, t: 12.3, d: 1.7, v: 0.03 },
-    { f: 587.33, t: 14.8, d: 1.5, v: 0.027 },
-    { f: 523.25, t: 16.6, d: 1.7, v: 0.027 },
-    { f: 440.0, t: 18.5, d: 1.8, v: 0.028 },
-    { f: 392.0, t: 20.9, d: 1.7, v: 0.024 },
-    { f: 523.25, t: 22.2, d: 1.5, v: 0.026 },
-  ];
+  startAmbient({ restart = true, volume = this.musicDefaultVolume } = {}) {
+    if (!this.music) return;
 
-  const playPadNote = (freq, startTime, duration, volume, detune = 0, type = "triangle") => {
-    const osc = ctx.createOscillator();
-    const filter = ctx.createBiquadFilter();
-    const gain = ctx.createGain();
+    if (this.musicFadeRaf) {
+      cancelAnimationFrame(this.musicFadeRaf);
+      this.musicFadeRaf = null;
+    }
 
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, startTime);
-    osc.detune.value = detune;
+    const targetVolume = Math.max(0, Math.min(this.musicDefaultVolume, volume));
 
-    filter.type = "lowpass";
-    filter.frequency.value = 2200;
-    filter.Q.value = 0.22;
+    if (restart) {
+      this.music.pause();
+      this.music.currentTime = 0;
+    }
 
-    gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.linearRampToValueAtTime(volume, startTime + 1.6);
-    gain.gain.linearRampToValueAtTime(volume * 0.86, startTime + duration - 1.3);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    this.music.volume = targetVolume;
 
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(padBus);
+    const playPromise = this.music.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch((err) => {
+        console.warn("Music playback blocked:", err);
+      });
+    }
 
-    osc.start(startTime);
-    osc.stop(startTime + duration + 0.05);
-  };
+    this.musicStarted = true;
+  }
 
-  const playMelodyNote = (freq, startTime, duration, volume) => {
-    const osc = ctx.createOscillator();
-    const vibrato = ctx.createOscillator();
-    const vibratoGain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-    const gain = ctx.createGain();
+  fadeMusicTo(targetVolume = 0, duration = 4) {
+    if (!this.music) return Promise.resolve();
+
+    const clampedTarget = Math.max(0, Math.min(this.musicDefaultVolume, targetVolume));
+
+    if (this.musicFadeRaf) {
+      cancelAnimationFrame(this.musicFadeRaf);
+      this.musicFadeRaf = null;
+    }
+
+    const startVolume = this.music.volume;
+    const startTime = performance.now();
+
+    return new Promise((resolve) => {
+      const step = (now) => {
+        if (!this.music) {
+          resolve();
+          return;
+        }
+
+        const elapsed = (now - startTime) / 1000;
+        const t = duration <= 0 ? 1 : Math.min(1, elapsed / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+
+        this.music.volume = startVolume + (clampedTarget - startVolume) * eased;
+
+        if (t < 1) {
+          this.musicFadeRaf = requestAnimationFrame(step);
+        } else {
+          this.music.volume = clampedTarget;
+          this.musicFadeRaf = null;
+
+          if (clampedTarget <= 0.0001) {
+            this.music.pause();
+            this.music.currentTime = 0;
+            this.musicStarted = false;
+          }
+
+          resolve();
+        }
+      };
+
+      this.musicFadeRaf = requestAnimationFrame(step);
+    });
+  }
+
+  fadeOutAmbient(duration = 4) {
+    return this.fadeMusicTo(0, duration);
+  }
+
+  duckAmbientForOverlay(duration = 4) {
+    return this.fadeMusicTo(this.musicOverlayVolume, duration);
+  }
+
+  resetAmbient() {
+    if (!this.music) return;
+
+    if (this.musicFadeRaf) {
+      cancelAnimationFrame(this.musicFadeRaf);
+      this.musicFadeRaf = null;
+    }
+
+    this.music.pause();
+    this.music.currentTime = 0;
+    this.music.volume = this.musicDefaultVolume;
+    this.musicStarted = false;
+  }
+
+  stopAmbient() {
+    if (!this.music) return;
+
+    if (this.musicFadeRaf) {
+      cancelAnimationFrame(this.musicFadeRaf);
+      this.musicFadeRaf = null;
+    }
+
+    this.music.pause();
+    this.music.currentTime = 0;
+    this.music.volume = this.musicDefaultVolume;
+    this.musicStarted = false;
+  }
+
+  playCatchSound() {
+    if (!this.ctx) return;
+    const now = this.now();
+    if (now - this.lastCatchTime < 0.07) return;
+    this.lastCatchTime = now;
+
+    const osc = this.ctx.createOscillator();
+    const mod = this.ctx.createOscillator();
+    const modGain = this.ctx.createGain();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
 
     osc.type = "sine";
-    osc.frequency.setValueAtTime(freq, startTime);
+    osc.frequency.setValueAtTime(980, now);
+    osc.frequency.exponentialRampToValueAtTime(860, now + 0.12);
 
-    vibrato.type = "sine";
-    vibrato.frequency.value = 4.8;
-    vibratoGain.gain.value = 8.5;
+    mod.type = "sine";
+    mod.frequency.value = 18;
+    modGain.gain.value = 8;
 
-    filter.type = "lowpass";
-    filter.frequency.value = 2800;
-    filter.Q.value = 0.35;
+    filter.type = "highpass";
+    filter.frequency.value = 500;
 
-    gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.linearRampToValueAtTime(volume, startTime + 0.22);
-    gain.gain.linearRampToValueAtTime(volume * 0.8, startTime + duration - 0.3);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.018, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
 
-    vibrato.connect(vibratoGain);
-    vibratoGain.connect(osc.frequency);
-
+    mod.connect(modGain);
+    modGain.connect(osc.frequency);
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(melodyBus);
+    gain.connect(this.master);
 
-    osc.start(startTime);
-    vibrato.start(startTime);
-    osc.stop(startTime + duration + 0.05);
-    vibrato.stop(startTime + duration + 0.05);
-  };
+    osc.start(now);
+    mod.start(now);
+    osc.stop(now + 0.18);
+    mod.stop(now + 0.18);
+  }
 
-  const scheduleCycle = (cycleStart) => {
-    let chordTime = cycleStart;
+  playScoreSound() {
+    if (!this.ctx) return;
+    const now = this.now();
+    if (now - this.lastScoreTime < 0.1) return;
+    this.lastScoreTime = now;
 
-    chords.forEach((chord, chordIndex) => {
-      chord.notes.forEach((freq, noteIndex) => {
-        const baseVolume = noteIndex === 0 ? 0.055 : 0.038 - noteIndex * 0.0045;
-        const wave = noteIndex === 0 ? "triangle" : "sine";
-        const detune = noteIndex % 2 === 0 ? -3 : 3;
+    const reverb = this.createReverb(1.8, 2.2);
+    const wet = this.ctx.createGain();
+    wet.gain.value = 0.18;
+    reverb.connect(wet);
+    wet.connect(this.master);
 
-        playPadNote(freq, chordTime, chord.dur + 0.4, baseVolume, detune, wave);
+    const notes = [1046.5, 1318.5];
+    notes.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
 
-        if (noteIndex === 0) {
-          playPadNote(freq / 2, chordTime, chord.dur + 0.2, 0.032, 0, "sine");
-        }
-      });
+      osc.type = i === 0 ? "sine" : "triangle";
+      osc.frequency.setValueAtTime(freq, now + i * 0.015);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.96, now + 0.24 + i * 0.015);
 
-      if (chordIndex === 1 || chordIndex === 3) {
-        playPadNote(chord.root * 2, chordTime + 1.5, chord.dur - 1.2, 0.022, 2, "sine");
-      }
+      gain.gain.setValueAtTime(0.0001, now + i * 0.015);
+      gain.gain.linearRampToValueAtTime(0.04 - i * 0.01, now + 0.02 + i * 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35 + i * 0.015);
 
-      chordTime += chord.dur;
+      osc.connect(gain);
+      gain.connect(this.master);
+      gain.connect(reverb);
+
+      osc.start(now + i * 0.015);
+      osc.stop(now + 0.38 + i * 0.015);
     });
+  }
 
-    melody.forEach((note) => {
-      playMelodyNote(note.f, cycleStart + note.t, note.d, note.v);
+  playHitSound() {
+    if (!this.ctx) return;
+    const now = this.now();
+    if (now - this.lastHitTime < 0.09) return;
+    this.lastHitTime = now;
+
+    const osc = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const band = this.ctx.createBiquadFilter();
+
+    osc.type = "triangle";
+    osc2.type = "square";
+
+    osc.frequency.setValueAtTime(1320, now);
+    osc.frequency.exponentialRampToValueAtTime(540, now + 0.14);
+
+    osc2.frequency.setValueAtTime(1880, now);
+    osc2.frequency.exponentialRampToValueAtTime(720, now + 0.11);
+
+    band.type = "bandpass";
+    band.frequency.value = 1800;
+    band.Q.value = 2.4;
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.05, now + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+
+    osc.connect(band);
+    osc2.connect(band);
+    band.connect(gain);
+    gain.connect(this.master);
+
+    osc.start(now);
+    osc2.start(now);
+    osc.stop(now + 0.18);
+    osc2.stop(now + 0.18);
+  }
+
+  playGameOverSound() {
+    if (!this.ctx) return;
+    const now = this.now();
+
+    const reverb = this.createReverb(3.8, 2.8);
+    const wet = this.ctx.createGain();
+    wet.gain.value = 0.28;
+    reverb.connect(wet);
+    wet.connect(this.master);
+
+    const notes = [1174.66, 1567.98, 2093.0];
+    notes.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const mod = this.ctx.createOscillator();
+      const modGain = this.ctx.createGain();
+      const gain = this.ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now + i * 0.05);
+
+      mod.type = "sine";
+      mod.frequency.value = 9 + i * 2;
+      modGain.gain.value = 10 - i * 2;
+
+      gain.gain.setValueAtTime(0.0001, now + i * 0.05);
+      gain.gain.linearRampToValueAtTime(0.035 - i * 0.007, now + 0.04 + i * 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1 + i * 0.08);
+
+      mod.connect(modGain);
+      modGain.connect(osc.frequency);
+      osc.connect(gain);
+      gain.connect(this.master);
+      gain.connect(reverb);
+
+      osc.start(now + i * 0.05);
+      mod.start(now + i * 0.05);
+      osc.stop(now + 1.2 + i * 0.08);
+      mod.stop(now + 1.2 + i * 0.08);
     });
-  };
-
-  scheduleCycle(nextCycleTime);
-
-  if (this.ambientTimer) clearInterval(this.ambientTimer);
-
-  this.ambientTimer = setInterval(() => {
-    while (nextCycleTime < ctx.currentTime + 1.5) {
-      nextCycleTime += loopLength;
-      scheduleCycle(nextCycleTime);
-    }
-  }, 800);
+  }
 }
-
-
-
-            playCatchSound() {
-                if (!this.ctx) return;
-                const now = this.now();
-                if (now - this.lastCatchTime < 0.07) return;
-                this.lastCatchTime = now;
-                const osc = this.ctx.createOscillator();
-                const mod = this.ctx.createOscillator();
-                const modGain = this.ctx.createGain();
-                const gain = this.ctx.createGain();
-                const filter = this.ctx.createBiquadFilter();
-                osc.type = 'sine'; osc.frequency.setValueAtTime(980, now); osc.frequency.exponentialRampToValueAtTime(860, now + 0.12);
-                mod.type = 'sine'; mod.frequency.value = 18; modGain.gain.value = 8;
-                filter.type = 'highpass'; filter.frequency.value = 500;
-                gain.gain.setValueAtTime(0.0001, now); gain.gain.linearRampToValueAtTime(0.018, now + 0.01); gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-                mod.connect(modGain); modGain.connect(osc.frequency); osc.connect(filter); filter.connect(gain); gain.connect(this.master);
-                osc.start(now); mod.start(now); osc.stop(now + 0.18); mod.stop(now + 0.18);
-            }
-
-            playScoreSound() {
-                if (!this.ctx) return;
-                const now = this.now();
-                if (now - this.lastScoreTime < 0.1) return;
-                this.lastScoreTime = now;
-                const reverb = this.createReverb(1.8, 2.2);
-                const wet = this.ctx.createGain(); wet.gain.value = 0.18; reverb.connect(wet); wet.connect(this.master);
-                const notes = [1046.5, 1318.5];
-                notes.forEach((freq, i) => {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = i === 0 ? 'sine' : 'triangle';
-                    osc.frequency.setValueAtTime(freq, now + i * 0.015);
-                    osc.frequency.exponentialRampToValueAtTime(freq * 0.96, now + 0.24 + i * 0.015);
-                    gain.gain.setValueAtTime(0.0001, now + i * 0.015);
-                    gain.gain.linearRampToValueAtTime(0.04 - i * 0.01, now + 0.02 + i * 0.015);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35 + i * 0.015);
-                    osc.connect(gain); gain.connect(this.master); gain.connect(reverb);
-                    osc.start(now + i * 0.015); osc.stop(now + 0.38 + i * 0.015);
-                });
-            }
-
-            playHitSound() {
-                if (!this.ctx) return;
-                const now = this.now();
-                if (now - this.lastHitTime < 0.09) return;
-                this.lastHitTime = now;
-                const osc = this.ctx.createOscillator();
-                const osc2 = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                const band = this.ctx.createBiquadFilter();
-                osc.type = 'triangle'; osc2.type = 'square';
-                osc.frequency.setValueAtTime(1320, now); osc.frequency.exponentialRampToValueAtTime(540, now + 0.14);
-                osc2.frequency.setValueAtTime(1880, now); osc2.frequency.exponentialRampToValueAtTime(720, now + 0.11);
-                band.type = 'bandpass'; band.frequency.value = 1800; band.Q.value = 2.4;
-                gain.gain.setValueAtTime(0.0001, now); gain.gain.linearRampToValueAtTime(0.05, now + 0.004); gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-                osc.connect(band); osc2.connect(band); band.connect(gain); gain.connect(this.master);
-                osc.start(now); osc2.start(now); osc.stop(now + 0.18); osc2.stop(now + 0.18);
-            }
-
-            playGameOverSound() {
-                if (!this.ctx) return;
-                const now = this.now();
-                const reverb = this.createReverb(3.8, 2.8);
-                const wet = this.ctx.createGain(); wet.gain.value = 0.28; reverb.connect(wet); wet.connect(this.master);
-                const notes = [1174.66, 1567.98, 2093.0];
-                notes.forEach((freq, i) => {
-                    const osc = this.ctx.createOscillator();
-                    const mod = this.ctx.createOscillator();
-                    const modGain = this.ctx.createGain();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(freq, now + i * 0.05);
-                    mod.type = 'sine'; mod.frequency.value = 9 + i * 2; modGain.gain.value = 10 - i * 2;
-                    gain.gain.setValueAtTime(0.0001, now + i * 0.05);
-                    gain.gain.linearRampToValueAtTime(0.035 - i * 0.007, now + 0.04 + i * 0.05);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1 + i * 0.08);
-                    mod.connect(modGain); modGain.connect(osc.frequency); osc.connect(gain); gain.connect(this.master); gain.connect(reverb);
-                    osc.start(now + i * 0.05); mod.start(now + i * 0.05); osc.stop(now + 1.2 + i * 0.08); mod.stop(now + 1.2 + i * 0.08);
-                });
-            }
-        }
+    
 class Starlet {
   constructor(x, y, entrySide = "right", sceneMetrics) {
     this.sceneMetrics = sceneMetrics;
@@ -1241,17 +1256,56 @@ class Obstacle {
   this.isDragging = false;
   this.mousePos = { x: 0, y: 0 };
 
-  this.handleRestartClick = this.resetGame.bind(this);
-  this.handleNextClick = async () => {
-    if (!this.levelPassed) return;
+       this.handleRestartClick = async () => {
+      console.log("[StarLine] restart click", {
+        sceneId: this.sceneId,
+        levelPassed: this.levelPassed,
+        onNext: !!this.onNext,
+        hasSceneManagerNext: !!this.sceneManager?.next,
+      });
 
-    if (this.onNext) {
-      await this.onNext();
-      return;
-    }
+      const fadeDuration = 0.45;
 
-    await this.sceneManager?.next?.();
-  };
+      if (this.restartBtn) {
+        this.restartBtn.classList.add("actionBtn-disabled");
+        this.restartBtn.disabled = true;
+        this.playButtonFadeGlow(this.restartBtn, fadeDuration);
+      }
+
+      await this.audio.fadeOutAmbient(fadeDuration);
+
+      console.log("[StarLine] restart -> resetGame()");
+      this.resetGame();
+    };
+
+       this.handleNextClick = async () => {
+      console.log("[StarLine] next click", {
+        sceneId: this.sceneId,
+        levelPassed: this.levelPassed,
+        onNext: !!this.onNext,
+        hasSceneManagerNext: !!this.sceneManager?.next,
+      });
+
+      if (!this.levelPassed) return;
+
+      const fadeDuration = 0.6;
+
+      if (this.nextBtn) {
+        this.nextBtn.classList.add("actionBtn-disabled");
+        this.nextBtn.disabled = true;
+        this.playButtonFadeGlow(this.nextBtn, fadeDuration);
+      }
+
+      await this.audio.fadeOutAmbient(fadeDuration);
+
+      console.log("[StarLine] next -> transition");
+      if (this.onNext) {
+        await this.onNext();
+        return;
+      }
+
+      await this.sceneManager?.next?.();
+    }; 
 
   this.handleResize = this.resize.bind(this);
 
@@ -1310,26 +1364,34 @@ obstacleMaxHeight: clamp(104, 123 * playScale, 144),
   };
 }
   
-         resize() {
-  this.canvas.width = window.innerWidth;
-  this.canvas.height = window.innerHeight;
+    resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
 
-  this.computeSceneMetrics();
+    this.computeSceneMetrics();
 
-  if (this.homeStar) {
-    this.homeStar.setBounds(this.sceneMetrics);
+    if (this.homeStar) {
+      this.homeStar.setBounds(this.sceneMetrics);
+    }
+
+    if (this.rotateHint) {
+      this.rotateHint.classList.toggle(
+        "show",
+        !this.isLandscape() && !this.gameOver && !this.isRunning
+      );
+    }
   }
 
-  if (this.rotateHint) {
-    this.rotateHint.classList.toggle(
-      "show",
-      !this.isLandscape() && !this.gameOver && !this.isRunning
-    );
+  playButtonFadeGlow(button, duration = 0.6) {
+    if (!button) return;
+
+    button.classList.remove("actionBtn-fade-glow");
+    void button.offsetWidth;
+    button.style.setProperty("--fade-glow-duration", `${duration}s`);
+    button.classList.add("actionBtn-fade-glow");
   }
-}     
-              
-  
-             async start() {
+
+  async start() {       
   console.log("START STATE", {
     isRunning: this.isRunning,
     gameOver: this.gameOver,
@@ -1339,11 +1401,12 @@ obstacleMaxHeight: clamp(104, 123 * playScale, 144),
   if (this.isRunning && !this.gameOver) return;
 
   try {
-    await this.audio.init();
-    console.log("audio init ok");
-  } catch (e) {
-    console.warn("Audio init skipped", e);
-  }
+  await this.audio.init();
+  this.audio.startAmbient();
+  console.log("audio init ok");
+} catch (e) {
+  console.warn("Audio init skipped", e);
+}
 
   this.tutorialEnabledForRun = this.tutorialEnabledInput
     ? this.tutorialEnabledInput.checked
@@ -1570,14 +1633,26 @@ showRoundResult() {
   // Обновляем ранги (HUD + финальный блок)
   this.updateRankUI();
 
-  // Кнопка "Дальше" доступна только если уровень пройден
-  if (this.nextBtn) {
-    if (this.levelPassed) {
-      this.nextBtn.classList.remove('actionBtn-disabled');
-    } else {
-      this.nextBtn.classList.add('actionBtn-disabled');
+     // Кнопка "Дальше" доступна только если уровень пройден
+    if (this.nextBtn) {
+      this.nextBtn.classList.remove("actionBtn-fade-glow");
+      this.nextBtn.style.removeProperty("--fade-glow-duration");
+
+      if (this.levelPassed) {
+        this.nextBtn.classList.remove("actionBtn-disabled");
+        this.nextBtn.disabled = false;
+      } else {
+        this.nextBtn.classList.add("actionBtn-disabled");
+        this.nextBtn.disabled = true;
+      }
     }
-  }
+
+    if (this.restartBtn) {
+      this.restartBtn.classList.remove("actionBtn-fade-glow");
+      this.restartBtn.style.removeProperty("--fade-glow-duration");
+      this.restartBtn.classList.remove("actionBtn-disabled");
+      this.restartBtn.disabled = false;
+    }
 
   // Показываем оверлей
   this.audio.playGameOverSound();
@@ -1587,6 +1662,16 @@ showRoundResult() {
 
 
             resetGame = () => {
+
+      console.log("[StarLine] resetGame()", {
+      sceneId: this.sceneId,
+      overlayShown: this.overlay?.classList.contains("show"),
+      isRunning: this.isRunning,
+      gameOver: this.gameOver,
+    });
+    
+  this.audio.resetAmbient();
+
   this.starlets = [];
   this.obstacles = [];
   this.particles = [];
@@ -1633,18 +1718,28 @@ showRoundResult() {
   this.tutorialEnabledForRun = false;
   this.tutor.reset({ enabled: false });
 
-  if (this.overlay) {
-    this.overlay.classList.remove("show");
-  }
+      if (this.overlay) {
+      this.overlay.classList.remove("show");
+    }
 
-  if (this.nextBtn) {
-    this.nextBtn.classList.add("actionBtn-disabled");
-  }
+    if (this.restartBtn) {
+      this.restartBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
+      this.restartBtn.disabled = false;
+      this.restartBtn.style.removeProperty("--fade-glow-duration");
+    }
 
-  this.homeStar = new HomeStar(this.sceneMetrics);
-  this.spawnStarlets(12);
-  this.updateUI();
-  this.startGameLoop();
+    if (this.nextBtn) {
+      this.nextBtn.classList.remove("actionBtn-fade-glow");
+      this.nextBtn.classList.add("actionBtn-disabled");
+      this.nextBtn.disabled = true;
+      this.nextBtn.style.removeProperty("--fade-glow-duration");
+    }
+
+    this.homeStar = new HomeStar(this.sceneMetrics);
+this.spawnStarlets(12);
+this.updateUI();
+this.audio.startAmbient();
+this.startGameLoop();
 };  
   
              spawnStarlets(count) {
@@ -1744,6 +1839,11 @@ showRoundResult() {
     this.lastTime = currentTime;
   
     this.timeLeft -= delta;
+
+if (this.timeLeft <= 12 && !this.gameOver) {
+  this.audio.duckAmbientForOverlay(12);
+}
+
 if (this.timeLeft <= 0) {
   this.timeLeft = 0;
   this.gameOver = true;
@@ -1956,14 +2056,27 @@ draw() {
     this.gameOver = false;
     this.isDragging = false;
   
-    if (this.overlay) {
+       if (this.overlay) {
       this.overlay.classList.remove("show");
     }
-  
+
+    if (this.restartBtn) {
+      this.restartBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
+      this.restartBtn.disabled = false;
+      this.restartBtn.style.removeProperty("--fade-glow-duration");
+    }
+
+    if (this.nextBtn) {
+      this.nextBtn.classList.remove("actionBtn-fade-glow");
+      this.nextBtn.classList.add("actionBtn-disabled");
+      this.nextBtn.disabled = true;
+      this.nextBtn.style.removeProperty("--fade-glow-duration");
+    }
+
     if (this.rotateHint) {
       this.rotateHint.classList.toggle("show", !this.isLandscape());
     }
-  
+
     this.updateTargetScoreUI();
     this.updateUI();
     this.draw();
@@ -1976,9 +2089,9 @@ draw() {
   }
   
   destroy() {
-    this.isRunning = false;
-    this.gameOver = true;
-    this.isDragging = false;
+  this.isRunning = false;
+  this.gameOver = true;
+  this.isDragging = false;
   
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
@@ -2010,6 +2123,18 @@ draw() {
   
     if (this.rotateHint) {
       this.rotateHint.classList.remove("show");
+    }
+
+        if (this.restartBtn) {
+      this.restartBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
+      this.restartBtn.disabled = false;
+      this.restartBtn.style.removeProperty("--fade-glow-duration");
+    }
+
+    if (this.nextBtn) {
+      this.nextBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
+      this.nextBtn.disabled = false;
+      this.nextBtn.style.removeProperty("--fade-glow-duration");
     }
   }
   }
