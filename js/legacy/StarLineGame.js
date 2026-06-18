@@ -1242,8 +1242,8 @@ class Obstacle {
   this.savedCount = 0;
   this.lostCount = 0;
 
-  this.timeLeft = 90;
-  this.totalTime = 90;
+  this.timeLeft = 50;
+  this.totalTime = 50;
 
    this.gameOver = false;
     this.isRunning = false;
@@ -1287,7 +1287,7 @@ this.handleNextClick = async () => {
 
   this.isTransitioning = true;
 
-  const fadeDuration = 1.15;
+const fadeDuration = 0.28;
 
   try {
     if (this.nextBtn) {
@@ -1309,8 +1309,7 @@ this.handleNextClick = async () => {
       this.rafId = null;
     }
 
-    await this.audio.fadeOutAmbient(fadeDuration);
-    await new Promise((resolve) => setTimeout(resolve, 120));
+   await this.audio.fadeOutAmbient(fadeDuration); 
 
     if (this.overlay) {
       this.overlay.classList.remove("show");
@@ -1441,14 +1440,19 @@ obstacleMaxHeight: clamp(104, 123 * playScale, 144),
     }
   }
 
-  playButtonFadeGlow(button, duration = 0.6) {
-    if (!button) return;
+  playButtonFadeGlow(button, duration = 0.32) {
+  if (!button) return;
 
+  button.classList.remove("actionBtn-fade-glow");
+  void button.offsetWidth;
+  button.style.setProperty("--fade-glow-duration", `${duration}s`);
+  button.classList.add("actionBtn-fade-glow");
+
+  window.setTimeout(() => {
     button.classList.remove("actionBtn-fade-glow");
-    void button.offsetWidth;
-    button.style.setProperty("--fade-glow-duration", `${duration}s`);
-    button.classList.add("actionBtn-fade-glow");
-  }
+    button.style.removeProperty("--fade-glow-duration");
+  }, duration * 1000 + 40);
+}
 
    async start() {
     console.log("START STATE", {
