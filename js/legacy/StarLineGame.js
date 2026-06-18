@@ -1265,64 +1265,11 @@ class Obstacle {
 
 
     // Рестарт
-this.handleRestartClick = async () => {
+this.handleRestartClick = () => {
   if (this.isTransitioning) return;
 
-  console.log("[StarLine] restart click", {
-    sceneId: this.sceneId,
-    levelPassed: this.levelPassed,
-    onNext: !!this.onNext,
-    hasSceneManagerNext: !!this.sceneManager?.next,
-  });
-
-  this.isTransitioning = true;
-
-  const fadeDuration = 1.15;
-
-  try {
-    if (this.restartBtn) {
-      this.restartBtn.classList.add("actionBtn-disabled");
-      this.restartBtn.disabled = true;
-      this.playButtonFadeGlow(this.restartBtn, fadeDuration);
-    }
-
-    if (this.nextBtn) {
-      this.nextBtn.classList.add("actionBtn-disabled");
-      this.nextBtn.disabled = true;
-    }
-
-    this.isDragging = false;
-    this.gameOver = false;
-    this.isRunning = false;
-
-    if (this.rafId) {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = null;
-    }
-
-    await this.audio.fadeOutAmbient(fadeDuration);
-    await new Promise((resolve) => setTimeout(resolve, 120));
-
-    if (this.overlay) {
-      this.overlay.classList.remove("show");
-    }
-
-    console.log("[StarLine] restart -> resetGame()");
-    this.resetGame({ restartAmbient: false });
-
-    this.audio.startAmbient({ restart: true });
-  } catch (error) {
-    console.error("[StarLine] restart transition failed", error);
-
-    if (this.overlay) {
-      this.overlay.classList.remove("show");
-    }
-
-    this.resetGame({ restartAmbient: false });
-    this.audio.startAmbient({ restart: true });
-  } finally {
-    this.isTransitioning = false;
-  }
+  this.isDragging = false;
+  this.resetGame({ restartAmbient: true });
 };
 
 // Кнопка дальше
@@ -1369,13 +1316,29 @@ this.handleNextClick = async () => {
       this.overlay.classList.remove("show");
     }
 
-    console.log("[StarLine] next -> transition");
+  console.log("[StarLine] next -> transition");
 
-    if (this.onNext) {
-      await this.onNext();
-    } else if (this.sceneManager?.next) {
-      await this.sceneManager.next();
-    }
+const sceneRank = this.getSceneRank();
+const sceneRankLabel = this.getSceneRankLabel(sceneRank);
+const sceneRankTitle = this.getSceneRankTitle(sceneRank);
+
+this.onRoundFinished?.({
+  sceneId: this.sceneId,
+  score: this.score,
+  savedCount: this.savedCount,
+  lostCount: this.lostCount,
+  levelPassed: this.levelPassed,
+  levelTargetScore: this.levelTargetScore,
+  sceneRank,
+  sceneRankLabel,
+  sceneRankTitle,
+});
+
+if (this.onNext) {
+  await this.onNext();
+} else if (this.sceneManager?.next) {
+  await this.sceneManager.next();
+}  
   } catch (error) {
     console.error("[StarLine] next transition failed", error);
 
@@ -1942,7 +1905,7 @@ updateRankUI() {
   }        
   
         update(currentTime) {
-    if (!this.isRunning || this.gameOver || this.isTransitioning) return;       
+    if (!this.isRunning || this.gameOver) return;       
   
     if (this.rotateHint) {
     this.rotateHint.classList.toggle("show", !this.isLandscape());
@@ -1964,28 +1927,10 @@ if (this.timeLeft <= 0) {
 
   this.levelPassed = this.score >= this.levelTargetScore;
 
-  const sceneRank = this.getSceneRank();
-  const sceneRankLabel = this.getSceneRankLabel(sceneRank);
-  const sceneRankTitle = this.getSceneRankTitle(sceneRank);
-
-  // Сообщаем наружу о завершении раунда
-  this.onRoundFinished?.({
-    sceneId: this.sceneId,
-    score: this.score,
-    savedCount: this.savedCount,
-    lostCount: this.lostCount,
-    levelPassed: this.levelPassed,
-    levelTargetScore: this.levelTargetScore,
-    sceneRank,
-    sceneRankLabel,
-    sceneRankTitle,
-  });
-
-  // Заполняем финальный экран и показываем оверлей
-        if (!this.isTransitioning) {
-        this.showRoundResult();
-      }
-      return;
+  if (!this.isTransitioning) {
+  this.showRoundResult();
+}
+return;
 }
   
     let swarmCenter = null;
@@ -2152,21 +2097,16 @@ draw() {
       this.rafId = null;
     }
 
-    const loop = (time) => {
-      if (this.isTransitioning) {
-        this.rafId = null;
-        return;
-      }
+   const loop = (time) => {
+  this.update(time);
+  this.draw();
 
-      this.update(time);
-      this.draw();
-
-      if (this.isRunning && !this.gameOver && !this.isTransitioning) {
-        this.rafId = requestAnimationFrame(loop);
-      } else {
-        this.rafId = null;
-      }
-    };
+  if (this.isRunning && !this.gameOver) {
+    this.rafId = requestAnimationFrame(loop);
+  } else {
+    this.rafId = null;
+  }
+}; 
 
     this.rafId = requestAnimationFrame(loop);
   } 
