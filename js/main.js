@@ -21,27 +21,29 @@ const DEBUG_START_SCENE = null;
 const audio = new GameAudio();
 
 const sceneManager = new SceneManager({
-  scenes: [],
+  sceneDefs: [],
 });
 
-const allScenes = {
-  intro: new IntroScene({ sceneManager }),
-  start: new StartScreenScene({ sceneManager, audio }),
-  game1: new GameplayScene({ sceneManager, audio }),
-  game2: new GameplayScene2({ sceneManager, audio }),
-  game3: new GameplayScene3({ sceneManager, audio }),
-  game4: new GameplayScene4({ sceneManager, audio }),
-  game5: new GameplayScene5({ sceneManager, audio }),
+const createSceneDef = (id, create) => ({ id, create });
+
+const allSceneDefs = {
+  intro: createSceneDef("intro", () => new IntroScene({ sceneManager })),
+  start: createSceneDef("start", () => new StartScreenScene({ sceneManager, audio })),
+  game1: createSceneDef("game1", () => new GameplayScene({ sceneManager, audio })),
+  game2: createSceneDef("game2", () => new GameplayScene2({ sceneManager, audio })),
+  game3: createSceneDef("game3", () => new GameplayScene3({ sceneManager, audio })),
+  game4: createSceneDef("game4", () => new GameplayScene4({ sceneManager, audio })),
+  game5: createSceneDef("game5", () => new GameplayScene5({ sceneManager, audio })),
 };
 
 const defaultSceneOrder = [
-  allScenes.intro,
-  allScenes.start,
-  allScenes.game1,
-  allScenes.game2,
-  allScenes.game3,
-  allScenes.game4,
-  allScenes.game5,
+  allSceneDefs.intro,
+  allSceneDefs.start,
+  allSceneDefs.game1,
+  allSceneDefs.game2,
+  allSceneDefs.game3,
+  allSceneDefs.game4,
+  allSceneDefs.game5,
 ];
 
 if (DEBUG_START_SCENE) {
@@ -51,9 +53,9 @@ if (DEBUG_START_SCENE) {
   document.getElementById("startScreen")?.classList.remove("show");
 }
 
-sceneManager.scenes =
-  DEBUG_START_SCENE && allScenes[DEBUG_START_SCENE]
-    ? [allScenes[DEBUG_START_SCENE]]
+sceneManager.sceneDefs =
+  DEBUG_START_SCENE && allSceneDefs[DEBUG_START_SCENE]
+    ? [allSceneDefs[DEBUG_START_SCENE]]
     : defaultSceneOrder;
 
 if (DEBUG_START_SCENE) {
@@ -63,7 +65,7 @@ if (DEBUG_START_SCENE) {
     console.warn("Audio init skipped", e);
   }
 
-  if (!audio.ambientStarted) {
+  if (!audio.musicStarted) {
     audio.startAmbient();
   }
 }
