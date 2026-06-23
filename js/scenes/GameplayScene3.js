@@ -16,6 +16,7 @@ export class GameAudio {
     this.master = null;
 
     this.music = null;
+    this.musicUrl = "../../assets/audio/game1.mp3";
     this.musicStarted = false;
     this.musicFadeRaf = null;
     this.musicDefaultVolume = 0.18;
@@ -26,20 +27,36 @@ export class GameAudio {
     this.lastHitTime = 0;
   }
 
+  setMusic(url) {
+    if (!url || this.musicUrl === url) return;
+
+    this.stopAmbient();
+    this.musicUrl = url;
+
+    if (this.music) {
+      this.music.pause();
+      this.music.removeAttribute("src");
+      this.music.load?.();
+      this.music = null;
+    }
+
+    this.musicStarted = false;
+  }
+
   async init() {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.22;
       this.master.connect(this.ctx.destination);
-    }
 
-    if (this.ctx.state === "suspended") {
-      await this.ctx.resume();
+      if (this.ctx.state === "suspended") {
+        await this.ctx.resume();
+      }
     }
 
     if (!this.music) {
-      const musicUrl = new URL("../../assets/audio/game1.mp3", import.meta.url);
+      const musicUrl = new URL(this.musicUrl, import.meta.url);
       this.music = new Audio(musicUrl.href);
       this.music.preload = "auto";
       this.music.loop = true;
@@ -767,6 +784,9 @@ class Obstacle {
   this.audio = audio ?? new GameAudio();
   this.onNext = onNext;
   this.onRoundFinished = onRoundFinished;
+  this.sceneMusicUrl = "../../assets/audio/game3.mp3";
+this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg3.jpg";
+this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.png";
 
   this.canvas = document.getElementById("gameCanvas");
   this.ctx = this.canvas.getContext("2d");
@@ -1026,24 +1046,51 @@ if (this.onNext) {
   }, duration * 1000 + 40);
 }
 
-   async start() {
-    console.log("START STATE", {
-      isRunning: this.isRunning,
-      gameOver: this.gameOver,
-      isTransitioning: this.isTransitioning,
-      startScreenShown: this.startScreen?.classList.contains("show"),
-    });
+applySceneBackground() {
+  if (!this.sceneBackgroundUrl) return;
 
-    if (this.isTransitioning) return;
-    if (this.isRunning && !this.gameOver) return;
+  const bgUrl = new URL(this.sceneBackgroundUrl, import.meta.url).href;
+  document.documentElement.style.setProperty(
+    "--scene-bg-image",
+    `url("${bgUrl}")`
+  );
+}
+
+resetSceneBackground() {
+  const fallbackUrl = new URL(this.defaultBackgroundUrl, import.meta.url).href;
+  document.documentElement.style.setProperty(
+    "--scene-bg-image",
+    `url("${fallbackUrl}")`
+  );
+}
+
+applySceneAudio() {
+  if (typeof this.audio?.setMusic === "function") {
+    this.audio.setMusic(this.sceneMusicUrl);
+  }
+}
+
+   async start() {
+  console.log("START STATE", {
+    isRunning: this.isRunning,
+    gameOver: this.gameOver,
+    isTransitioning: this.isTransitioning,
+    startScreenShown: this.startScreen?.classList.contains("show"),
+  });
+
+  if (this.isTransitioning) return;
+  if (this.isRunning && !this.gameOver) return;
+
+  this.applySceneAudio();
+  this.applySceneBackground();
 
   try {
-  await this.audio.init();
-  this.audio.startAmbient();
-  console.log("audio init ok");
-} catch (e) {
-  console.warn("Audio init skipped", e);
-}
+    await this.audio.init();
+    this.audio.startAmbient();
+    console.log("audio init ok");
+  } catch (e) {
+    console.warn("Audio init skipped", e);
+  }
 
   if (this.startScreen) {
     this.startScreen.classList.remove("show");
@@ -1673,6 +1720,9 @@ draw() {
     this.gameOver = false;
     this.isTransitioning = false;
     this.isDragging = false;
+
+    this.applySceneBackground();
+  this.applySceneAudio();
   
        if (this.overlay) {
       this.overlay.classList.remove("show");
@@ -1769,5 +1819,6 @@ draw() {
     this.nextBtn.disabled = false;
     this.nextBtn.style.removeProperty("--fade-glow-duration");
   }
+   this.resetSceneBackground();
 }
   }

@@ -16,6 +16,7 @@ export class GameAudio {
     this.master = null;
 
     this.music = null;
+    this.musicUrl = "../../assets/audio/game1.mp3";
     this.musicStarted = false;
     this.musicFadeRaf = null;
     this.musicDefaultVolume = 0.18;
@@ -24,6 +25,23 @@ export class GameAudio {
     this.lastCatchTime = 0;
     this.lastScoreTime = 0;
     this.lastHitTime = 0;
+  }
+
+  setMusic(url) {
+    if (!url) return;
+    if (this.musicUrl === url) return;
+
+    this.stopAmbient();
+    this.musicUrl = url;
+
+    if (this.music) {
+      this.music.pause();
+      this.music.removeAttribute("src");
+      this.music.load?.();
+      this.music = null;
+    }
+
+    this.musicStarted = false;
   }
 
   async init() {
@@ -39,7 +57,7 @@ export class GameAudio {
     }
 
     if (!this.music) {
-      const musicUrl = new URL("../../assets/audio/game1.mp3", import.meta.url);
+      const musicUrl = new URL(this.musicUrl, import.meta.url);
       this.music = new Audio(musicUrl.href);
       this.music.preload = "auto";
       this.music.loop = true;
@@ -99,7 +117,10 @@ export class GameAudio {
   fadeMusicTo(targetVolume = 0, duration = 4) {
     if (!this.music) return Promise.resolve();
 
-    const clampedTarget = Math.max(0, Math.min(this.musicDefaultVolume, targetVolume));
+    const clampedTarget = Math.max(
+      0,
+      Math.min(this.musicDefaultVolume, targetVolume)
+    );
 
     if (this.musicFadeRaf) {
       cancelAnimationFrame(this.musicFadeRaf);
@@ -120,7 +141,8 @@ export class GameAudio {
         const t = duration <= 0 ? 1 : Math.min(1, elapsed / duration);
         const eased = 1 - Math.pow(1 - t, 3);
 
-        this.music.volume = startVolume + (clampedTarget - startVolume) * eased;
+        this.music.volume =
+          startVolume + (clampedTarget - startVolume) * eased;
 
         if (t < 1) {
           this.musicFadeRaf = requestAnimationFrame(step);

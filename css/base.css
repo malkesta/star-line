@@ -17,6 +17,9 @@
   --rose-border: rgba(255, 196, 208, 0.34);
   --text-main: rgba(255, 248, 238, 0.96);
   --text-soft: rgba(235, 240, 255, 0.84);
+
+  /* дефолтный фон для сцен, которые не задают свой */
+  --scene-bg-image: url("../assets/images/backgrounds/game_bg1.png");
 }
 
 html,
@@ -41,7 +44,7 @@ body::before {
   inset: -8%;
   background-image:
     linear-gradient(rgba(13, 20, 39, 0.18), rgba(13, 20, 39, 0.28)),
-    url("https://user-gen-media-assets.s3.amazonaws.com/gpt4o_images/c9580868-d98a-4cd6-a3ab-8be0b9259e99.png");
+    var(--scene-bg-image);
   background-position: center center;
   background-repeat: no-repeat;
   background-size: cover;
