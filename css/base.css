@@ -19,7 +19,7 @@
   --text-soft: rgba(235, 240, 255, 0.84);
 
   /* дефолтный фон для сцен, которые не задают свой */
-  --scene-bg-image: url("../assets/images/backgrounds/game_bg1.png");
+  --scene-bg-image: url("../assets/images/backgrounds/game_bg1.jpg");
 }
 
 html,

@@ -957,7 +957,7 @@ class Obstacle {
   this.onRoundFinished = onRoundFinished;
   this.sceneMusicUrl = "../../assets/audio/game3.mp3";
 this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg3.jpg";
-this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.png";
+this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.jpg";
 
   this.canvas = document.getElementById("gameCanvas");
   this.ctx = this.canvas.getContext("2d");
