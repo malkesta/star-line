@@ -857,76 +857,84 @@ class BrokenRingObstacle {
 
   resolveStarletCollision(starlet) {
   if (!starlet) return false;
-    if ((starlet.ringCooldown ?? 0) > 0) return false;
+  if ((starlet.ringCooldown ?? 0) > 0) return false;
 
-    const center = this.getCenter();
-    const geometry = this.getGeometry();
+  const center = this.getCenter();
+  const geometry = this.getGeometry();
 
-    const dx = starlet.x - center.x;
-    const dy = starlet.y - center.y;
-    const dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
+  const dx = starlet.x - center.x;
+  const dy = starlet.y - center.y;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
 
-    const prevDx = (starlet.prevX ?? starlet.x) - center.x;
-    const prevDy = (starlet.prevY ?? starlet.y) - center.y;
-    const prevDist = Math.sqrt(prevDx * prevDx + prevDy * prevDy) || 0.0001;
+  const prevDx = (starlet.prevX ?? starlet.x) - center.x;
+  const prevDy = (starlet.prevY ?? starlet.y) - center.y;
+  const prevDist = Math.sqrt(prevDx * prevDx + prevDy * prevDy) || 0.0001;
 
-    const ringZoneHalf = starlet.radius + this.lineWidth * 0.5 + this.ringHitPadding;
-    const isNearRingNow = Math.abs(dist - this.radius) <= ringZoneHalf;
-    const crossedRingBand =
-      (prevDist < this.radius && dist > this.radius) ||
-      (prevDist > this.radius && dist < this.radius);
+  const ringZoneHalf = starlet.radius + this.lineWidth * 0.5 + this.ringHitPadding;
+  const isNearRingNow = Math.abs(dist - this.radius) <= ringZoneHalf;
+  const crossedRingBand =
+    (prevDist < this.radius && dist > this.radius) ||
+    (prevDist > this.radius && dist < this.radius);
 
-    if (!isNearRingNow && !crossedRingBand) return false;
+  if (!isNearRingNow && !crossedRingBand) return false;
 
-    const midX = ((starlet.prevX ?? starlet.x) + starlet.x) * 0.5;
-    const midY = ((starlet.prevY ?? starlet.y) + starlet.y) * 0.5;
+  const midX = ((starlet.prevX ?? starlet.x) + starlet.x) * 0.5;
+  const midY = ((starlet.prevY ?? starlet.y) + starlet.y) * 0.5;
 
-    const angleNow = Math.atan2(dy, dx);
-    const angleMid = Math.atan2(midY - center.y, midX - center.x);
+  const angleNow = Math.atan2(dy, dx);
+  const angleMid = Math.atan2(midY - center.y, midX - center.x);
 
-    let hitSolidArc = false;
+  let hitSolidArc = false;
 
-    for (let i = 0; i < this.sectionCount; i++) {
-      const start = this.rotation + i * geometry.fullStep;
-      const end = start + geometry.arcSpan;
+  for (let i = 0; i < this.sectionCount; i++) {
+    const start = this.rotation + i * geometry.fullStep;
+    const end = start + geometry.arcSpan;
 
-      if (
-        this.isAngleInsideArc(angleNow, start, end) ||
-        this.isAngleInsideArc(angleMid, start, end)
-      ) {
-        hitSolidArc = true;
-        break;
-      }
+    if (
+      this.isAngleInsideArc(angleNow, start, end) ||
+      this.isAngleInsideArc(angleMid, start, end)
+    ) {
+      hitSolidArc = true;
+      break;
     }
-
-    if (!hitSolidArc) return false;
-
-    const nx = dx / dist;
-    const ny = dy / dist;
-    const wasOutside = prevDist > this.radius;
-    const targetDist = wasOutside
-      ? this.radius + ringZoneHalf + 3
-      : this.radius - ringZoneHalf - 3;
-
-    starlet.x = center.x + nx * targetDist;
-    starlet.y = center.y + ny * targetDist;
-
-    const velocityDot = starlet.vx * nx + starlet.vy * ny;
-    starlet.vx -= 2 * velocityDot * nx;
-    starlet.vy -= 2 * velocityDot * ny;
-    starlet.vx += nx * this.bounceStrength;
-    starlet.vy += ny * this.bounceStrength;
-
-    if (starlet.following) {
-      starlet.following = false;
-      starlet.releaseCooldown = 20;
-    } else {
-      starlet.releaseCooldown = Math.max(starlet.releaseCooldown || 0, 12);
-    }
-
-    starlet.ringCooldown = 3;
-    return true;
   }
+
+  if (!hitSolidArc) return false;
+
+  const nx = dx / dist;
+const ny = dy / dist;
+const tx = -ny;
+const ty = nx;
+
+const wasOutside = prevDist > this.radius;
+
+const separationPadding = wasOutside ? 8 : 18;
+const targetDist = wasOutside
+  ? this.radius + ringZoneHalf + separationPadding
+  : Math.max(0, this.radius - ringZoneHalf - separationPadding);
+
+starlet.x = center.x + nx * targetDist;
+starlet.y = center.y + ny * targetDist;
+
+const velocityDot = starlet.vx * nx + starlet.vy * ny;
+const tangentDot = starlet.vx * tx + starlet.vy * ty;
+
+const outwardNormalSpeed = wasOutside ? 1.8 : -2.6;
+const tangentDamping = 0.72;
+
+starlet.vx = tx * tangentDot * tangentDamping + nx * outwardNormalSpeed;
+starlet.vy = ty * tangentDot * tangentDamping + ny * outwardNormalSpeed;
+
+if (starlet.following) {
+  starlet.following = false;
+  starlet.releaseCooldown = 24;
+} else {
+  starlet.releaseCooldown = Math.max(starlet.releaseCooldown || 0, 16);
+}
+
+starlet.ringCooldown = wasOutside ? 6 : 12;
+return true;
+}
 
   drawArc(ctx, cx, cy, radius, start, end, color, width, alpha = 1, blur = 0) {
     ctx.save();
