@@ -1778,7 +1778,18 @@ this.draw();
     this.startGameLoop();
   };
             
-  
+    removeOffscreenStarlets() {
+  for (let i = this.starlets.length - 1; i >= 0; i--) {
+    if (this.starlets[i].isOffscreen()) {
+      this.starlets.splice(i, 1);
+    }
+  }
+}
+refillStarletsIfLow({ minCount = 4, targetCount = 12 } = {}) {
+  if (this.starlets.length <= minCount) {
+    this.spawnStarlets(targetCount - this.starlets.length);
+  }
+}
              spawnStarlets(count) {
   for (let i = 0; i < count; i++) {
     const spawn = this.createSpawnPoint();
@@ -1791,6 +1802,7 @@ this.draw();
               spawnObstacle() {
   this.obstacles.push(new Obstacle(this.sceneMetrics));
 }
+  
   
               spawnScatterEffect(x, y, color, cool = false) {
                   for (let i = 0; i < 12; i++) this.particles.push(new Particle(x, y, color, cool));
@@ -1875,115 +1887,113 @@ this.draw();
   }        
   
         update(currentTime) {
-    if (!this.isRunning || this.gameOver) return;       
-  
-    if (this.rotateHint) {
+  if (!this.isRunning || this.gameOver) return;
+
+  if (this.rotateHint) {
     this.rotateHint.classList.toggle("show", !this.isLandscape());
   }
-  
-    const delta = (currentTime - this.lastTime) / 1000;
-    this.lastTime = currentTime;
-  
-    this.timeLeft -= delta;
 
-if (this.timeLeft <= 12 && !this.gameOver) {
-  this.audio.duckAmbientForOverlay(12);
-}
+  const delta = (currentTime - this.lastTime) / 1000;
+  this.lastTime = currentTime;
 
-if (this.timeLeft <= 0) {
-  this.timeLeft = 0;
-  this.gameOver = true;
-  this.isRunning = false;
+  this.timeLeft -= delta;
 
-  this.levelPassed = this.score >= this.levelTargetScore;
+  if (this.timeLeft <= 12 && !this.gameOver) {
+    this.audio.duckAmbientForOverlay(12);
+  }
 
-  if (!this.isTransitioning) {
-  this.showRoundResult();
-}
-return;
-}
-  
-    let swarmCenter = null;
-    if (this.starlets.length > 0) {
-      let sx = 0, sy = 0;
-      for (const s of this.starlets) {
-        sx += s.x;
-        sy += s.y;
-      }
-      swarmCenter = {
-        x: sx / this.starlets.length,
-        y: sy / this.starlets.length
-      };
+  if (this.timeLeft <= 0) {
+    this.timeLeft = 0;
+    this.gameOver = true;
+    this.isRunning = false;
+
+    this.levelPassed = this.score >= this.levelTargetScore;
+
+    if (!this.isTransitioning) {
+      this.showRoundResult();
     }
-  
-    const followingCount = this.starlets.reduce(
-  (count, s) => count + (s.following ? 1 : 0),
-  0
-);
 
-this.starlets.forEach((s) => {
-  const justCaught = s.update(this.mousePos, this.isDragging, swarmCenter);
-  if (justCaught) this.audio.playCatchSound();
-  this.emitFollowingTrail(s, followingCount, delta);
-});
+    return;
+  }
 
-this.obstacles.forEach((o) => o.update());
+  let swarmCenter = null;
+  if (this.starlets.length > 0) {
+    let sx = 0;
+    let sy = 0;
 
-if (this.brokenRings?.length) {
-  this.brokenRings.forEach((ring) => ring.update(delta));
-}
-
-this.homeStars.forEach((star) =>
-  this.obstacles.forEach((o) => {
-    if (star.blocksObstacle(o)) {
-      star.repelObstacle(o);
+    for (const s of this.starlets) {
+      sx += s.x;
+      sy += s.y;
     }
-  })
-);
 
-if (this.brokenRings?.length) {
-  this.starlets.forEach((starlet) => {
-    this.brokenRings.forEach((ring) => {
-      ring.resolveStarletCollision(starlet);
-    });
+    swarmCenter = {
+      x: sx / this.starlets.length,
+      y: sy / this.starlets.length,
+    };
+  }
+
+  const followingCount = this.starlets.reduce(
+    (count, s) => count + (s.following ? 1 : 0),
+    0
+  );
+
+  this.starlets.forEach((s) => {
+    const justCaught = s.update(this.mousePos, this.isDragging, swarmCenter);
+    if (justCaught) this.audio.playCatchSound();
+    this.emitFollowingTrail(s, followingCount, delta);
   });
-}
 
-for (let i = this.particles.length - 1; i >= 0; i--) {
-  this.particles[i].update();
-  if (this.particles[i].life <= 0) this.particles.splice(i, 1);
-}
+  this.removeOffscreenStarlets();
 
-let offscreenRemoved = 0;
-for (let i = this.starlets.length - 1; i >= 0; i--) {
-  if (this.starlets[i].isOffscreen()) {
-    this.starlets.splice(i, 1);
-    offscreenRemoved += 1;
+  this.obstacles.forEach((o) => o.update());
+
+  if (this.brokenRings?.length) {
+    this.brokenRings.forEach((ring) => ring.update(delta));
   }
-}
 
-if (offscreenRemoved > 0) {
-  this.spawnStarlets(offscreenRemoved);
-}
+  this.homeStars.forEach((star) =>
+    this.obstacles.forEach((o) => {
+      if (star.blocksObstacle(o)) {
+        star.repelObstacle(o);
+      }
+    })
+  );
 
-this.obstacles = this.obstacles.filter((o) => !o.isOffscreen());
-
-this.checkCollisions();
-this.checkHomeHits();
-
-this.obstacleTimer += delta * 1000;
-if (this.obstacleTimer >= this.obstacleInterval) {
-  this.spawnObstacle();
-  this.obstacleTimer = 0;
-}
-
-if (this.score >= 60) this.obstacleInterval = 2000;
-if (this.score >= 140) this.obstacleInterval = 1800;
-if (this.score >= 260) this.obstacleInterval = 1600;
-
-this.updateHeartProgress(delta);
-this.updateUI();
+  if (this.brokenRings?.length) {
+    this.starlets.forEach((starlet) => {
+      this.brokenRings.forEach((ring) => {
+        ring.resolveStarletCollision(starlet);
+      });
+    });
   }
+
+  for (let i = this.particles.length - 1; i >= 0; i--) {
+    this.particles[i].update();
+    if (this.particles[i].life <= 0) {
+      this.particles.splice(i, 1);
+    }
+  }
+
+  this.obstacles = this.obstacles.filter((o) => !o.isOffscreen());
+
+  this.checkCollisions();
+  this.checkHomeHits();
+
+  this.refillStarletsIfLow({ minCount: 4, targetCount: 12 });
+
+  this.obstacleTimer += delta * 1000;
+  if (this.obstacleTimer >= this.obstacleInterval) {
+    this.spawnObstacle();
+    this.obstacleTimer = 0;
+  }
+
+  if (this.score >= 60) this.obstacleInterval = 2000;
+  if (this.score >= 140) this.obstacleInterval = 1800;
+  if (this.score >= 260) this.obstacleInterval = 1600;
+
+  this.updateHeartProgress(delta);
+  this.updateUI();
+}
   
               checkCollisions() {
                   for (let i = this.starlets.length - 1; i >= 0; i--) {
