@@ -455,6 +455,18 @@ if (isDragging && !this.following && this.releaseCooldown <= 0) {
 
     ctx.restore();
   }
+
+ isOffscreen() {
+    const { width, height, offscreenOffset } = this.sceneMetrics;
+
+    return (
+      this.x < -offscreenOffset ||
+      this.x > width + offscreenOffset ||
+      this.y < -offscreenOffset ||
+      this.y > height + offscreenOffset
+    );
+  }
+
 }
         
 class Obstacle {
@@ -1942,12 +1954,24 @@ for (let i = this.particles.length - 1; i >= 0; i--) {
   if (this.particles[i].life <= 0) this.particles.splice(i, 1);
 }
 
+let offscreenRemoved = 0;
+for (let i = this.starlets.length - 1; i >= 0; i--) {
+  if (this.starlets[i].isOffscreen()) {
+    this.starlets.splice(i, 1);
+    offscreenRemoved += 1;
+  }
+}
+
+if (offscreenRemoved > 0) {
+  this.spawnStarlets(offscreenRemoved);
+}
+
 this.obstacles = this.obstacles.filter((o) => !o.isOffscreen());
 
 this.checkCollisions();
 this.checkHomeHits();
-  
-    this.obstacleTimer += delta * 1000;
+
+this.obstacleTimer += delta * 1000;
 if (this.obstacleTimer >= this.obstacleInterval) {
   this.spawnObstacle();
   this.obstacleTimer = 0;
@@ -1956,8 +1980,6 @@ if (this.obstacleTimer >= this.obstacleInterval) {
 if (this.score >= 60) this.obstacleInterval = 2000;
 if (this.score >= 140) this.obstacleInterval = 1800;
 if (this.score >= 260) this.obstacleInterval = 1600;
-
-if (this.starlets.length < 8) this.spawnStarlets(4);
 
 this.updateHeartProgress(delta);
 this.updateUI();
