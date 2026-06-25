@@ -613,7 +613,10 @@ class Obstacle {
 } 
 
     class HomeStar {
-  constructor(sceneMetrics) {
+  constructor(sceneMetrics, side = "left", phaseOffset = 0) {
+    this.side = side;
+    this.phaseOffset = phaseOffset;
+
     this.x = 0;
     this.y = 0;
 
@@ -639,10 +642,12 @@ class Obstacle {
     this.ringRadius = sceneMetrics.homeRingRadius;
     this.glowRadius = sceneMetrics.homeGlowRadius;
 
-    this.minX = sceneMetrics.homeSingleMinX;
-    this.maxX = sceneMetrics.homeSingleMaxX;
-    this.minY = sceneMetrics.homeSingleMinY;
-    this.maxY = sceneMetrics.homeSingleMaxY;
+    this.leftMinX = sceneMetrics.homeLeftMinX;
+    this.leftMaxX = sceneMetrics.homeLeftMaxX;
+    this.rightMinX = sceneMetrics.homeRightMinX;
+    this.rightMaxX = sceneMetrics.homeRightMaxX;
+    this.minY = sceneMetrics.homeMinY;
+    this.maxY = sceneMetrics.homeMaxY;
 
     this.pulseScaleMin = sceneMetrics.homePulseScaleMin;
     this.pulseScaleMax = sceneMetrics.homePulseScaleMax;
@@ -653,37 +658,38 @@ class Obstacle {
   update(delta = 0.016) {
     this.flicker += 0.035;
     this.rotation += 0.006;
-    this.motionTime += delta * 0.32;
-    this.sizeTime += delta * 0.5;
+    this.motionTime += delta * 0.3;
+    this.sizeTime += delta * 0.55;
 
-    const horizontalWave = Math.sin(this.motionTime * 0.95) * 0.5 + 0.5;
-    const verticalWave = Math.cos(this.motionTime * 1.18) * 0.5 + 0.5;
-    const pulseWave = Math.sin(this.sizeTime) * 0.5 + 0.5;
+    const t = this.motionTime + this.phaseOffset;
+    const horizontalWave = Math.sin(t * 0.95) * 0.5 + 0.5;
+    const verticalWave = Math.cos(t * 1.15) * 0.5 + 0.5;
 
-    this.x = this.minX + (this.maxX - this.minX) * horizontalWave;
+    if (this.side === "left") {
+      this.x = this.leftMinX + (this.leftMaxX - this.leftMinX) * horizontalWave;
+    } else {
+      this.x = this.rightMinX + (this.rightMaxX - this.rightMinX) * (1 - horizontalWave);
+    }
+
     this.y = this.minY + (this.maxY - this.minY) * verticalWave;
 
+    const pulseWave = Math.sin(this.sizeTime + this.phaseOffset) * 0.5 + 0.5;
     const pulseScale =
       this.pulseScaleMin +
       (this.pulseScaleMax - this.pulseScaleMin) * pulseWave;
 
     this.radius = this.baseRadius * pulseScale;
-this.ringRadius = this.sceneMetrics.homeRingRadius * pulseScale;
-this.glowRadius = this.sceneMetrics.homeGlowRadius * pulseScale;
+    this.ringRadius = this.sceneMetrics.homeRingRadius * pulseScale;
+    this.glowRadius = this.sceneMetrics.homeGlowRadius * pulseScale;
   }
 
   draw(ctx) {
     this.update();
 
     const glowPulse = 0.92 + Math.sin(this.flicker) * 0.05;
-
     const outerGlow = ctx.createRadialGradient(
-      this.x,
-      this.y,
-      10,
-      this.x,
-      this.y,
-      this.glowRadius
+      this.x, this.y, 10,
+      this.x, this.y, this.glowRadius
     );
     outerGlow.addColorStop(0, `rgba(245, 182, 112, ${0.28 * glowPulse})`);
     outerGlow.addColorStop(0.5, `rgba(222, 161, 94, ${0.16 * glowPulse})`);
@@ -712,14 +718,9 @@ this.glowRadius = this.sceneMetrics.homeGlowRadius * pulseScale;
     ctx.translate(-this.x, -this.y);
 
     drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
-
     const core = ctx.createRadialGradient(
-      this.x - 8,
-      this.y - 10,
-      4,
-      this.x,
-      this.y,
-      this.radius
+      this.x - 8, this.y - 10, 4,
+      this.x, this.y, this.radius
     );
     core.addColorStop(0, "#FFF2D4");
     core.addColorStop(0.48, "#F5B670");
@@ -772,6 +773,7 @@ this.glowRadius = this.sceneMetrics.homeGlowRadius * pulseScale;
     if (overlap > 0) {
       const nx = dx / dist;
       const ny = dy / dist;
+
       obstacle.x += nx * overlap;
       obstacle.y += ny * overlap;
 
@@ -788,7 +790,9 @@ this.glowRadius = this.sceneMetrics.homeGlowRadius * pulseScale;
 }
 
 class BrokenRingObstacle {
-  constructor(sceneMetrics) {
+  constructor(sceneMetrics, radiusScale = 1) {
+    this.anchorStar = null;
+    this.radiusScale = radiusScale;
     this.rotation = Math.random() * Math.PI * 2;
     this.rotationSpeed = 0.0041;
     this.pulseTime = Math.random() * Math.PI * 2;
@@ -809,7 +813,7 @@ class BrokenRingObstacle {
     this.sceneMetrics = sceneMetrics;
     if (!sceneMetrics) return;
 
-    this.radius = sceneMetrics.brokenRingRadius;
+    this.radius = sceneMetrics.brokenRingRadius * this.radiusScale;
     this.lineWidth = sceneMetrics.brokenRingLineWidth;
     this.sectionCount = sceneMetrics.brokenRingSectionCount;
     this.centerX = sceneMetrics.brokenRingCenterX;
@@ -823,17 +827,21 @@ class BrokenRingObstacle {
     this.pulseTime += delta * 2.1;
   }
 
-  getCenter() {
-    return {
-      x: this.centerX,
-      y: this.centerY,
-    };
+  setAnchor(star) {
+  this.anchorStar = star ?? null;
+}
+
+ getCenter() {
+  if (this.anchorStar) {
+    return { x: this.anchorStar.x, y: this.anchorStar.y };
   }
+  return { x: this.centerX, y: this.centerY };
+}
 
   getGeometry() {
     const fullStep = (Math.PI * 2) / this.sectionCount;
     const homeRadius = this.sceneMetrics?.homeRadius ?? 34;
-    const targetGapWidth = homeRadius * 4;
+    const targetGapWidth = homeRadius * 2.2;
     const gapAngle = targetGapWidth / Math.max(1, this.radius);
     const arcSpan = fullStep - gapAngle;
     return { fullStep, targetGapWidth, gapAngle, arcSpan };
@@ -1152,7 +1160,7 @@ this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.jpg";
   this.starlets = [];
   this.obstacles = [];
   this.particles = [];
-  this.brokenRing = null;
+  this.brokenRings = [];
 
   this.score = 0;
   this.savedCount = 0;
@@ -1291,17 +1299,24 @@ if (this.onNext) {
 
   this.setupInput();
 
-  this.homeStars = [
-  new HomeStar(this.sceneMetrics),
+ this.homeStars = [
+  new HomeStar(this.sceneMetrics, "left", 0),
+  new HomeStar(this.sceneMetrics, "right", Math.PI),
 ];
 
-this.brokenRing = new BrokenRingObstacle(this.sceneMetrics, this.homeStars[0]);
+this.brokenRings = [
+  new BrokenRingObstacle(this.sceneMetrics, 1.8),
+  new BrokenRingObstacle(this.sceneMetrics, 2.86),
+];
 
-this.spawnStarlets(10);
+this.brokenRings[0].setAnchor(this.homeStars[0]);
+this.brokenRings[1].setAnchor(this.homeStars[1]);
 
-  this.updateTargetScoreUI();
-  this.updateUI();
-  this.draw();
+this.spawnStarlets(12);
+
+this.updateTargetScoreUI();
+this.updateUI();
+this.draw();
 }
   
               isLandscape() { return window.innerWidth >= window.innerHeight; }
@@ -1321,21 +1336,24 @@ this.spawnStarlets(10);
     offscreenOffset: width * 0.06,
     obstacleCullOffset: width * 0.16,
 
-    homeRadius: clamp(30, 34 * playScale, 42),
-homeRingRadius: clamp(52, 60 * playScale, 74),
-homeGlowRadius: clamp(116, 140 * playScale, 170),
+    homeRadius: clamp(24, 28 * playScale, 34),
+homeRingRadius: clamp(42, 48 * playScale, 60),
+homeGlowRadius: clamp(92, 110 * playScale, 132),
 
-homeSingleMinX: width * 0.10,
-homeSingleMaxX: width * 0.28,
-homeSingleMinY: height * 0.22,
-homeSingleMaxY: height * 0.78,
-homePulseScaleMin: 0.5,
-homePulseScaleMax: 2.0,
+homeLeftMinX: -width * 0.10,
+homeLeftMaxX: width * 0.24,
+homeRightMinX: width * 0.76,
+homeRightMaxX: width + width * 0.10,
+homeMinY: height * 0.26,
+homeMaxY: height * 0.74,
 
-brokenRingRadius: clamp(320, width * 0.47, 580),
-brokenRingLineWidth: clamp(6, 7 * playScale, 10),
+homePulseScaleMin: 0.72,
+homePulseScaleMax: 1.28,
+
+brokenRingRadius: clamp(74, width * 0.13, 128),
+brokenRingLineWidth: clamp(5, 6 * playScale, 8),
 brokenRingSectionCount: 3,
-brokenRingCenterX: width * 0.08,
+brokenRingCenterX: width * 0.5,
 brokenRingCenterY: height * 0.5,
 brokenRingHitPadding: clamp(4, 3.5 * playScale, 6),
 brokenRingBounceStrength: 1.4,
@@ -1360,8 +1378,8 @@ brokenRingBounceStrength: 1.4,
     this.homeStars.forEach((star) => star.setBounds(this.sceneMetrics));
   }
 
-  if (this.brokenRing) {
-  this.brokenRing.setBounds(this.sceneMetrics);
+  if (this.brokenRings?.length) {
+  this.brokenRings.forEach((ring) => ring.setBounds(this.sceneMetrics));
 }
 
   if (this.rotateHint)
@@ -1723,14 +1741,23 @@ updateRankUI() {
     }
 
     this.homeStars = [
-  new HomeStar(this.sceneMetrics),
+  new HomeStar(this.sceneMetrics, "left", 0),
+  new HomeStar(this.sceneMetrics, "right", Math.PI),
 ];
 
-this.brokenRing = new BrokenRingObstacle(this.sceneMetrics, this.homeStars[0]);
+this.brokenRings = [
+  new BrokenRingObstacle(this.sceneMetrics, 1.8),
+  new BrokenRingObstacle(this.sceneMetrics, 2.86),
+];
+
+this.brokenRings[0].setAnchor(this.homeStars[0]);
+this.brokenRings[1].setAnchor(this.homeStars[1]);
 
 this.spawnStarlets(12);
-    this.updateUI();
-    this.draw();
+
+this.updateTargetScoreUI();
+this.updateUI();
+this.draw();
 
     if (restartAmbient) {
       this.audio.startAmbient({ restart: true });
@@ -1890,19 +1917,23 @@ this.starlets.forEach((s) => {
 
 this.obstacles.forEach((o) => o.update());
 
-if (this.brokenRing) {
-  this.brokenRing.update(delta);
+if (this.brokenRings?.length) {
+  this.brokenRings.forEach((ring) => ring.update(delta));
 }
 
 this.homeStars.forEach((star) =>
   this.obstacles.forEach((o) => {
-    if (star.blocksObstacle(o)) star.repelObstacle(o);
+    if (star.blocksObstacle(o)) {
+      star.repelObstacle(o);
+    }
   })
 );
 
-if (this.brokenRing) {
+if (this.brokenRings?.length) {
   this.starlets.forEach((starlet) => {
-    this.brokenRing.resolveStarletCollision(starlet);
+    this.brokenRings.forEach((ring) => {
+      ring.resolveStarletCollision(starlet);
+    });
   });
 }
 
@@ -2025,9 +2056,9 @@ draw() {
 
   this.homeStars.forEach((star) => star.draw(this.ctx));
 
-  if (this.brokenRing) {
-    this.brokenRing.draw(this.ctx);
-  }
+  if (this.brokenRings?.length) {
+  this.brokenRings.forEach((ring) => ring.draw(this.ctx));
+}
 
   this.obstacles.forEach((o) => o.draw(this.ctx));
   this.starlets.forEach((s) => s.draw(this.ctx));
