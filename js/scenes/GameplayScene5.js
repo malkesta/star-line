@@ -853,7 +853,7 @@ class BrokenRingObstacle {
   getGeometry() {
     const fullStep = (Math.PI * 2) / this.sectionCount;
     const homeRadius = this.sceneMetrics?.homeRadius ?? 34;
-    const targetGapWidth = homeRadius * 2.2;
+    const targetGapWidth = homeRadius * 2.5;
     const gapAngle = targetGapWidth / Math.max(1, this.radius);
     const arcSpan = fullStep - gapAngle;
     return { fullStep, targetGapWidth, gapAngle, arcSpan };
@@ -890,7 +890,7 @@ class BrokenRingObstacle {
   const prevDy = (starlet.prevY ?? starlet.y) - center.y;
   const prevDist = Math.sqrt(prevDx * prevDx + prevDy * prevDy) || 0.0001;
 
-  const ringZoneHalf = starlet.radius + this.lineWidth * 0.5 + this.ringHitPadding;
+const ringZoneHalf = starlet.radius + this.lineWidth * 0.36 + this.ringHitPadding;
   const isNearRingNow = Math.abs(dist - this.radius) <= ringZoneHalf;
   const crossedRingBand =
     (prevDist < this.radius && dist > this.radius) ||
@@ -1317,8 +1317,8 @@ if (this.onNext) {
 ];
 
 this.brokenRings = [
-  new BrokenRingObstacle(this.sceneMetrics, 1.8),
-  new BrokenRingObstacle(this.sceneMetrics, 2.86),
+  new BrokenRingObstacle(this.sceneMetrics, 1.3),
+  new BrokenRingObstacle(this.sceneMetrics, 2.0),
 ];
 
 this.brokenRings[0].setAnchor(this.homeStars[0]);
@@ -1363,11 +1363,11 @@ homePulseScaleMin: 0.72,
 homePulseScaleMax: 1.28,
 
 brokenRingRadius: clamp(74, width * 0.13, 128),
-brokenRingLineWidth: clamp(5, 6 * playScale, 8),
+brokenRingLineWidth: clamp(3.2, 3.84 * playScale, 5.1),
 brokenRingSectionCount: 3,
 brokenRingCenterX: width * 0.5,
 brokenRingCenterY: height * 0.5,
-brokenRingHitPadding: clamp(4, 3.5 * playScale, 6),
+brokenRingHitPadding: clamp(2.56, 2.24 * playScale, 3.8),
 brokenRingBounceStrength: 1.4,
 
 
