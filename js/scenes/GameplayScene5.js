@@ -646,26 +646,26 @@ class Obstacle {
   }
 
   setBounds(sceneMetrics) {
-    this.sceneMetrics = sceneMetrics;
-    if (!sceneMetrics) return;
+  this.sceneMetrics = sceneMetrics;
+  if (!sceneMetrics) return;
 
-    this.baseRadius = sceneMetrics.homeRadius;
-    this.radius = this.baseRadius;
-    this.ringRadius = sceneMetrics.homeRingRadius;
-    this.glowRadius = sceneMetrics.homeGlowRadius;
+  this.baseRadius = sceneMetrics.homeRadius;
+  this.radius = this.baseRadius;
+  this.ringRadius = sceneMetrics.homeRingRadius;
+  this.glowRadius = sceneMetrics.homeGlowRadius;
 
-    this.leftMinX = sceneMetrics.homeLeftMinX;
-    this.leftMaxX = sceneMetrics.homeLeftMaxX;
-    this.rightMinX = sceneMetrics.homeRightMinX;
-    this.rightMaxX = sceneMetrics.homeRightMaxX;
-    this.minY = sceneMetrics.homeMinY;
-    this.maxY = sceneMetrics.homeMaxY;
+  this.leftMinX = sceneMetrics.homeLeftMinX;
+  this.leftMaxX = sceneMetrics.homeLeftMaxX;
+  this.rightMinX = sceneMetrics.homeRightMinX;
+  this.rightMaxX = sceneMetrics.homeRightMaxX;
+  this.minY = sceneMetrics.homeMinY;
+  this.maxY = sceneMetrics.homeMaxY;
 
-    this.pulseScaleMin = sceneMetrics.homePulseScaleMin;
-    this.pulseScaleMax = sceneMetrics.homePulseScaleMax;
+  this.pulseScaleMin = sceneMetrics.homePulseScaleMin;
+  this.pulseScaleMax = sceneMetrics.homePulseScaleMax;
 
-    this.update(0);
-  }
+  this.update(0);
+}
 
   update(delta = 0.016) {
     this.flicker += 0.035;
@@ -825,22 +825,24 @@ class BrokenRingObstacle {
   this.sceneMetrics = sceneMetrics;
   if (!sceneMetrics) return;
 
+  const clamp = (min, value, max) => Math.max(min, Math.min(max, value));
   const minSide = Math.min(sceneMetrics.width, sceneMetrics.height);
-  const isMobile = sceneMetrics.width <= 768;
 
-  if (isMobile) {
-    const largeRingDiameter = minSide * 0.9;
-    const largeRingRadius = largeRingDiameter / 2;
-    const smallToLargeRatio = 1.8 / 2.86;
+  const minRefSide = 320;
+  const maxRefSide = 1080;
 
-    const isLargeRing = this.radiusScale > 2;
+  const minLargeRingDiameter = minRefSide * 0.7;   // 224
+  const maxLargeRingDiameter = maxRefSide * 0.7;   // 756
 
-    this.radius = isLargeRing
-      ? largeRingRadius
-      : largeRingRadius * smallToLargeRatio;
-  } else {
-    this.radius = sceneMetrics.brokenRingRadius * this.radiusScale;
-  }
+  const largeRingDiameter = clamp(
+    minLargeRingDiameter,
+    minSide * 0.7,
+    maxLargeRingDiameter
+  );
+
+  const largeRingRadius = largeRingDiameter / 2;
+
+  this.radius = largeRingRadius * this.radiusScale;
 
   this.lineWidth = sceneMetrics.brokenRingLineWidth;
   this.sectionCount = sceneMetrics.brokenRingSectionCount;
@@ -867,13 +869,22 @@ class BrokenRingObstacle {
 }
 
   getGeometry() {
-    const fullStep = (Math.PI * 2) / this.sectionCount;
-    const homeRadius = this.sceneMetrics?.homeRadius ?? 34;
-    const targetGapWidth = homeRadius * 2.5;
-    const gapAngle = targetGapWidth / Math.max(1, this.radius);
-    const arcSpan = fullStep - gapAngle;
-    return { fullStep, targetGapWidth, gapAngle, arcSpan };
-  }
+  const fullStep = (Math.PI * 2) / this.sectionCount;
+  const targetGapWidth = this.sceneMetrics?.brokenRingGapWidth ?? 48;
+
+  const rawGapAngle = targetGapWidth / Math.max(1, this.radius);
+  const maxGapAngle = fullStep * 0.82;
+  const gapAngle = Math.min(rawGapAngle, maxGapAngle);
+
+  const arcSpan = fullStep - gapAngle;
+
+  return {
+    fullStep,
+    targetGapWidth,
+    gapAngle,
+    arcSpan,
+  };
+}
 
   normalizeAngle(angle) {
     const twoPi = Math.PI * 2;
@@ -1333,8 +1344,8 @@ if (this.onNext) {
 ];
 
 this.brokenRings = [
-  new BrokenRingObstacle(this.sceneMetrics, 1.8),
-  new BrokenRingObstacle(this.sceneMetrics, 2.86),
+  new BrokenRingObstacle(this.sceneMetrics, 0.63),
+  new BrokenRingObstacle(this.sceneMetrics, 1.0),
 ];
 
 this.brokenRings[0].setAnchor(this.homeStars[0]);
@@ -1354,14 +1365,20 @@ this.draw();
   const height = this.canvas.height;
   const clamp = (min, value, max) => Math.max(min, Math.min(max, value));
   const playScale = clamp(0.9, width / 1366, 1.18);
+  const minSide = Math.min(width, height);
 
-  const ringScaleFactor = 1;
+  const starletBaseRadius = clamp(6.6, 7.0 * playScale, 8.9);
+  const maxStarletRadius = starletBaseRadius * 1.33;
+  const maxStarletDiameter = maxStarletRadius * 2;
+
+  const brokenRingBaseRadius = clamp(72, minSide * 0.135, 132);
+  const brokenRingGapWidth = clamp(54, maxStarletDiameter * 3.4, 92);
 
   this.sceneMetrics = {
     width,
     height,
+    minSide,
     playScale,
-    ringScaleFactor,
 
     laneInsetX: width * 0.04,
     offscreenOffset: width * 0.06,
@@ -1381,15 +1398,18 @@ this.draw();
     homePulseScaleMin: 0.72,
     homePulseScaleMax: 1.28,
 
-    brokenRingRadius: clamp(74, width * 0.13, 128),
-    brokenRingLineWidth: clamp(3.2, 3.84 * playScale, 5.1),
+    brokenRingBaseRadius,
+    brokenRingMinRadius: clamp(52, minSide * 0.10, 90),
+    brokenRingMaxRadius: clamp(96, minSide * 0.24, 180),
+    brokenRingGapWidth,
+    brokenRingLineWidth: clamp(3.2, minSide * 0.006, 5.1),
     brokenRingSectionCount: 3,
     brokenRingCenterX: width * 0.5,
     brokenRingCenterY: height * 0.5,
-    brokenRingHitPadding: clamp(2.56, 2.24 * playScale, 3.8),
+    brokenRingHitPadding: clamp(2.56, minSide * 0.0035, 3.8),
     brokenRingBounceStrength: 1.4,
 
-    starletBaseRadius: clamp(6.6, 7.0 * playScale, 8.9),
+    starletBaseRadius,
     starletDragRadius: clamp(24, 28 * playScale, 34),
 
     obstacleMinWidth: clamp(37, 44 * playScale, 56),
@@ -1776,8 +1796,8 @@ updateRankUI() {
 ];
 
 this.brokenRings = [
-  new BrokenRingObstacle(this.sceneMetrics, 1.8),
-  new BrokenRingObstacle(this.sceneMetrics, 2.86),
+  new BrokenRingObstacle(this.sceneMetrics, 0.63),
+  new BrokenRingObstacle(this.sceneMetrics, 1.0),
 ];
 
 this.brokenRings[0].setAnchor(this.homeStars[0]);
