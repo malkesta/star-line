@@ -1362,7 +1362,7 @@ homeMaxY: height * 0.74,
 homePulseScaleMin: 0.72,
 homePulseScaleMax: 1.28,
 
-brokenRingRadius: clamp(74, width * 0.13, 128),
+brokenRingRadius: clamp(54, width * 0.105, 96),
 brokenRingLineWidth: clamp(3.2, 3.84 * playScale, 5.1),
 brokenRingSectionCount: 3,
 brokenRingCenterX: width * 0.5,
