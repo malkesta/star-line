@@ -1342,8 +1342,8 @@ this.draw();
   const playScale = clamp(0.9, width / 1366, 1.18);
 
   const ringScaleFactor =
-  width <= 480 ? 0.64 :
-  width <= 768 ? 0.80 :
+  width <= 480 ? 0.5 :
+  width <= 768 ? 0.7 :
   1;
 
   this.sceneMetrics = {
