@@ -1316,9 +1316,11 @@ if (this.onNext) {
   new HomeStar(this.sceneMetrics, "right", Math.PI),
 ];
 
+const ringScale = this.sceneMetrics?.ringScaleFactor ?? 1;
+
 this.brokenRings = [
-  new BrokenRingObstacle(this.sceneMetrics, 1.3),
-  new BrokenRingObstacle(this.sceneMetrics, 2.0),
+  new BrokenRingObstacle(this.sceneMetrics, 1.8 * ringScale),
+  new BrokenRingObstacle(this.sceneMetrics, 2.86 * ringScale),
 ];
 
 this.brokenRings[0].setAnchor(this.homeStars[0]);
@@ -1339,42 +1341,42 @@ this.draw();
   const clamp = (min, value, max) => Math.max(min, Math.min(max, value));
   const playScale = clamp(0.9, width / 1366, 1.18);
 
-  const mobileRingScale =
-  width <= 480 ? 0.62 :
-  width <= 768 ? 0.76 :
+  const ringScaleFactor =
+  width <= 480 ? 0.64 :
+  width <= 768 ? 0.80 :
   1;
 
   this.sceneMetrics = {
     width,
     height,
     playScale,
+    ringScaleFactor,
 
     laneInsetX: width * 0.04,
     offscreenOffset: width * 0.06,
     obstacleCullOffset: width * 0.16,
 
     homeRadius: clamp(24, 28 * playScale, 34),
-homeRingRadius: clamp(42, 48 * playScale, 60),
-homeGlowRadius: clamp(92, 110 * playScale, 132),
+    homeRingRadius: clamp(42, 48 * playScale, 60),
+    homeGlowRadius: clamp(92, 110 * playScale, 132),
 
-homeLeftMinX: -width * 0.10,
-homeLeftMaxX: width * 0.24,
-homeRightMinX: width * 0.76,
-homeRightMaxX: width + width * 0.10,
-homeMinY: height * 0.26,
-homeMaxY: height * 0.74,
+    homeLeftMinX: -width * 0.10,
+    homeLeftMaxX: width * 0.24,
+    homeRightMinX: width * 0.76,
+    homeRightMaxX: width + width * 0.10,
+    homeMinY: height * 0.26,
+    homeMaxY: height * 0.74,
 
-homePulseScaleMin: 0.72,
-homePulseScaleMax: 1.28,
+    homePulseScaleMin: 0.72,
+    homePulseScaleMax: 1.28,
 
-brokenRingRadius: clamp(74, width * 0.13, 128) * mobileRingScale,
-brokenRingLineWidth: clamp(3.2, 3.84 * playScale, 5.1),
-brokenRingSectionCount: 3,
-brokenRingCenterX: width * 0.5,
-brokenRingCenterY: height * 0.5,
-brokenRingHitPadding: clamp(2.56, 2.24 * playScale, 3.8),
-brokenRingBounceStrength: 1.4,
-
+    brokenRingRadius: clamp(74, width * 0.13, 128),
+    brokenRingLineWidth: clamp(3.2, 3.84 * playScale, 5.1),
+    brokenRingSectionCount: 3,
+    brokenRingCenterX: width * 0.5,
+    brokenRingCenterY: height * 0.5,
+    brokenRingHitPadding: clamp(2.56, 2.24 * playScale, 3.8),
+    brokenRingBounceStrength: 1.4,
 
     starletBaseRadius: clamp(6.6, 7.0 * playScale, 8.9),
     starletDragRadius: clamp(24, 28 * playScale, 34),
@@ -1762,9 +1764,11 @@ updateRankUI() {
   new HomeStar(this.sceneMetrics, "right", Math.PI),
 ];
 
+const ringScale = this.sceneMetrics?.ringScaleFactor ?? 1;
+
 this.brokenRings = [
-  new BrokenRingObstacle(this.sceneMetrics, 1.8),
-  new BrokenRingObstacle(this.sceneMetrics, 2.86),
+  new BrokenRingObstacle(this.sceneMetrics, 1.8 * ringScale),
+  new BrokenRingObstacle(this.sceneMetrics, 2.86 * ringScale),
 ];
 
 this.brokenRings[0].setAnchor(this.homeStars[0]);
