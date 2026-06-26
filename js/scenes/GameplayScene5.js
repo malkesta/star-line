@@ -1339,6 +1339,11 @@ this.draw();
   const clamp = (min, value, max) => Math.max(min, Math.min(max, value));
   const playScale = clamp(0.9, width / 1366, 1.18);
 
+  const mobileRingScale =
+  width <= 480 ? 0.62 :
+  width <= 768 ? 0.76 :
+  1;
+
   this.sceneMetrics = {
     width,
     height,
