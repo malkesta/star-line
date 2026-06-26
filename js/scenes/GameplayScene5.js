@@ -822,17 +822,33 @@ class BrokenRingObstacle {
   }
 
   setBounds(sceneMetrics) {
-    this.sceneMetrics = sceneMetrics;
-    if (!sceneMetrics) return;
+  this.sceneMetrics = sceneMetrics;
+  if (!sceneMetrics) return;
 
+  const minSide = Math.min(sceneMetrics.width, sceneMetrics.height);
+  const isMobile = sceneMetrics.width <= 768;
+
+  if (isMobile) {
+    const largeRingDiameter = minSide * 0.9;
+    const largeRingRadius = largeRingDiameter / 2;
+    const smallToLargeRatio = 1.8 / 2.86;
+
+    const isLargeRing = this.radiusScale > 2;
+
+    this.radius = isLargeRing
+      ? largeRingRadius
+      : largeRingRadius * smallToLargeRatio;
+  } else {
     this.radius = sceneMetrics.brokenRingRadius * this.radiusScale;
-    this.lineWidth = sceneMetrics.brokenRingLineWidth;
-    this.sectionCount = sceneMetrics.brokenRingSectionCount;
-    this.centerX = sceneMetrics.brokenRingCenterX;
-    this.centerY = sceneMetrics.brokenRingCenterY;
-    this.ringHitPadding = sceneMetrics.brokenRingHitPadding;
-    this.bounceStrength = sceneMetrics.brokenRingBounceStrength;
   }
+
+  this.lineWidth = sceneMetrics.brokenRingLineWidth;
+  this.sectionCount = sceneMetrics.brokenRingSectionCount;
+  this.centerX = sceneMetrics.brokenRingCenterX;
+  this.centerY = sceneMetrics.brokenRingCenterY;
+  this.ringHitPadding = sceneMetrics.brokenRingHitPadding;
+  this.bounceStrength = sceneMetrics.brokenRingBounceStrength;
+}
 
   update(delta = 0.016) {
     this.rotation += this.rotationSpeed * delta * 60;
@@ -1316,11 +1332,9 @@ if (this.onNext) {
   new HomeStar(this.sceneMetrics, "right", Math.PI),
 ];
 
-const ringScale = this.sceneMetrics?.ringScaleFactor ?? 1;
-
 this.brokenRings = [
-  new BrokenRingObstacle(this.sceneMetrics, 1.8 * ringScale),
-  new BrokenRingObstacle(this.sceneMetrics, 2.86 * ringScale),
+  new BrokenRingObstacle(this.sceneMetrics, 1.8),
+  new BrokenRingObstacle(this.sceneMetrics, 2.86),
 ];
 
 this.brokenRings[0].setAnchor(this.homeStars[0]);
@@ -1341,10 +1355,7 @@ this.draw();
   const clamp = (min, value, max) => Math.max(min, Math.min(max, value));
   const playScale = clamp(0.9, width / 1366, 1.18);
 
-  const ringScaleFactor =
-  width <= 480 ? 0.5 :
-  width <= 768 ? 0.7 :
-  1;
+  const ringScaleFactor = 1;
 
   this.sceneMetrics = {
     width,
@@ -1764,11 +1775,9 @@ updateRankUI() {
   new HomeStar(this.sceneMetrics, "right", Math.PI),
 ];
 
-const ringScale = this.sceneMetrics?.ringScaleFactor ?? 1;
-
 this.brokenRings = [
-  new BrokenRingObstacle(this.sceneMetrics, 1.8 * ringScale),
-  new BrokenRingObstacle(this.sceneMetrics, 2.86 * ringScale),
+  new BrokenRingObstacle(this.sceneMetrics, 1.8),
+  new BrokenRingObstacle(this.sceneMetrics, 2.86),
 ];
 
 this.brokenRings[0].setAnchor(this.homeStars[0]);
