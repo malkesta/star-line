@@ -812,6 +812,8 @@ class BrokenRingObstacle {
     this.sceneMetrics = null;
     this.radius = 0;
     this.lineWidth = 0;
+    this.innerRingInset = 0;
+    this.innerRingLineWidth = 0;
     this.sectionCount = 3;
     this.centerX = 0;
     this.centerY = 0;
@@ -844,11 +846,31 @@ class BrokenRingObstacle {
 
   this.radius = largeRingRadius * this.radiusScale;
 
-  this.lineWidth = sceneMetrics.brokenRingLineWidth;
+this.lineWidth = clamp(
+  sceneMetrics.brokenRingLineWidthMin,
+  this.radius * sceneMetrics.brokenRingLineWidthRatio,
+  sceneMetrics.brokenRingLineWidthMax
+);
+
+this.innerRingInset = clamp(
+  sceneMetrics.brokenRingInnerInsetMin,
+  this.lineWidth * sceneMetrics.brokenRingInnerInsetRatio,
+  sceneMetrics.brokenRingInnerInsetMax
+);
+
+this.innerRingLineWidth = clamp(
+  sceneMetrics.brokenRingInnerLineWidthMin,
+  this.lineWidth * sceneMetrics.brokenRingInnerLineWidthRatio,
+  sceneMetrics.brokenRingInnerLineWidthMax
+);
   this.sectionCount = sceneMetrics.brokenRingSectionCount;
   this.centerX = sceneMetrics.brokenRingCenterX;
   this.centerY = sceneMetrics.brokenRingCenterY;
-  this.ringHitPadding = sceneMetrics.brokenRingHitPadding;
+  this.ringHitPadding = clamp(
+  sceneMetrics.brokenRingHitPaddingMin,
+  this.lineWidth * sceneMetrics.brokenRingHitPaddingRatio,
+  sceneMetrics.brokenRingHitPaddingMax
+);
   this.bounceStrength = sceneMetrics.brokenRingBounceStrength;
 }
 
@@ -1116,17 +1138,17 @@ return true;
       );
 
       this.drawArc(
-        ctx,
-        cx,
-        cy,
-        this.radius - 10,
-        start + 0.02,
-        end - 0.02,
-        "#ce4545",
-        2.2,
-        0.95,
-        10
-      );
+  ctx,
+  cx,
+  cy,
+  this.radius - this.innerRingInset,
+  start + 0.02,
+  end - 0.02,
+  "#ce4545",
+  this.innerRingLineWidth,
+  0.95,
+  10
+);
 
       const gem1Angle = start;
       const gem2Angle = end;
@@ -1402,11 +1424,22 @@ this.draw();
     brokenRingMinRadius: clamp(52, minSide * 0.10, 90),
     brokenRingMaxRadius: clamp(96, minSide * 0.24, 180),
     brokenRingGapWidth,
-    brokenRingLineWidth: clamp(3.2, minSide * 0.006, 5.1),
+    brokenRingLineWidthMin: 3.2,
+    brokenRingLineWidthMax: 5.1,
+    brokenRingLineWidthRatio: 5.1 / (1080 * 0.7 * 0.5),
+    brokenRingInnerInsetMin: 6,
+    brokenRingInnerInsetMax: 10,
+    brokenRingInnerInsetRatio: 10 / 5.1,
+
+    brokenRingInnerLineWidthMin: 1.4,
+    brokenRingInnerLineWidthMax: 2.2,
+    brokenRingInnerLineWidthRatio: 2.2 / 5.1,
     brokenRingSectionCount: 3,
     brokenRingCenterX: width * 0.5,
     brokenRingCenterY: height * 0.5,
-    brokenRingHitPadding: clamp(2.56, minSide * 0.0035, 3.8),
+    brokenRingHitPaddingMin: 2.56,
+    brokenRingHitPaddingMax: 3.8,
+    brokenRingHitPaddingRatio: 3.8 / 5.1,
     brokenRingBounceStrength: 1.4,
 
     starletBaseRadius,
