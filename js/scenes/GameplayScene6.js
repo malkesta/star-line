@@ -624,8 +624,11 @@ class Obstacle {
   }
 } 
 
-class HomeStar {
-  constructor(sceneMetrics) {
+    class HomeStar {
+  constructor(sceneMetrics, side = "left", phaseOffset = 0) {
+    this.side = side;
+    this.phaseOffset = phaseOffset;
+
     this.x = 0;
     this.y = 0;
 
@@ -636,122 +639,69 @@ class HomeStar {
 
     this.flicker = Math.random() * Math.PI * 2;
     this.rotation = 0;
+    this.motionTime = Math.random() * Math.PI * 2;
     this.sizeTime = Math.random() * Math.PI * 2;
-
-    this.scale = 0.02;
-    this.targetScale = 0.02;
-
-    this.teleportPhase = "growing"; // growing -> holding -> shrinking
-    this.teleportTimer = 0;
-    this.holdTimer = 0;
-
-    this.minVisualScale = 0.02;
-    this.maxVisualScale = 1;
-    this.growDuration = 4.11;
-    this.shrinkDuration = 3.9;
-    this.holdDuration = 0.2;
 
     this.setBounds(sceneMetrics);
   }
 
   setBounds(sceneMetrics) {
-    this.sceneMetrics = sceneMetrics;
-    if (!sceneMetrics) return;
+  this.sceneMetrics = sceneMetrics;
+  if (!sceneMetrics) return;
 
-    this.baseRadius = sceneMetrics.homeRadius;
-    this.ringRadius = sceneMetrics.homeRingRadius;
-    this.glowRadius = sceneMetrics.homeGlowRadius;
+  this.baseRadius = sceneMetrics.homeRadius;
+  this.radius = this.baseRadius;
+  this.ringRadius = sceneMetrics.homeRingRadius;
+  this.glowRadius = sceneMetrics.homeGlowRadius;
 
-    this.radius = this.baseRadius * this.scale;
-  }
+  this.leftMinX = sceneMetrics.homeLeftMinX;
+  this.leftMaxX = sceneMetrics.homeLeftMaxX;
+  this.rightMinX = sceneMetrics.homeRightMinX;
+  this.rightMaxX = sceneMetrics.homeRightMaxX;
+  this.minY = sceneMetrics.homeMinY;
+  this.maxY = sceneMetrics.homeMaxY;
 
-  setPosition(x, y) {
-    this.x = x;
-    this.y = y;
-  }
+  this.pulseScaleMin = sceneMetrics.homePulseScaleMin;
+  this.pulseScaleMax = sceneMetrics.homePulseScaleMax;
 
-  setScale(scale) {
-    this.scale = scale;
-    this.targetScale = scale;
-    this.radius = this.baseRadius * this.scale;
-  }
-
-  restartTeleportCycle({ startFromTiny = true } = {}) {
-    this.teleportPhase = "growing";
-    this.teleportTimer = 0;
-    this.holdTimer = 0;
-
-    this.scale = startFromTiny ? this.minVisualScale : this.maxVisualScale;
-    this.targetScale = this.scale;
-    this.radius = this.baseRadius * this.scale;
-  }
+  this.update(0);
+}
 
   update(delta = 0.016) {
     this.flicker += 0.035;
     this.rotation += 0.006;
-    this.sizeTime += delta * 1.8;
+    this.motionTime += delta * 0.3;
+    this.sizeTime += delta * 0.55;
 
-    let teleportReady = false;
+    const t = this.motionTime + this.phaseOffset;
+    const horizontalWave = Math.sin(t * 0.95) * 0.5 + 0.5;
+    const verticalWave = Math.cos(t * 1.15) * 0.5 + 0.5;
 
-    if (this.teleportPhase === "growing") {
-      this.teleportTimer += delta;
-      const t = Math.min(1, this.teleportTimer / this.growDuration);
-      const eased = 1 - Math.pow(1 - t, 3);
-
-      this.scale =
-        this.minVisualScale +
-        (this.maxVisualScale - this.minVisualScale) * eased;
-
-      if (t >= 1) {
-        this.scale = this.maxVisualScale;
-        this.teleportPhase = "holding";
-        this.teleportTimer = 0;
-        this.holdTimer = 0;
-      }
-    } else if (this.teleportPhase === "holding") {
-      this.holdTimer += delta;
-      this.scale = this.maxVisualScale;
-
-      if (this.holdTimer >= this.holdDuration) {
-        this.teleportPhase = "shrinking";
-        this.teleportTimer = 0;
-      }
-    } else if (this.teleportPhase === "shrinking") {
-      this.teleportTimer += delta;
-      const t = Math.min(1, this.teleportTimer / this.shrinkDuration);
-      const eased = 1 - Math.pow(1 - t, 3);
-
-      this.scale =
-        this.maxVisualScale -
-        (this.maxVisualScale - this.minVisualScale) * eased;
-
-      if (t >= 1) {
-        this.scale = this.minVisualScale;
-        teleportReady = true;
-      }
+    if (this.side === "left") {
+      this.x = this.leftMinX + (this.leftMaxX - this.leftMinX) * horizontalWave;
+    } else {
+      this.x = this.rightMinX + (this.rightMaxX - this.rightMinX) * (1 - horizontalWave);
     }
 
-    const pulse = 0.96 + Math.sin(this.sizeTime) * 0.04;
-    this.radius = this.baseRadius * this.scale * pulse;
+    this.y = this.minY + (this.maxY - this.minY) * verticalWave;
 
-    return teleportReady;
+    const pulseWave = Math.sin(this.sizeTime + this.phaseOffset) * 0.5 + 0.5;
+    const pulseScale =
+      this.pulseScaleMin +
+      (this.pulseScaleMax - this.pulseScaleMin) * pulseWave;
+
+    this.radius = this.baseRadius * pulseScale;
+    this.ringRadius = this.sceneMetrics.homeRingRadius * pulseScale;
+    this.glowRadius = this.sceneMetrics.homeGlowRadius * pulseScale;
   }
 
   draw(ctx) {
-    if (this.scale <= this.minVisualScale + 0.001) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, 2.2, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255, 242, 212, 0.95)";
-      ctx.fill();
-      ctx.restore();
-      return;
-    }
+    this.update();
 
     const glowPulse = 0.92 + Math.sin(this.flicker) * 0.05;
     const outerGlow = ctx.createRadialGradient(
       this.x, this.y, 10,
-      this.x, this.y, this.glowRadius * this.scale
+      this.x, this.y, this.glowRadius
     );
     outerGlow.addColorStop(0, `rgba(245, 182, 112, ${0.28 * glowPulse})`);
     outerGlow.addColorStop(0.5, `rgba(222, 161, 94, ${0.16 * glowPulse})`);
@@ -759,17 +709,17 @@ class HomeStar {
 
     ctx.fillStyle = outerGlow;
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.glowRadius * this.scale, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, this.glowRadius, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.ringRadius * this.scale, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, this.ringRadius, 0, Math.PI * 2);
     ctx.lineWidth = 1.25;
     ctx.strokeStyle = "rgba(245, 182, 112, 0.92)";
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(this.x, this.y, (this.ringRadius - 6) * this.scale, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, this.ringRadius - 6, 0, Math.PI * 2);
     ctx.lineWidth = 0.85;
     ctx.strokeStyle = "rgba(222, 161, 94, 0.7)";
     ctx.stroke();
@@ -823,14 +773,14 @@ class HomeStar {
     const dx = obstacle.x - this.x;
     const dy = obstacle.y - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    return dist < this.ringRadius * this.scale + obstacle.ringRadius;
+    return dist < this.ringRadius + obstacle.ringRadius;
   }
 
   repelObstacle(obstacle) {
     const dx = obstacle.x - this.x;
     const dy = obstacle.y - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
-    const overlap = this.ringRadius * this.scale + obstacle.ringRadius - dist;
+    const overlap = this.ringRadius + obstacle.ringRadius - dist;
 
     if (overlap > 0) {
       const nx = dx / dist;
@@ -852,14 +802,11 @@ class HomeStar {
 }
 
 class BrokenRingObstacle {
-  constructor(sceneMetrics, radiusScale = 1, options = {}) {
-  this.anchorStar = null;
-  this.radiusScale = radiusScale;
-  this.sectionCountOverride = options.sectionCount ?? null;
-  this.fixedCenterX = options.centerX ?? null;
-  this.fixedCenterY = options.centerY ?? null;
+  constructor(sceneMetrics, radiusScale = 1) {
+    this.anchorStar = null;
+    this.radiusScale = radiusScale;
     this.rotation = Math.random() * Math.PI * 2;
-    this.rotationSpeed = options.rotationSpeed ?? 0.0041;
+    this.rotationSpeed = 0.0041;
     this.pulseTime = Math.random() * Math.PI * 2;
 
     this.sceneMetrics = null;
@@ -916,17 +863,10 @@ this.innerRingLineWidth = clamp(
   this.lineWidth * sceneMetrics.brokenRingInnerLineWidthRatio,
   sceneMetrics.brokenRingInnerLineWidthMax
 );
-
-this.sectionCount =
-  this.sectionCountOverride ?? sceneMetrics.brokenRingSectionCount;
-
-this.centerX =
-  this.fixedCenterX ?? sceneMetrics.brokenRingCenterX;
-
-this.centerY =
-  this.fixedCenterY ?? sceneMetrics.brokenRingCenterY;
-
-this.ringHitPadding = clamp(
+  this.sectionCount = sceneMetrics.brokenRingSectionCount;
+  this.centerX = sceneMetrics.brokenRingCenterX;
+  this.centerY = sceneMetrics.brokenRingCenterY;
+  this.ringHitPadding = clamp(
   sceneMetrics.brokenRingHitPaddingMin,
   this.lineWidth * sceneMetrics.brokenRingHitPaddingRatio,
   sceneMetrics.brokenRingHitPaddingMax
@@ -1224,10 +1164,10 @@ return true;
   }
 }
 
-        export class GameplayScene5 {
+        export class GameplayScene6 {
 
   constructor({
-  sceneId = "game5",
+  sceneId = "game6",
   sceneManager = null,
   audio = null,
   onNext = null,
@@ -1277,8 +1217,7 @@ this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.jpg";
   this.targetHeartProgress = 0;
   this.heartPulseTimeout = null;
 
-  this.homeStar = null;
-  this.activeRingIndex = 0;
+  this.homeStars = [];
   this.starlets = [];
   this.obstacles = [];
   this.particles = [];
@@ -1421,25 +1360,18 @@ if (this.onNext) {
 
   this.setupInput();
 
- this.brokenRings = [
-  new BrokenRingObstacle(this.sceneMetrics, 1.0, {
-    sectionCount: 2,
-    centerX: this.sceneMetrics.brokenRingLeftCenterX,
-    centerY: this.sceneMetrics.brokenRingLeftCenterY,
-    rotationSpeed: 0.0041,
-  }),
-  new BrokenRingObstacle(this.sceneMetrics, 0.63, {
-    sectionCount: 1,
-    centerX: this.sceneMetrics.brokenRingRightCenterX,
-    centerY: this.sceneMetrics.brokenRingRightCenterY,
-    rotationSpeed: -0.0041,
-  }),
+ this.homeStars = [
+  new HomeStar(this.sceneMetrics, "left", 0),
+  new HomeStar(this.sceneMetrics, "right", Math.PI),
 ];
 
-this.homeStar = new HomeStar(this.sceneMetrics);
-this.activeRingIndex = 0;
-this.syncHomeStarToActiveRing();
-this.homeStar.restartTeleportCycle({ startFromTiny: true });
+this.brokenRings = [
+  new BrokenRingObstacle(this.sceneMetrics, 0.63),
+  new BrokenRingObstacle(this.sceneMetrics, 1.0),
+];
+
+this.brokenRings[0].setAnchor(this.homeStars[0]);
+this.brokenRings[1].setAnchor(this.homeStars[1]);
 
 this.spawnStarlets(12);
 
@@ -1474,9 +1406,9 @@ this.draw();
     offscreenOffset: width * 0.06,
     obstacleCullOffset: width * 0.16,
 
-    homeRadius: clamp(45, 54 * playScale, 66),
-    homeRingRadius: clamp(78, 90 * playScale, 114),
-    homeGlowRadius: clamp(165, 198 * playScale, 240),
+    homeRadius: clamp(24, 28 * playScale, 34),
+    homeRingRadius: clamp(42, 48 * playScale, 60),
+    homeGlowRadius: clamp(92, 110 * playScale, 132),
 
     homeLeftMinX: -width * 0.10,
     homeLeftMaxX: width * 0.24,
@@ -1505,13 +1437,6 @@ this.draw();
     brokenRingSectionCount: 3,
     brokenRingCenterX: width * 0.5,
     brokenRingCenterY: height * 0.5,
-
-    brokenRingLeftCenterX: width * 0.22,
-    brokenRingLeftCenterY: height * 0.5,
-
-    brokenRingRightCenterX: width * 0.78,
-    brokenRingRightCenterY: height * 0.5,
-
     brokenRingHitPaddingMin: 2.56,
     brokenRingHitPaddingMax: 3.8,
     brokenRingHitPaddingRatio: 3.8 / 5.1,
@@ -1532,13 +1457,12 @@ this.draw();
   this.canvas.height = window.innerHeight;
   this.computeSceneMetrics();
 
+  if (this.homeStars?.length) {
+    this.homeStars.forEach((star) => star.setBounds(this.sceneMetrics));
+  }
+
   if (this.brokenRings?.length) {
   this.brokenRings.forEach((ring) => ring.setBounds(this.sceneMetrics));
-}
-
-if (this.homeStar) {
-  this.homeStar.setBounds(this.sceneMetrics);
-  this.syncHomeStarToActiveRing();
 }
 
   if (this.rotateHint)
@@ -1899,25 +1823,18 @@ updateRankUI() {
       this.nextBtn.style.removeProperty("--fade-glow-duration");
     }
 
-    this.brokenRings = [
-  new BrokenRingObstacle(this.sceneMetrics, 1.0, {
-    sectionCount: 2,
-    centerX: this.sceneMetrics.brokenRingLeftCenterX,
-    centerY: this.sceneMetrics.brokenRingLeftCenterY,
-    rotationSpeed: 0.0041,
-  }),
-  new BrokenRingObstacle(this.sceneMetrics, 0.63, {
-    sectionCount: 1,
-    centerX: this.sceneMetrics.brokenRingRightCenterX,
-    centerY: this.sceneMetrics.brokenRingRightCenterY,
-    rotationSpeed: -0.0041,
-  }),
+    this.homeStars = [
+  new HomeStar(this.sceneMetrics, "left", 0),
+  new HomeStar(this.sceneMetrics, "right", Math.PI),
 ];
 
-this.homeStar = new HomeStar(this.sceneMetrics);
-this.activeRingIndex = 0;
-this.syncHomeStarToActiveRing();
-this.homeStar.restartTeleportCycle({ startFromTiny: true });
+this.brokenRings = [
+  new BrokenRingObstacle(this.sceneMetrics, 0.63),
+  new BrokenRingObstacle(this.sceneMetrics, 1.0),
+];
+
+this.brokenRings[0].setAnchor(this.homeStars[0]);
+this.brokenRings[1].setAnchor(this.homeStars[1]);
 
 this.spawnStarlets(12);
 
@@ -2001,33 +1918,6 @@ refillStarletsIfLow({ minCount = 4, targetCount = 12 } = {}) {
       );
     }
   }
-}
-
-getRingCenter(index) {
-  const ring = this.brokenRings?.[index];
-  if (!ring) return { x: this.canvas.width * 0.5, y: this.canvas.height * 0.5 };
-  return ring.getCenter();
-}
-
-syncHomeStarToActiveRing() {
-  if (!this.homeStar) return;
-  const center = this.getRingCenter(this.activeRingIndex);
-  this.homeStar.setPosition(center.x, center.y);
-}
-
-jumpHomeStarToRing(index) {
-  if (!this.brokenRings?.[index]) return;
-  this.activeRingIndex = index;
-  this.syncHomeStarToActiveRing();
-}
-
-advanceHomeStarRing() {
-  if (!this.brokenRings?.length || !this.homeStar) return;
-
-  const nextIndex = (this.activeRingIndex + 1) % this.brokenRings.length;
-  this.activeRingIndex = nextIndex;
-  this.syncHomeStarToActiveRing();
-  this.homeStar.restartTeleportCycle({ startFromTiny: true });
 }
   
         setupInput() {
@@ -2132,19 +2022,13 @@ advanceHomeStarRing() {
     this.brokenRings.forEach((ring) => ring.update(delta));
   }
 
-  if (this.homeStar) {
-  const teleportReady = this.homeStar.update(delta);
-
-  if (teleportReady) {
-    this.advanceHomeStarRing();
-  }
-
-  this.obstacles.forEach((o) => {
-    if (this.homeStar.blocksObstacle(o)) {
-      this.homeStar.repelObstacle(o);
-    }
-  });
-}
+  this.homeStars.forEach((star) =>
+    this.obstacles.forEach((o) => {
+      if (star.blocksObstacle(o)) {
+        star.repelObstacle(o);
+      }
+    })
+  );
 
   if (this.brokenRings?.length) {
     this.starlets.forEach((starlet) => {
@@ -2202,14 +2086,21 @@ advanceHomeStarRing() {
   for (let i = this.starlets.length - 1; i >= 0; i--) {
     const starlet = this.starlets[i];
 
-    const hitHome = this.homeStar?.isHit(starlet);
+    const hitHome = this.homeStars.some((homeStar) => homeStar.isHit(starlet));
 
     if (hitHome) {
       this.score += 10;
       this.savedCount += 1;
       this.audio.playScoreSound();
 
-      const targetHome = this.homeStar;
+      const targetHome =
+        this.homeStars.reduce((best, star) => {
+          const dx = starlet.x - star.x;
+          const dy = starlet.y - star.y;
+          const dist = dx * dx + dy * dy;
+          if (!best || dist < best.dist) return { star, dist };
+          return best;
+        }, null)?.star ?? this.homeStars[0];
 
       this.spawnScatterEffect(targetHome.x, targetHome.y, "#DEA15E", true);
       this.starlets.splice(i, 1);
@@ -2266,7 +2157,7 @@ draw() {
   this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   this.drawBackgroundDust();
 
-  this.homeStar?.draw(this.ctx);
+  this.homeStars.forEach((star) => star.draw(this.ctx));
 
   if (this.brokenRings?.length) {
   this.brokenRings.forEach((ring) => ring.draw(this.ctx));

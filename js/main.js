@@ -6,6 +6,7 @@ import { GameplayScene2 } from "./scenes/GameplayScene2.js";
 import { GameplayScene3 } from "./scenes/GameplayScene3.js";
 import { GameplayScene4 } from "./scenes/GameplayScene4.js";
 import { GameplayScene5 } from "./scenes/GameplayScene5.js";
+import { GameplayScene6 } from "./scenes/GameplayScene6.js";
 import { GameAudio } from "./legacy/StarLineGame.js";
 
 const DEBUG_START_SCENE = null;
@@ -17,6 +18,8 @@ const DEBUG_START_SCENE = null;
 // "game3" -> только GameplayScene3
 // "game4" -> только GameplayScene4
 // "game5" -> только GameplayScene5
+// "game6" -> только GameplayScene6
+
 
 const audio = new GameAudio();
 
@@ -34,6 +37,7 @@ const allSceneDefs = {
   game3: createSceneDef("game3", () => new GameplayScene3({ sceneManager, audio })),
   game4: createSceneDef("game4", () => new GameplayScene4({ sceneManager, audio })),
   game5: createSceneDef("game5", () => new GameplayScene5({ sceneManager, audio })),
+  game6: createSceneDef("game6", () => new GameplayScene6({ sceneManager, audio })),
 };
 
 const defaultSceneOrder = [
@@ -44,6 +48,7 @@ const defaultSceneOrder = [
   allSceneDefs.game3,
   allSceneDefs.game4,
   allSceneDefs.game5,
+  allSceneDefs.game6,
 ];
 
 if (DEBUG_START_SCENE) {
