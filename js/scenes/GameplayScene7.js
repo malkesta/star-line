@@ -1,15 +1,39 @@
+// ============================================================================
+//  GameplayScene7 — "Перевёрнутый" режим StarLine.
+//
+//  Базируется на каркасе сцены 4. Игрок больше НЕ тащит старлеты к домашней
+//  звезде. Вместо этого игрок управляет одной чёрной звездой (Blacklet),
+//  стыкует её с красным кольцом (RedRing) и этим "комбо" поедает свободные
+//  старлеты, которые сами летят к домашней звезде.
+//
+//  Счёт:
+//    • комбо съедает старлет           → +5
+//    • препятствие уничтожает старлет  → −5
+//    • старлет долетел до домашней звезды → −10
+//
+//  Весь служебный каркас (звук, фон, музыка, HUD, ранги, оверлей, рестарт,
+//  таймер, частицы, спавн препятствий, enter/exit/destroy) сохранён без
+//  изменений по поведению.
+// ============================================================================
+
 function drawStarPath(ctx, cx, cy, outerRadius, innerRadius, points = 5) {
-            ctx.beginPath();
-            for (let i = 0; i < points * 2; i++) {
-                const angle = -Math.PI / 2 + (i * Math.PI) / points;
-                const radius = i % 2 === 0 ? outerRadius : innerRadius;
-                const px = cx + Math.cos(angle) * radius;
-                const py = cy + Math.sin(angle) * radius;
-                if (i === 0) ctx.moveTo(px, py);
-                else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
-        }
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const angle = -Math.PI / 2 + (i * Math.PI) / points;
+    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+    const px = cx + Math.cos(angle) * radius;
+    const py = cy + Math.sin(angle) * radius;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+// ============================================================================
+//  GameAudio — процедурный звук + фоновая музыка.
+//  Сохранён полностью. Добавлен ОДИН новый звук: playEatSound() — поедание
+//  старлета активным комбо (модель — те же осцилляторы, что и catch/score/hit).
+// ============================================================================
 export class GameAudio {
   constructor() {
     this.ctx = null;
@@ -25,6 +49,7 @@ export class GameAudio {
     this.lastCatchTime = 0;
     this.lastScoreTime = 0;
     this.lastHitTime = 0;
+    this.lastEatTime = 0; // НОВОЕ: антиспам для звука поедания
   }
 
   setMusic(url) {
@@ -307,6 +332,70 @@ export class GameAudio {
     osc2.stop(now + 0.18);
   }
 
+  // НОВОЕ: звук поедания старлета активным комбо (чёрная звезда + красное кольцо).
+  // Тёмный "всасывающий" глоток: низкая падающая синусоида + короткий красный
+  // "блик" сверху, мягкая реверберация. Сделан в одном семействе с остальными.
+  playEatSound() {
+    if (!this.ctx) return;
+    const now = this.now();
+    if (now - this.lastEatTime < 0.06) return;
+    this.lastEatTime = now;
+
+    const reverb = this.createReverb(1.4, 2.4);
+    const wet = this.ctx.createGain();
+    wet.gain.value = 0.16;
+    reverb.connect(wet);
+    wet.connect(this.master);
+
+    // Нижний "глоток" — всасывающее падение тона.
+    const sub = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    const subFilter = this.ctx.createBiquadFilter();
+
+    sub.type = "sine";
+    sub.frequency.setValueAtTime(360, now);
+    sub.frequency.exponentialRampToValueAtTime(120, now + 0.18);
+
+    subFilter.type = "lowpass";
+    subFilter.frequency.value = 900;
+
+    subGain.gain.setValueAtTime(0.0001, now);
+    subGain.gain.linearRampToValueAtTime(0.05, now + 0.012);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
+
+    sub.connect(subFilter);
+    subFilter.connect(subGain);
+    subGain.connect(this.master);
+    subGain.connect(reverb);
+
+    sub.start(now);
+    sub.stop(now + 0.3);
+
+    // Верхний короткий "красный" блик — лёгкая искра при захвате.
+    const spark = this.ctx.createOscillator();
+    const sparkGain = this.ctx.createGain();
+    const sparkBand = this.ctx.createBiquadFilter();
+
+    spark.type = "triangle";
+    spark.frequency.setValueAtTime(760, now);
+    spark.frequency.exponentialRampToValueAtTime(520, now + 0.1);
+
+    sparkBand.type = "bandpass";
+    sparkBand.frequency.value = 640;
+    sparkBand.Q.value = 1.6;
+
+    sparkGain.gain.setValueAtTime(0.0001, now);
+    sparkGain.gain.linearRampToValueAtTime(0.022, now + 0.008);
+    sparkGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+
+    spark.connect(sparkBand);
+    sparkBand.connect(sparkGain);
+    sparkGain.connect(this.master);
+
+    spark.start(now);
+    spark.stop(now + 0.16);
+  }
+
   playGameOverSound() {
     if (!this.ctx) return;
     const now = this.now();
@@ -349,11 +438,22 @@ export class GameAudio {
   }
 }
 
+// ============================================================================
+//  Blacklet — единственная "чёрная звезда" на сцене. Постоянна (не исчезает).
+//
+//  Состояния: forming → ready → linked
+//    forming  — превращается из жёлтой (как старлет) в красную, затем чернеет
+//               сердцевину → "чёрная звезда с красной обводкой". Поедать НЕ может.
+//    ready    — трансформация завершена, ждёт стыковки с кольцом.
+//    linked   — состыкована с красным кольцом → может поедать старлеты (комбо).
+//
+//  Перетаскивается курсором (как старый старлет). Сквозь препятствия проходит
+//  без взаимодействия. В одиночку (без кольца) не ест ничего. Должна визуально
+//  выделяться: яркая красная утолщённая обводка + мягкий пульс.
+// ============================================================================
 class Blacklet {
   constructor(sceneMetrics) {
     this.sceneMetrics = sceneMetrics;
-
-    this.entrySide = "right";
 
     this.x = 0;
     this.y = 0;
@@ -367,14 +467,10 @@ class Blacklet {
     this.state = "forming"; // forming -> ready -> linked
     this.isLinked = false;
 
-    this.lagFactor = 0.078;
-    this.linkedLagFactor = 0.064;
-    this.dragRadius = (sceneMetrics?.starletDragRadius ?? 28) * 1.2;
-    this.linkRadius = (sceneMetrics?.starletDragRadius ?? 28) * 1.55;
-
-    const baseStarletRadius = sceneMetrics?.starletBaseRadius ?? 8;
-    this.radius = baseStarletRadius * 1.33 * 1.5;
-    this.innerRadius = this.radius * 0.48;
+    // Чем больше — тем быстрее чёрная звезда догоняет курсор (меньше отстаёт).
+    // В комбо держим ТАКОЙ ЖЕ отклик, чтобы связка не тормозила.
+    this.lagFactor = 0.2;
+    this.linkedLagFactor = 0.2;
 
     this.phase = Math.random() * Math.PI * 2;
     this.rotation = Math.random() * Math.PI * 2;
@@ -382,7 +478,9 @@ class Blacklet {
     this.wander = 0.26;
     this.wanderY = 0.34;
     this.jitterPhase = Math.random() * Math.PI * 2;
+    this.pulsePhase = Math.random() * Math.PI * 2;
 
+    // Прогресс трансформации жёлтый → красный → чёрная сердцевина.
     this.transformProgress = 0;
     this.formationDuration = 5.2;
     this.coreDarkness = 0;
@@ -398,18 +496,24 @@ class Blacklet {
     this.sceneMetrics = sceneMetrics;
 
     const baseStarletRadius = sceneMetrics?.starletBaseRadius ?? 8;
+    // Заметно крупнее обычного старлета, чтобы выделяться.
     this.radius = baseStarletRadius * 1.33 * 1.5;
     this.innerRadius = this.radius * 0.48;
 
-    this.dragRadius = (sceneMetrics?.starletDragRadius ?? 28) * 1.2;
-    this.linkRadius = (sceneMetrics?.starletDragRadius ?? 28) * 1.55;
+    // Радиус "захвата" под курсор — щедрый, т.к. это единственный объект игрока.
+    this.dragRadius = (sceneMetrics?.starletDragRadius ?? 28) * 1.3;
+    this.linkRadius = (sceneMetrics?.starletDragRadius ?? 28) * 1.6;
 
+    // Зона "поедания" старлета активным комбо. Опирается на радиус кольца, если
+    // оно прицеплено, иначе на собственный (запасной вариант).
+    this.eatRadius = this.radius * 2.2;
+
+    // Свободный дрейф до того, как игрок взял её под курсор (правая часть экрана).
     this.spawnX = sceneMetrics.width * 0.78;
-
-    this.minX = sceneMetrics.width * 0.56;
-    this.maxX = sceneMetrics.width * 0.9;
-    this.minY = sceneMetrics.height * 0.2;
-    this.maxY = sceneMetrics.height * 0.8;
+    this.minX = sceneMetrics.width * 0.42;
+    this.maxX = sceneMetrics.width * 0.92;
+    this.minY = sceneMetrics.height * 0.18;
+    this.maxY = sceneMetrics.height * 0.82;
   }
 
   reset() {
@@ -431,16 +535,22 @@ class Blacklet {
     this.vy = (Math.random() - 0.5) * 0.14;
   }
 
+  // Может ли комбо поедать старлеты — только когда состыковано с кольцом.
   canAbsorb() {
     return this.state === "linked";
   }
 
+  // Может ли пристыковать кольцо — пока ещё не состыкована.
   canLink() {
     return this.state === "forming" || this.state === "ready";
   }
 
   isReady() {
     return this.state === "ready" || this.state === "linked";
+  }
+
+  isTransformed() {
+    return this.transformProgress >= 1;
   }
 
   setLinked(redRing = null) {
@@ -455,13 +565,6 @@ class Blacklet {
     }
     this.isLinked = false;
     this.linkedRing = null;
-  }
-
-  absorbRingCenter(x, y, pull = 0.16) {
-    this.x += (x - this.x) * pull;
-    this.y += (y - this.y) * pull;
-    this.targetX = this.x;
-    this.targetY = this.y;
   }
 
   update(mousePos, isDragging, delta = 0.016) {
@@ -483,6 +586,7 @@ class Blacklet {
       this.x += (this.targetX - this.x) * lag;
       this.y += (this.targetY - this.y) * lag;
     } else {
+      // Свободный дрейф пока игрок ещё не подхватил чёрную звезду.
       this.x += this.vx;
       this.y += this.vy;
 
@@ -496,7 +600,11 @@ class Blacklet {
       if (this.y > this.maxY) this.vy = -Math.abs(this.vy) * 0.92;
     }
 
-    if (this.state === "forming") {
+    // Трансформация: красный проявляется раньше, чернота сердцевины — позже.
+    // Докручиваем прогресс не только в "forming", но и в "linked"/"ready", если
+    // кольцо пристыковалось ещё на середине формирования — иначе чёрная звезда
+    // навсегда останется недочернённой.
+    if (this.transformProgress < 1) {
       this.transformProgress = Math.min(
         1,
         this.transformProgress + delta / this.formationDuration
@@ -515,16 +623,37 @@ class Blacklet {
           ? 0
           : Math.min(1, (this.transformProgress - blackStart) / (1 - blackStart));
 
-      if (this.transformProgress >= 1) {
+      // В "ready" переводим только из "forming"; если звезда уже "linked"
+      // (кольцо пристыковалось рано) — не сбрасываем состояние.
+      if (this.transformProgress >= 1 && this.state === "forming") {
         this.state = "ready";
       }
     }
 
     this.rotation += this.rotationSpeed;
     this.jitterPhase += delta * 8.5;
+    this.pulsePhase += delta * 3.0;
+  }
+
+  // Точка отсчёта зоны поедания (центр комбо).
+  getEatRadius() {
+    if (this.isLinked && this.linkedRing) {
+      return this.linkedRing.collisionRadius + this.radius * 0.4;
+    }
+    return this.eatRadius;
+  }
+
+  // Поедает ли комбо данный старлет (только в состоянии linked).
+  eats(starlet) {
+    if (!this.canAbsorb() || !starlet) return false;
+    const dx = starlet.x - this.x;
+    const dy = starlet.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < this.getEatRadius() + starlet.radius;
   }
 
   draw(ctx) {
+    // Дрожание сильнее в начале формирования, к концу — почти исчезает.
     const jitterStrength =
       this.state === "forming"
         ? 0.55 + (1 - this.transformProgress) * 0.8
@@ -533,17 +662,22 @@ class Blacklet {
     const jitterX = Math.sin(this.jitterPhase) * jitterStrength;
     const jitterY = Math.cos(this.jitterPhase * 0.87) * jitterStrength;
 
+    // Лёгкий пульс готовой/состыкованной звезды, чтобы выделялась.
+    const readyPulse =
+      this.state === "forming" ? 1 : 1 + Math.sin(this.pulsePhase) * 0.05;
+
     const glowBoost =
       this.state === "linked"
-        ? 1.15
+        ? 1.25
         : this.state === "ready"
-        ? 1
+        ? 1.05
         : 0.72 + this.redness * 0.2;
 
     const yellow = { r: 245, g: 182, b: 112 };
     const amber = { r: 255, g: 240, b: 184 };
-    const red = { r: 208, g: 74, b: 88 };
+    const red = { r: 224, g: 58, b: 74 };       // ярче для выделения
     const deepRed = { r: 126, g: 60, b: 72 };
+    const brightEdge = { r: 255, g: 86, b: 104 }; // яркая красная обводка
 
     const mix = (a, b, t) => ({
       r: a.r + (b.r - a.r) * t,
@@ -554,14 +688,14 @@ class Blacklet {
     const toRgb = (c, alpha = 1) =>
       `rgba(${c.r | 0}, ${c.g | 0}, ${c.b | 0}, ${alpha})`;
 
-    const outerWarm = mix(yellow, red, this.redness * 0.82);
-    const edgeColor = mix(amber, red, this.redness);
+    const outerWarm = mix(yellow, red, this.redness * 0.85);
+    const edgeColor = mix(amber, brightEdge, this.redness);
     const shadowColor = mix(red, deepRed, this.coreDarkness * 0.35);
 
     const coreFill =
       this.coreDarkness <= 0
         ? outerWarm
-        : mix(outerWarm, { r: 13, g: 20, b: 39 }, this.coreDarkness);
+        : mix(outerWarm, { r: 10, g: 14, b: 28 }, this.coreDarkness);
 
     const coreHighlight = mix(
       amber,
@@ -569,15 +703,18 @@ class Blacklet {
       this.redness * 0.45
     );
 
-    const glowRadius = this.radius * (3.0 + 0.3 * glowBoost);
+    const drawRadius = this.radius * readyPulse;
+    const drawInner = this.innerRadius * readyPulse;
+    const glowRadius = drawRadius * (3.0 + 0.35 * glowBoost);
 
     ctx.save();
     ctx.translate(this.x + jitterX, this.y + jitterY);
     ctx.rotate(this.rotation);
 
+    // Внешнее свечение.
     const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, glowRadius);
-    glow.addColorStop(0, toRgb(edgeColor, 0.2 * glowBoost));
-    glow.addColorStop(0.45, toRgb(shadowColor, 0.12 * glowBoost));
+    glow.addColorStop(0, toRgb(edgeColor, 0.22 * glowBoost));
+    glow.addColorStop(0.45, toRgb(shadowColor, 0.13 * glowBoost));
     glow.addColorStop(1, toRgb(deepRed, 0));
 
     ctx.fillStyle = glow;
@@ -585,29 +722,33 @@ class Blacklet {
     ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
     ctx.fill();
 
-    drawStarPath(ctx, 0, 0, this.radius, this.innerRadius, 5);
-    ctx.shadowBlur = 18 * glowBoost;
-    ctx.shadowColor = toRgb(edgeColor, 0.52);
+    // Тело звезды.
+    drawStarPath(ctx, 0, 0, drawRadius, drawInner, 5);
+    ctx.shadowBlur = 20 * glowBoost;
+    ctx.shadowColor = toRgb(edgeColor, 0.58);
     ctx.fillStyle = toRgb(coreFill, 1);
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    drawStarPath(ctx, 0, 0, this.radius, this.innerRadius, 5);
-    ctx.lineWidth = this.state === "forming" ? 1.1 : 1.25;
-    ctx.strokeStyle = toRgb(edgeColor, 0.96);
+    // Яркая утолщённая красная обводка (становится толще по мере покраснения).
+    drawStarPath(ctx, 0, 0, drawRadius, drawInner, 5);
+    ctx.lineWidth =
+      this.state === "forming" ? 1.1 + this.redness * 1.4 : 2.4;
+    ctx.strokeStyle = toRgb(edgeColor, 0.98);
     ctx.stroke();
 
+    // Внутренний блик.
     drawStarPath(
       ctx,
-      -this.radius * 0.16,
-      -this.radius * 0.18,
-      this.radius * 0.36,
-      this.radius * 0.15,
+      -drawRadius * 0.16,
+      -drawRadius * 0.18,
+      drawRadius * 0.36,
+      drawRadius * 0.15,
       5
     );
     ctx.fillStyle = toRgb(
       coreHighlight,
-      Math.max(0.18, 0.4 - this.coreDarkness * 0.22)
+      Math.max(0.16, 0.4 - this.coreDarkness * 0.24)
     );
     ctx.fill();
 
@@ -615,6 +756,21 @@ class Blacklet {
   }
 }
 
+// ============================================================================
+//  RedRing — мягко пульсирующее красное кольцо.
+//
+//  Жизненный цикл: idle → attached → decaying → gone → respawned
+//    idle      — свободно плавает и пульсирует, БЕЗ таймера; отталкивает
+//                препятствия (как домашняя звезда).
+//    attached  — состыковано с чёрной звездой: центрируется на ней.
+//    decaying  — после стыковки распадается ровно 6 секунд, теряя материальность
+//                с каждым пульсом (alpha падает).
+//    gone      — полностью растворилось.
+//    respawned — спустя короткую задержку рождается новое кольцо (idle).
+//
+//  Комбо (чёрная звезда + кольцо) отталкивает препятствия как домашняя звезда,
+//  БЕЗ изменения счёта.
+// ============================================================================
 class RedRing {
   constructor(sceneMetrics) {
     this.sceneMetrics = sceneMetrics;
@@ -626,19 +782,25 @@ class RedRing {
     this.isAttached = false;
 
     this.entrySide = "top";
-    this.state = "spawning"; // spawning -> drifting -> attached -> fading
+    this.entering = false; // true пока кольцо залетает из-за края в видимую зону
+    this.hidden = true;    // true до первой activateIntro(): кольцо спит за кадром
+    this.state = "idle"; // idle -> attached -> decaying -> gone -> (respawn) idle
 
     this.vx = 0;
     this.vy = 0;
 
     this.alpha = 1;
-    this.fadeProgress = 0;
-    this.fadeDuration = 2.1;
+
+    // Распад строго 6 секунд после стыковки.
+    this.decayProgress = 0;
+    this.decayDuration = 6.0;
 
     this.spawnDelay = 0;
-    this.respawnDelay = 0.45;
+    // Короткий зазор после исчезновения — новое кольцо появляется почти сразу,
+    // чтобы игрок не терял очки без возможности есть старлеты.
+    this.respawnDelay = 0.15;
 
-    this.attachPull = 0.18;
+    this.attachPull = 0.2;
 
     this.phase = Math.random() * Math.PI * 2;
     this.pulsePhase = Math.random() * Math.PI * 2;
@@ -649,11 +811,6 @@ class RedRing {
     this.ringRadius = 0;
     this.outerGlowRadius = 0;
     this.collisionRadius = 0;
-
-    this.spawnMinX = 0;
-    this.spawnMaxX = 0;
-    this.spawnMinY = 0;
-    this.spawnMaxY = 0;
 
     this.setBounds(sceneMetrics);
     this.reset();
@@ -667,16 +824,18 @@ class RedRing {
     const offscreenOffset = sceneMetrics?.offscreenOffset ?? 60;
     const { width = 1366, height = 768 } = sceneMetrics ?? {};
 
-    this.baseRadius = baseStarletRadius * 1.25;
-    this.dotRadius = this.baseRadius * 0.68;
-    this.ringRadius = this.baseRadius * 2.15;
+    this.baseRadius = baseStarletRadius * 1.3;
+    // Центральная точка была слишком крупной — делаем её компактнее.
+    this.dotRadius = this.baseRadius * 0.34;
+    this.ringRadius = this.baseRadius * 2.25;
     this.outerGlowRadius = this.ringRadius * 2.7;
-    this.collisionRadius = this.ringRadius * 0.92;
+    this.collisionRadius = this.ringRadius * 0.95;
 
-    this.spawnMinX = width * 0.68;
+    // Появляется/дрейфует в правой части экрана (рядом с чёрной звездой).
+    this.spawnMinX = width * 0.66;
     this.spawnMaxX = width * 0.92;
 
-    this.driftMinX = width * 0.64;
+    this.driftMinX = width * 0.5;
     this.driftMaxX = width * 0.94;
     this.driftMinY = height * 0.14;
     this.driftMaxY = height * 0.86;
@@ -684,8 +843,11 @@ class RedRing {
     this.topSpawnY = -offscreenOffset * (1.2 + 0.35 * playScale);
     this.bottomSpawnY = height + offscreenOffset * (1.2 + 0.35 * playScale);
 
-    if (this.state !== "attached" || !this.anchorBlacklet) {
-      this.x = Math.max(this.spawnMinX, Math.min(this.spawnMaxX, this.x || this.spawnMinX));
+    if (this.state !== "attached" && this.state !== "decaying") {
+      this.x = Math.max(
+        this.driftMinX,
+        Math.min(this.driftMaxX, this.x || this.spawnMinX)
+      );
       this.y = Math.max(
         this.topSpawnY,
         Math.min(this.bottomSpawnY, this.y || height * 0.5)
@@ -696,10 +858,10 @@ class RedRing {
   reset() {
     this.anchorBlacklet = null;
     this.isAttached = false;
-    this.state = "spawning";
+    this.state = "idle";
 
     this.alpha = 1;
-    this.fadeProgress = 0;
+    this.decayProgress = 0;
     this.spawnDelay = 0;
 
     this.phase = Math.random() * Math.PI * 2;
@@ -714,81 +876,114 @@ class RedRing {
 
     this.y = this.entrySide === "top" ? this.topSpawnY : this.bottomSpawnY;
 
-    this.vx = -0.035 - Math.random() * 0.05;
+    // Скорость захода — соизмерима со старлетами/домашней звездой, иначе кольцо
+    // «ползёт» за кадром десятки секунд и кажется, что оно не появляется.
+    this.vx = -0.5 - Math.random() * 0.4;
     this.vy =
       this.entrySide === "top"
-        ? 0.16 + Math.random() * 0.08
-        : -0.16 - Math.random() * 0.08;
+        ? 2.2 + Math.random() * 0.8
+        : -2.2 - Math.random() * 0.8;
+
+    // Помечаем, что кольцо ещё заходит на экран (нужно затормозить у границы).
+    this.entering = true;
   }
 
+  // Активирует кольцо: единый плавный заход из-за ПРАВОГО края в видимую зону.
+  // Вызывается спавн-директором в фазе intro_ring. До этого момента кольцо
+  // "спит" за кадром (hidden), поэтому никакого телепорта/прыжка не возникает.
+  activateIntro() {
+    this.state = "idle";
+    this.isAttached = false;
+    this.anchorBlacklet = null;
+    this.alpha = 1;
+    this.decayProgress = 0;
+    this.spawnDelay = 0;
+    this.hidden = false;
+    this.entering = true;
+
+    const { width = 1366, height = 768 } = this.sceneMetrics ?? {};
+
+    // Заходим из-за правого края на одной высоте — без вертикальных скачков.
+    this.x = width + this.outerGlowRadius;
+    this.y = height * (0.34 + Math.random() * 0.32);
+
+    // Быстрый заход влево; лёгкая вертикальная составляющая для живости.
+    this.vx = -6.0 - Math.random() * 1.5;
+    this.vy = (Math.random() - 0.5) * 0.6;
+  }
+
+  // Респавн после распада: сразу в видимую зону (быстрый заход с правого
+  // края), а не глубоко за кадром — чтобы зазор был минимальным.
   respawn() {
-    this.reset();
+    this.activateIntro();
   }
 
+  // Можно ли пристыковать к чёрной звезде.
   canAttach() {
-    return !this.isAttached && this.state !== "fading";
+    return this.state === "idle" && !this.isAttached;
   }
 
-  canDestroyStarlet() {
-    return this.isAttached && (this.state === "attached" || this.state === "fading");
+  // Активно ли кольцо (часть рабочего комбо). Используется для отталкивания
+  // препятствий И как индикатор «комбо способно есть».
+  isActiveCombo() {
+    return this.state === "attached" || this.state === "decaying";
   }
 
   attachToBlacklet(blacklet) {
     if (!blacklet) return;
     if (!this.canAttach()) return;
+    if (!blacklet.canLink()) return;
 
     this.anchorBlacklet = blacklet;
     this.isAttached = true;
     this.state = "attached";
 
-    this.fadeProgress = 0;
+    this.decayProgress = 0;
     this.alpha = 1;
 
-    this.absorbToBlackletCenter(blacklet, 0.28);
+    blacklet.setLinked(this);
+
+    // Сразу встаём в центр чёрной звезды — комбо движется как единое целое.
+    this.x = blacklet.x;
+    this.y = blacklet.y;
   }
 
   detach() {
+    if (this.anchorBlacklet) {
+      this.anchorBlacklet.clearLinked();
+    }
     this.anchorBlacklet = null;
     this.isAttached = false;
-    this.state = "fading";
-    this.fadeProgress = 0;
+    this.state = "decaying";
   }
 
   absorbToBlackletCenter(blacklet, pull = this.attachPull) {
     if (!blacklet) return;
-
     this.x += (blacklet.x - this.x) * pull;
     this.y += (blacklet.y - this.y) * pull;
   }
 
+  // Достаточно ли близко кольцо к чёрной звезде для стыковки.
   collidesWithBlacklet(blacklet) {
     if (!blacklet || !this.canAttach()) return false;
+    if (!blacklet.canLink()) return false;
 
     const dx = blacklet.x - this.x;
     const dy = blacklet.y - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    const blackletLinkRadius =
-      blacklet.radius * 0.72 + this.collisionRadius;
-
-    return dist < blackletLinkRadius;
-  }
-
-  collidesWithStarlet(starlet) {
-    if (!starlet || !this.canDestroyStarlet()) return false;
-
-    const dx = starlet.x - this.x;
-    const dy = starlet.y - this.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    return dist < this.collisionRadius + starlet.radius;
+    const linkDist = blacklet.radius * 0.72 + this.collisionRadius;
+    return dist < linkDist;
   }
 
   isReadyToRespawn() {
-    return this.state === "fading" && this.fadeProgress >= 1;
+    return this.state === "gone";
   }
 
   update(delta = 0.016, blacklet = null) {
+    // Пока кольцо не активировано (спит за кадром) — никакого движения.
+    if (this.hidden) return;
+
     this.pulsePhase += delta * 5.4;
     this.glowPhase += delta * 2.8;
     this.phase += delta * 1.9;
@@ -798,27 +993,41 @@ class RedRing {
       return;
     }
 
-    if (this.state === "spawning" || this.state === "drifting") {
-      this.state = "drifting";
-
+    // --- Свободное состояние: плавает и пульсирует, без таймера. ---
+    if (this.state === "idle") {
       this.x += this.vx;
       this.y += this.vy;
 
-      this.x += Math.sin(this.phase) * 0.06;
-      this.y += Math.cos(this.phase * 0.92) * 0.09;
+      if (this.entering) {
+        // Фаза захода на экран: летим внутрь, пока не окажемся в видимой зоне
+        // дрейфа, затем гасим скорость до мягкого блуждания.
+        const insideX = this.x > this.driftMinX && this.x < this.driftMaxX;
+        const insideY = this.y > this.driftMinY && this.y < this.driftMaxY;
+        if (insideX && insideY) {
+          this.entering = false;
+          this.vx = (Math.random() - 0.5) * 0.8;
+          this.vy = (Math.random() - 0.5) * 0.8;
+        }
+      } else {
+        this.x += Math.sin(this.phase) * 0.06;
+        this.y += Math.cos(this.phase * 0.92) * 0.09;
 
-      if (this.x < this.driftMinX) this.vx = Math.abs(this.vx) * 0.92;
-      if (this.x > this.driftMaxX) this.vx = -Math.abs(this.vx) * 0.92;
-      if (this.y < this.driftMinY) this.vy = Math.abs(this.vy) * 0.92;
-      if (this.y > this.driftMaxY) this.vy = -Math.abs(this.vy) * 0.92;
+        if (this.x < this.driftMinX) this.vx = Math.abs(this.vx) * 0.92;
+        if (this.x > this.driftMaxX) this.vx = -Math.abs(this.vx) * 0.92;
+        if (this.y < this.driftMinY) this.vy = Math.abs(this.vy) * 0.92;
+        if (this.y > this.driftMaxY) this.vy = -Math.abs(this.vy) * 0.92;
+      }
 
-      if (blacklet && this.collidesWithBlacklet(blacklet)) {
+      // Стыковка происходит, только когда чёрная звезда трансформировалась.
+      if (blacklet && blacklet.canLink() && this.collidesWithBlacklet(blacklet)) {
         this.attachToBlacklet(blacklet);
       }
 
+      this.alpha = 1;
       return;
     }
 
+    // --- Состыковано: центрируется на чёрной звезде, начинает распад. ---
     if (this.state === "attached") {
       if (!blacklet) {
         this.detach();
@@ -826,35 +1035,113 @@ class RedRing {
       }
 
       this.anchorBlacklet = blacklet;
-      this.absorbToBlackletCenter(blacklet, 0.22);
+      // Жёстко прибиваемся к центру чёрной звезды — в комбо они движутся
+      // как единый объект, без отставания.
+      this.x = blacklet.x;
+      this.y = blacklet.y;
 
-      this.fadeProgress += delta / this.fadeDuration;
-      if (this.fadeProgress >= 1) {
-        this.fadeProgress = 1;
-        this.state = "fading";
+      this.decayProgress += delta / this.decayDuration;
+      if (this.decayProgress >= 1) {
+        this.decayProgress = 1;
+        this.finishDecay();
+        return;
       }
 
-      this.alpha = Math.max(0, 1 - this.fadeProgress);
+      // Материальность тает: чем дальше распад, тем ниже базовая прозрачность,
+      // плюс она «моргает» с каждым пульсом.
+      const base = 1 - this.decayProgress;
+      const flicker = 0.85 + 0.15 * Math.max(0, Math.sin(this.pulsePhase));
+      this.alpha = Math.max(0, base * flicker);
+      this.state = "decaying";
       return;
     }
 
-    if (this.state === "fading") {
-      if (this.anchorBlacklet) {
-        this.absorbToBlackletCenter(this.anchorBlacklet, 0.18);
+    // --- Распад: продолжает таять на чёрной звезде те же 6 секунд. ---
+    if (this.state === "decaying") {
+      // Жёсткая привязка к центру чёрной звезды — без отставания.
+      if (blacklet && blacklet.isLinked) {
+        this.anchorBlacklet = blacklet;
+        this.x = blacklet.x;
+        this.y = blacklet.y;
+      } else if (this.anchorBlacklet) {
+        this.x = this.anchorBlacklet.x;
+        this.y = this.anchorBlacklet.y;
       }
 
-      this.fadeProgress += delta / Math.max(0.0001, this.fadeDuration * 0.28);
-      this.alpha = Math.max(0, 1 - this.fadeProgress);
+      this.decayProgress += delta / this.decayDuration;
 
-      if (this.fadeProgress >= 1) {
-        this.alpha = 0;
-        this.spawnDelay = this.respawnDelay;
-        this.respawn();
+      const base = Math.max(0, 1 - this.decayProgress);
+      const flicker = 0.85 + 0.15 * Math.max(0, Math.sin(this.pulsePhase));
+      this.alpha = base * flicker;
+
+      if (this.decayProgress >= 1) {
+        this.finishDecay();
       }
+      return;
+    }
+
+    // --- Растворилось: ждём задержку и рождаем новое кольцо. ---
+    if (this.state === "gone") {
+      this.spawnDelay = this.respawnDelay;
+      this.respawn();
+    }
+  }
+
+  finishDecay() {
+    this.alpha = 0;
+    this.isAttached = false;
+    if (this.anchorBlacklet) {
+      this.anchorBlacklet.clearLinked();
+    }
+    this.anchorBlacklet = null;
+    this.state = "gone";
+    this.spawnDelay = this.respawnDelay;
+  }
+
+  // Отталкивание препятствий — как у домашней звезды, и только пока кольцо
+  // материально (idle или активное комбо).
+  canRepel() {
+    return (
+      (this.state === "idle" || this.isActiveCombo()) && this.alpha > 0.05
+    );
+  }
+
+  blocksObstacle(obstacle) {
+    if (!this.canRepel()) return false;
+    const dx = obstacle.x - this.x;
+    const dy = obstacle.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < this.collisionRadius + obstacle.ringRadius;
+  }
+
+  repelObstacle(obstacle) {
+    if (!this.canRepel()) return;
+
+    const dx = obstacle.x - this.x;
+    const dy = obstacle.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
+    const overlap = this.collisionRadius + obstacle.ringRadius - dist;
+
+    if (overlap > 0) {
+      const nx = dx / dist;
+      const ny = dy / dist;
+
+      obstacle.x += nx * overlap;
+      obstacle.y += ny * overlap;
+
+      const dot = obstacle.vx * nx + obstacle.vy * ny;
+      if (dot < 0) {
+        obstacle.vx -= 2 * dot * nx;
+        obstacle.vy -= 2 * dot * ny;
+      }
+
+      obstacle.vx += nx * 0.03;
+      obstacle.vy += ny * 0.03;
     }
   }
 
   draw(ctx) {
+    if (this.hidden) return;
     if (this.alpha <= 0.001) return;
 
     const pulse = 1 + Math.sin(this.pulsePhase) * 0.08;
@@ -863,11 +1150,15 @@ class RedRing {
 
     const dotRadius = this.dotRadius * pulse;
     const ringRadius = this.ringRadius * ringPulse;
-    const glowRadius = this.outerGlowRadius * (0.92 + Math.sin(this.glowPhase) * 0.04 + heartBeat * 0.08);
+    const glowRadius =
+      this.outerGlowRadius *
+      (0.92 + Math.sin(this.glowPhase) * 0.04 + heartBeat * 0.08);
 
     const ringAlpha = this.alpha * 0.92;
-    const glowAlpha = this.alpha * (this.isAttached ? 0.24 : 0.18);
-    const dotAlpha = this.isAttached ? 0 : this.alpha;
+    const glowAlpha = this.alpha * (this.isActiveCombo() ? 0.26 : 0.18);
+    // Центральная точка видна только у свободного кольца; у комбо центр занят
+    // чёрной звездой.
+    const dotAlpha = this.isActiveCombo() ? 0 : this.alpha;
 
     ctx.save();
 
@@ -880,7 +1171,7 @@ class RedRing {
       glowRadius
     );
     glow.addColorStop(0, `rgba(255, 110, 126, ${0.16 * glowAlpha})`);
-    glow.addColorStop(0.4, `rgba(208, 74, 88, ${0.14 * glowAlpha})`);
+    glow.addColorStop(0.4, `rgba(224, 58, 74, ${0.14 * glowAlpha})`);
     glow.addColorStop(1, "rgba(126, 60, 72, 0)");
 
     ctx.fillStyle = glow;
@@ -911,10 +1202,10 @@ class RedRing {
       );
       core.addColorStop(0, `rgba(255, 205, 214, ${dotAlpha})`);
       core.addColorStop(0.46, `rgba(255, 105, 124, ${dotAlpha})`);
-      core.addColorStop(1, `rgba(208, 74, 88, ${dotAlpha})`);
+      core.addColorStop(1, `rgba(224, 58, 74, ${dotAlpha})`);
 
       ctx.shadowBlur = 18;
-      ctx.shadowColor = `rgba(208, 74, 88, ${0.52 * dotAlpha})`;
+      ctx.shadowColor = `rgba(224, 58, 74, ${0.52 * dotAlpha})`;
       ctx.fillStyle = core;
       ctx.beginPath();
       ctx.arc(this.x, this.y, dotRadius, 0, Math.PI * 2);
@@ -925,37 +1216,30 @@ class RedRing {
     ctx.restore();
   }
 }
-    
-class Starlet {
-  constructor(x, y, entrySide = "top", sceneMetrics) {
+
+// ============================================================================
+//  FreeStarlet — автономный старлет. НЕ следует за курсором.
+//
+//  Медленно и целенаправленно дрейфует к домашней звезде. Появляется из ТРЁХ
+//  краёв (верх / низ / право) — НЕ слева, чтобы не возникало преимущества у
+//  левого края (домашняя звезда обитает в левой трети). Если комбо его съело —
+//  +5; если попал в препятствие — −5; если долетел до домашней звезды — −10.
+// ============================================================================
+class FreeStarlet {
+  constructor(x, y, entrySide, sceneMetrics) {
     this.sceneMetrics = sceneMetrics;
 
     this.x = x;
     this.y = y;
-    this.targetX = x;
-    this.targetY = y;
     this.entrySide = entrySide;
-
-    if (entrySide === "right") {
-      this.vx = -0.42 - Math.random() * 0.24;
-      this.vy = (Math.random() - 0.5) * 0.20;
-    } else if (entrySide === "top") {
-      this.vx = -0.26 - Math.random() * 0.22;
-      this.vy = 0.22 + Math.random() * 0.14;
-    } else {
-      this.vx = -0.26 - Math.random() * 0.22;
-      this.vy = -0.22 - Math.random() * 0.14;
-    }
-
-    this.following = false;
-    this.lagFactor = 0.082;
-    this.dragRadius = 28;
-    this.trailTimer = 0;
 
     this.phase = Math.random() * Math.PI * 2;
     this.wander = Math.random() * 0.22 + 0.08;
-    this.wanderY = this.wander * 0.28;
+    this.wanderY = this.wander * 0.5;
     this.rotation = Math.random() * Math.PI * 2;
+
+    // Базовая скорость дрейфа к домашней звезде (px/кадр при ~60fps).
+    this.driftSpeed = 0.9 + Math.random() * 0.5;
 
     const sizes = [0.66, 1, 1.33];
     this.sizeFactor = sizes[Math.floor(Math.random() * sizes.length)];
@@ -965,42 +1249,49 @@ class Starlet {
     this.outerColor = colors[Math.floor(Math.random() * colors.length)];
     this.highlightColor =
       this.outerColor === "#FFF0B8" ? "#FFF7D6" : "#FFF0D0";
+
+    // Лёгкая стартовая скорость в сторону экрана (сглаживается наведением).
+    if (entrySide === "right") {
+      this.vx = -0.42 - Math.random() * 0.18;
+      this.vy = (Math.random() - 0.5) * 0.2;
+    } else if (entrySide === "top") {
+      this.vx = -0.18 - Math.random() * 0.16;
+      this.vy = 0.22 + Math.random() * 0.12;
+    } else {
+      // bottom
+      this.vx = -0.18 - Math.random() * 0.16;
+      this.vy = -0.22 - Math.random() * 0.12;
+    }
   }
 
-      update(mousePos, isDragging, swarmCenter = null) {
-    let justCaught = false;
+  // home — текущая домашняя звезда (цель дрейфа). Может быть null на интро.
+  update(home = null, delta = 0.016) {
+    const t = performance.now();
 
-    if (isDragging && !this.following) {
-      const dx = this.x - mousePos.x;
-      const dy = this.y - mousePos.y;
-      if (Math.sqrt(dx * dx + dy * dy) < this.dragRadius) {
-        this.following = true;
-        justCaught = true;
-      }
-    }
+    if (home) {
+      // Направленное движение к домашней звезде.
+      const dx = home.x - this.x;
+      const dy = home.y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
 
-    if (this.following) {
-      this.targetX = mousePos.x;
-      this.targetY = mousePos.y;
-      this.x += (this.targetX - this.x) * this.lagFactor;
-      this.y += (this.targetY - this.y) * this.lagFactor;
-    } else {
-      this.x += this.vx;
-      this.y += this.vy;
+      const nx = dx / dist;
+      const ny = dy / dist;
 
-      const t = performance.now();
+      this.x += nx * this.driftSpeed;
+      this.y += ny * this.driftSpeed;
 
+      // Мягкое блуждание, чтобы траектория не была идеально прямой.
       this.x += Math.sin(t * 0.0012 + this.phase) * this.wander;
       this.y += Math.cos(t * 0.0011 + this.phase) * this.wanderY;
-
-      if (swarmCenter) {
-        this.x += (swarmCenter.x - this.x) * 0.0012;
-        this.y += (swarmCenter.y - this.y) * 0.0008;
-      }
+    } else {
+      // До появления домашней звезды — просто инерционный заход на экран.
+      this.x += this.vx;
+      this.y += this.vy;
+      this.x += Math.sin(t * 0.0012 + this.phase) * this.wander;
+      this.y += Math.cos(t * 0.0011 + this.phase) * this.wanderY;
     }
 
     this.rotation += 0.015;
-    return justCaught;
   }
 
   draw(ctx) {
@@ -1023,17 +1314,21 @@ class Starlet {
 
     ctx.restore();
   }
+
   isOffscreen() {
-  const { width, height, offscreenOffset } = this.sceneMetrics;
-  return (
-    this.x < -offscreenOffset ||
-    this.x > width + offscreenOffset ||
-    this.y < -offscreenOffset ||
-    this.y > height + offscreenOffset
-  );
+    const { width, height, offscreenOffset } = this.sceneMetrics;
+    return (
+      this.x < -offscreenOffset ||
+      this.x > width + offscreenOffset ||
+      this.y < -offscreenOffset ||
+      this.y > height + offscreenOffset
+    );
+  }
 }
-}
-        
+
+// ============================================================================
+//  Obstacle — без изменений по поведению и спавну (как в исходной сцене).
+// ============================================================================
 class Obstacle {
   constructor(sceneMetrics) {
     this.sceneMetrics = sceneMetrics;
@@ -1063,13 +1358,13 @@ class Obstacle {
     const spawnDepth = offscreenOffset * (0.7 + Math.random() * 0.7);
 
     if (this.edge === "top" || this.edge === "bottom") {
-  const minX = laneInsetX;
-  const maxX = width * (2 / 3) - laneInsetX;
-  this.x = minX + Math.random() * Math.max(24, maxX - minX);
-  this.y = this.edge === "top" ? -spawnDepth : height + spawnDepth;
-  this.vx = (Math.random() - 0.5) * drift;
-  this.vy = this.edge === "top" ? travel : -travel;
-} else {
+      const minX = laneInsetX;
+      const maxX = width * (2 / 3) - laneInsetX;
+      this.x = minX + Math.random() * Math.max(24, maxX - minX);
+      this.y = this.edge === "top" ? -spawnDepth : height + spawnDepth;
+      this.vx = (Math.random() - 0.5) * drift;
+      this.vy = this.edge === "top" ? travel : -travel;
+    } else {
       this.x = this.edge === "left" ? -spawnDepth : width + spawnDepth;
       this.y = Math.random() * height;
       this.vx = this.edge === "left" ? travel * 1.08 : -travel * 1.08;
@@ -1140,9 +1435,12 @@ class Obstacle {
     );
   }
 }
-        
 
-       class Particle {
+// ============================================================================
+//  Particle — базовый класс частиц. Минимально расширен (как и было): принимает
+//  options для тонкой настройки эмиттерами сцены (красный шлейф, всасывание).
+// ============================================================================
+class Particle {
   constructor(x, y, color, cool = false, options = {}) {
     this.x = x;
     this.y = y;
@@ -1160,9 +1458,18 @@ class Obstacle {
     this.gravity = options.gravity ?? 0;
     this.shrink = options.shrink ?? 0;
     this.alphaBoost = options.alphaBoost ?? 1;
+
+    // НОВОЕ (опционально): притяжение к точке — для анимации всасывания.
+    this.attractTo = options.attractTo ?? null; // {x, y}
+    this.attractPull = options.attractPull ?? 0;
   }
 
   update() {
+    if (this.attractTo && this.attractPull > 0) {
+      this.vx += (this.attractTo.x - this.x) * this.attractPull;
+      this.vy += (this.attractTo.y - this.y) * this.attractPull;
+    }
+
     this.x += this.vx;
     this.y += this.vy;
     this.vy += this.gravity;
@@ -1178,7 +1485,7 @@ class Obstacle {
     ctx.fill();
 
     if (this.cool) {
-      ctx.strokeStyle = 'rgba(53, 97, 132, 0.6)';
+      ctx.strokeStyle = "rgba(53, 97, 132, 0.6)";
       ctx.lineWidth = 0.8;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.size + 1.6, 0, Math.PI * 2);
@@ -1187,11 +1494,16 @@ class Obstacle {
 
     ctx.globalAlpha = 1;
   }
-} 
+}
 
- class HomeStar {
-  constructor(sceneMetrics, role = "horizontal") {
-    this.role = role;
+// ============================================================================
+//  HomeStar (версия для сцены 7) — входит СЛЕВА, затем свободно блуждает в
+//  ЛЕВОЙ ТРЕТИ экрана. Больше НЕ цель для очков и не носит роли horizontal/arc.
+//  При касании свободным старлетом сцена штрафует игрока (−10) — но проверку
+//  делает сама сцена, здесь только геометрия попадания и отталкивание препятствий.
+// ============================================================================
+class HomeStar {
+  constructor(sceneMetrics) {
     this.sceneMetrics = sceneMetrics;
 
     this.x = 0;
@@ -1209,10 +1521,14 @@ class Obstacle {
     this.rotation = 0;
 
     this.active = false;
-    this.justTriggeredPartner = false;
 
-    this.horizontalState = "leftToCenter";
-    this.arcProgress = 0;
+    // Фаза входа слева → блуждание.
+    this.entered = false;
+
+    // Векторы блуждания внутри левой трети.
+    this.vx = 0;
+    this.vy = 0;
+    this.phase = Math.random() * Math.PI * 2;
 
     this.setBounds(sceneMetrics);
     this.resetCyclePosition();
@@ -1229,59 +1545,42 @@ class Obstacle {
     this.ringRadius = this.baseRingRadius;
     this.glowRadius = this.baseGlowRadius;
 
-    this.middleStopX = sceneMetrics.homeHorizontalCenterX;
-    this.horizontalLeftOutsideX = sceneMetrics.homeHorizontalLeftOutsideX;
-    this.horizontalRightOutsideX = sceneMetrics.homeHorizontalRightOutsideX;
-    this.horizontalBaseY = sceneMetrics.homeHorizontalBaseY;
-    this.horizontalVerticalDrift = sceneMetrics.homeHorizontalVerticalDrift;
+    const { width, height } = sceneMetrics;
 
-    this.arcStartY = sceneMetrics.homeArcStartY;
-    this.arcEndY = sceneMetrics.homeArcEndY;
-    this.arcCenterX = sceneMetrics.homeArcCenterX;
-    this.arcAmplitudeX = sceneMetrics.homeArcAmplitudeX;
-    this.arcTiltX = sceneMetrics.homeArcTiltX;
+    // Точка появления — за левым краем.
+    this.entryX = -this.baseRingRadius - width * 0.08;
+
+    // Зона блуждания — левая треть экрана.
+    this.roamMinX = width * 0.06;
+    this.roamMaxX = width * 0.33;
+    this.roamMinY = height * 0.22;
+    this.roamMaxY = height * 0.78;
+
+    // Куда заходит при входе.
+    this.targetEntryX = width * 0.18;
+    this.baseY = height * 0.5;
   }
 
   resetCyclePosition() {
-    if (this.role === "horizontal") {
-      this.horizontalState = "leftToCenter";
-      this.x = this.horizontalLeftOutsideX;
-      this.y = this.horizontalBaseY;
-      this.justTriggeredPartner = false;
-    } else {
-      this.arcProgress = 0;
-      this.x = this.arcCenterX;
-      this.y = this.arcStartY;
-      this.justTriggeredPartner = false;
-    }
+    this.entered = false;
+    this.x = this.entryX;
+    this.y = this.baseY;
+    this.vx = 0;
+    this.vy = 0;
   }
 
-  activateHorizontalFromLeft() {
+  // Активирует домашнюю звезду — заход слева.
+  activateFromLeft() {
     this.active = true;
-    this.horizontalState = "leftToCenter";
-    this.x = this.horizontalLeftOutsideX;
-    this.y = this.horizontalBaseY;
-    this.justTriggeredPartner = false;
-  }
-
-  activateHorizontalFromRight() {
-    this.active = true;
-    this.horizontalState = "rightToCenter";
-    this.x = this.horizontalRightOutsideX;
-    this.y = this.horizontalBaseY;
-    this.justTriggeredPartner = false;
-  }
-
-  activateArcFromTop() {
-    this.active = true;
-    this.arcProgress = 0;
-    this.justTriggeredPartner = false;
-    this.updateArcPosition();
+    this.entered = false;
+    this.x = this.entryX;
+    this.y = this.baseY;
+    this.vx = 0;
+    this.vy = 0;
   }
 
   deactivate() {
     this.active = false;
-    this.justTriggeredPartner = false;
   }
 
   update(delta = 0.016) {
@@ -1295,115 +1594,63 @@ class Obstacle {
     this.ringRadius = this.baseRingRadius * scale;
     this.glowRadius = this.baseGlowRadius * scale;
 
-    if (this.role === "horizontal") {
-      this.updateHorizontal(delta);
-    } else {
-      this.updateArc(delta);
-    }
-  }
-
-  updateHorizontal(delta) {
-    const speed = this.sceneMetrics.width * 0.16;
-    const verticalWave =
-      Math.sin(this.flicker * 0.55) * this.horizontalVerticalDrift;
-
-    if (this.horizontalState === "leftToCenter") {
+    if (!this.entered) {
+      // Плавный заход слева к стартовой точке блуждания.
+      const speed = this.sceneMetrics.width * 0.18;
       this.x += speed * delta;
-      this.y = this.horizontalBaseY + verticalWave;
+      this.y = this.baseY + Math.sin(this.flicker * 0.5) * this.sceneMetrics.height * 0.03;
 
-      if (this.x >= this.middleStopX) {
-        this.x = this.middleStopX;
-        this.horizontalState = "centerToLeftExit";
+      if (this.x >= this.targetEntryX) {
+        this.x = this.targetEntryX;
+        this.entered = true;
+        // Задаём начальные мягкие векторы блуждания.
+        this.vx = (Math.random() - 0.5) * 0.6;
+        this.vy = (Math.random() - 0.5) * 0.6;
       }
       return;
     }
 
-    if (this.horizontalState === "centerToLeftExit") {
-      this.x -= speed * delta;
-      this.y = this.horizontalBaseY + verticalWave;
+    // Свободное блуждание в левой трети.
+    this.phase += delta;
 
-      if (this.x <= this.horizontalLeftOutsideX) {
-        this.x = this.horizontalLeftOutsideX;
-        this.horizontalState = "rightToCenter";
-        this.active = false;
-      }
-      return;
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // Мягкое броуновское изменение скорости.
+    this.vx += (Math.random() - 0.5) * 0.05;
+    this.vy += (Math.random() - 0.5) * 0.05;
+
+    // Лёгкое наведение к центру зоны блуждания, чтобы не залипала в углах.
+    const centerX = (this.roamMinX + this.roamMaxX) * 0.5;
+    const centerY = (this.roamMinY + this.roamMaxY) * 0.5;
+    this.vx += (centerX - this.x) * 0.0006;
+    this.vy += (centerY - this.y) * 0.0006;
+
+    // Ограничение скорости.
+    const maxSpeed = 0.85;
+    const sp = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    if (sp > maxSpeed) {
+      this.vx = (this.vx / sp) * maxSpeed;
+      this.vy = (this.vy / sp) * maxSpeed;
     }
 
-    if (this.horizontalState === "rightToCenter") {
-      this.x -= speed * delta;
-      this.y = this.horizontalBaseY - verticalWave * 0.8;
-
-      if (this.x <= this.middleStopX) {
-        this.x = this.middleStopX;
-        this.horizontalState = "centerToRightExit";
-      }
-      return;
+    // Отражение от границ левой трети.
+    if (this.x < this.roamMinX) {
+      this.x = this.roamMinX;
+      this.vx = Math.abs(this.vx);
     }
-
-    if (this.horizontalState === "centerToRightExit") {
-      this.x += speed * delta;
-      this.y = this.horizontalBaseY - verticalWave * 0.8;
-
-      if (this.x >= this.horizontalRightOutsideX) {
-        this.x = this.horizontalRightOutsideX;
-        this.horizontalState = "leftToCenter";
-        this.active = false;
-      }
+    if (this.x > this.roamMaxX) {
+      this.x = this.roamMaxX;
+      this.vx = -Math.abs(this.vx);
     }
-  }
-
-  updateArc(delta) {
-    const arcSpeed = 0.10;
-    this.arcProgress += arcSpeed * delta;
-    this.updateArcPosition();
-
-    if (this.arcProgress >= 1) {
-      this.arcProgress = 1;
-      this.active = false;
+    if (this.y < this.roamMinY) {
+      this.y = this.roamMinY;
+      this.vy = Math.abs(this.vy);
     }
-  }
-
-  updateArcPosition() {
-    const t = Math.max(0, Math.min(1, this.arcProgress));
-
-    this.y = this.arcStartY + (this.arcEndY - this.arcStartY) * t;
-
-    const arcWave = Math.sin(t * Math.PI) * this.arcAmplitudeX;
-    const tilt = (t - 0.5) * this.arcTiltX;
-
-    this.x = this.arcCenterX + arcWave + tilt;
-  }
-
-  shouldTriggerPartner() {
-    if (!this.active || this.justTriggeredPartner) return false;
-
-    if (this.role === "horizontal") {
-      const halfBaseRadius = this.baseRadius * 0.5;
-
-      const leftTrigger =
-        this.horizontalState === "centerToLeftExit" &&
-        this.x <= -halfBaseRadius;
-
-      const rightTrigger =
-        this.horizontalState === "centerToRightExit" &&
-        this.x >= this.sceneMetrics.width + halfBaseRadius;
-
-      if (leftTrigger || rightTrigger) {
-        this.justTriggeredPartner = true;
-        return true;
-      }
-
-      return false;
+    if (this.y > this.roamMaxY) {
+      this.y = this.roamMaxY;
+      this.vy = -Math.abs(this.vy);
     }
-
-    const touchedBottom = this.y + this.ringRadius >= this.sceneMetrics.height;
-    if (touchedBottom) {
-      this.justTriggeredPartner = true;
-      return true;
-    }
-
-    return false;
   }
 
   draw(ctx) {
@@ -1485,6 +1732,7 @@ class Obstacle {
     ctx.restore();
   }
 
+  // Свободный старлет долетел до домашней звезды (для штрафа −10).
   isHit(starlet) {
     if (!this.active) return false;
     const dx = starlet.x - this.x;
@@ -1525,9 +1773,534 @@ class Obstacle {
       obstacle.vy += ny * 0.03;
     }
   }
-}    
+}
 
-        export class GameplayScene7 {
+// ============================================================================
+//  TutorGuide2 — обучающая подсказка для перевёрнутого режима. КРАСНАЯ палитра.
+//
+//  Маршрут подсказки: blacklet → red ring → starlet → starlet2
+//    (взять чёрную звезду → подвести к красному кольцу → навести комбо на
+//     старлет → на второй старлет).
+//
+//  Читает чекбокс tutorialEnabled через reset({enabled}) со стартового экрана.
+//  Отключается после первого РЕАЛЬНОГО успешного поедания старлета активным
+//  комбо (game.eatenCount > 0) — аналог notifySuccess после значимого прогресса.
+// ============================================================================
+class TutorGuide2 {
+  constructor() {
+    this.enabled = true;
+    this.active = false;
+    this.completed = false;
+
+    this.x = 0;
+    this.y = 0;
+    this.speed = 240;
+
+    // Красная палитра (вместо голубой в оригинале).
+    this.color = "#ff6e7e";
+    this.glowColor = "rgba(255, 110, 126, 0.45)";
+
+    this.mode = "none";
+    // Фазы: waiting → markBlack → toRing → markRing → toStar → markStar →
+    //       toStar2 → fading → restart (зацикливается)
+    this.phase = "waiting";
+
+    this.blackTarget = null; // чёрная звезда
+    this.ringTarget = null;  // красное кольцо
+    this.firstStar = null;   // первый старлет
+    this.secondStar = null;  // второй старлет
+
+    this.pathOpacity = 1;
+    this.rings = [];
+
+    this.fadeDelay = 0.5;
+    this.fadeDuration = 0.8;
+    this.fadeTimer = 0;
+
+    this.holdTimer = 0;
+    this.markHoldDuration = 0.24;
+    this.arrivalThreshold = 8;
+
+    this.restartDelay = 0.45;
+    this.restartTimer = 0;
+
+    this.startDelay = 2.0;
+    this.startTimer = 0;
+  }
+
+  reset({ enabled = true } = {}) {
+    this.enabled = enabled;
+    this.active = false;
+    this.completed = false;
+
+    this.x = 0;
+    this.y = 0;
+
+    this.mode = "none";
+    this.phase = "waiting";
+
+    this.blackTarget = null;
+    this.ringTarget = null;
+    this.firstStar = null;
+    this.secondStar = null;
+
+    this.pathOpacity = 1;
+    this.rings = [];
+
+    this.fadeTimer = 0;
+    this.holdTimer = 0;
+    this.restartTimer = 0;
+    this.startTimer = 0;
+  }
+
+  disable() {
+    this.completed = true;
+    this.active = false;
+    this.mode = "none";
+    this.phase = "done";
+    this.pathOpacity = 0;
+    this.rings = [];
+    this.blackTarget = null;
+    this.ringTarget = null;
+    this.firstStar = null;
+    this.secondStar = null;
+    this.fadeTimer = 0;
+    this.holdTimer = 0;
+    this.restartTimer = 0;
+    this.startTimer = 0;
+  }
+
+  // Игрок реально съел первый старлет комбо — подсказка больше не нужна.
+  notifySuccess() {
+    this.disable();
+  }
+
+  update(delta, game) {
+    if (!this.enabled || this.completed || !game.isRunning || game.gameOver) {
+      return;
+    }
+
+    this.updateRings(delta, game);
+
+    // Отключаемся после первого реального поедания старлета.
+    if (game.eatenCount > 0) {
+      this.disable();
+      return;
+    }
+
+    if (!this.active) {
+      if (this.phase === "waiting") {
+        this.startTimer += delta;
+        if (this.startTimer < this.startDelay) return;
+
+        this.beginFullHint(game);
+        return;
+      }
+
+      if (this.phase === "fading") {
+        this.updateFade(delta);
+        return;
+      }
+
+      if (this.phase === "restart") {
+        this.restartTimer -= delta;
+        if (this.restartTimer <= 0) {
+          this.phase = "waiting";
+          this.startTimer = 0;
+        }
+        return;
+      }
+
+      return;
+    }
+
+    this.handleTargetLoss(game);
+
+    if (!this.active) {
+      if (this.phase === "fading") this.updateFade(delta);
+      return;
+    }
+
+    if (this.mode === "full") {
+      this.updateFullMode(delta, game);
+    }
+  }
+
+  // Если ключевые цели исчезли (старлеты съедены/улетели) — плавно гаснем.
+  handleTargetLoss(game) {
+    if (this.mode !== "full") return;
+
+    const firstAlive = this.firstStar && game.starlets.includes(this.firstStar);
+    const secondAlive =
+      this.secondStar && game.starlets.includes(this.secondStar);
+
+    if (!firstAlive || !secondAlive) {
+      this.startFadeOut();
+    }
+  }
+
+  beginFullHint(game) {
+    // Нужны: чёрная звезда, кольцо и минимум 2 старлета.
+    if (!game.blacklet || !game.starlets || game.starlets.length < 2) {
+      this.phase = "waiting";
+      return false;
+    }
+
+    const pool = game.starlets.slice();
+    if (pool.length < 2) {
+      this.phase = "waiting";
+      return false;
+    }
+
+    const firstIndex = Math.floor(Math.random() * pool.length);
+    this.firstStar = pool.splice(firstIndex, 1)[0];
+    const secondIndex = Math.floor(Math.random() * pool.length);
+    this.secondStar = pool[secondIndex];
+
+    this.blackTarget = game.blacklet;
+    this.ringTarget = game.redRing;
+
+    this.mode = "full";
+    this.phase = "markBlack";
+
+    this.x = this.blackTarget.x + 30;
+    this.y = this.blackTarget.y - 18;
+
+    this.pathOpacity = 1;
+    this.rings = [];
+    this.addRing(this.blackTarget);
+
+    this.holdTimer = this.markHoldDuration;
+    this.active = true;
+    this.startTimer = 0;
+
+    return true;
+  }
+
+  updateFullMode(delta, game) {
+    // Обновляем ссылки на живые объекты.
+    this.blackTarget = game.blacklet;
+    this.ringTarget = game.redRing;
+
+    if (!this.firstStar || !game.starlets.includes(this.firstStar)) {
+      this.startFadeOut();
+      return;
+    }
+    if (!this.secondStar || !game.starlets.includes(this.secondStar)) {
+      this.startFadeOut();
+      return;
+    }
+
+    // 1) Отметить чёрную звезду.
+    if (this.phase === "markBlack") {
+      this.holdTimer -= delta;
+      if (this.holdTimer <= 0) this.phase = "toRing";
+      return;
+    }
+
+    // 2) Вести от чёрной звезды к красному кольцу.
+    if (this.phase === "toRing") {
+      const target = this.ringTarget ?? this.blackTarget;
+      const arrived = this.moveTowards(target.x, target.y, delta);
+      if (arrived) {
+        if (this.ringTarget) this.addRing(this.ringTarget);
+        this.phase = "markRing";
+        this.holdTimer = this.markHoldDuration;
+      }
+      return;
+    }
+
+    // 3) Отметить кольцо.
+    if (this.phase === "markRing") {
+      this.holdTimer -= delta;
+      if (this.holdTimer <= 0) this.phase = "toStar";
+      return;
+    }
+
+    // 4) Вести комбо к первому старлету.
+    if (this.phase === "toStar") {
+      const arrived = this.moveTowards(
+        this.firstStar.x,
+        this.firstStar.y,
+        delta
+      );
+      if (arrived) {
+        this.addRing(this.firstStar);
+        this.phase = "markStar";
+        this.holdTimer = this.markHoldDuration;
+      }
+      return;
+    }
+
+    // 5) Отметить первый старлет.
+    if (this.phase === "markStar") {
+      this.holdTimer -= delta;
+      if (this.holdTimer <= 0) this.phase = "toStar2";
+      return;
+    }
+
+    // 6) Вести ко второму старлету, затем гаснем.
+    if (this.phase === "toStar2") {
+      const arrived = this.moveTowards(
+        this.secondStar.x,
+        this.secondStar.y,
+        delta
+      );
+      if (arrived) {
+        this.addRing(this.secondStar);
+        this.active = false;
+        this.phase = "fading";
+        this.fadeTimer = 0;
+      }
+      return;
+    }
+  }
+
+  startFadeOut() {
+    this.active = false;
+    this.mode = "none";
+    this.phase = "fading";
+    this.fadeTimer = 0;
+  }
+
+  updateFade(delta) {
+    this.fadeTimer += delta;
+
+    if (this.fadeTimer <= this.fadeDelay) {
+      this.pathOpacity = 1;
+      return;
+    }
+
+    const fadeT = Math.min(
+      1,
+      (this.fadeTimer - this.fadeDelay) / this.fadeDuration
+    );
+    this.pathOpacity = 1 - fadeT;
+
+    if (fadeT >= 1) {
+      this.rings = [];
+      this.blackTarget = null;
+      this.ringTarget = null;
+      this.firstStar = null;
+      this.secondStar = null;
+      this.pathOpacity = 1;
+      this.phase = "restart";
+      this.restartTimer = this.restartDelay;
+    }
+  }
+
+  addRing(target) {
+    if (!target) return;
+    const exists = this.rings.some((ring) => ring.target === target);
+    if (exists) return;
+
+    this.rings.push({
+      target,
+      radius: 18,
+      pulse: Math.random() * Math.PI * 2,
+    });
+  }
+
+  updateRings(delta, game) {
+    this.rings = this.rings.filter((ring) => {
+      if (!ring.target) return false;
+      if (this.phase === "fading" || this.phase === "done") return true;
+      // Кольцо-маркер на чёрной звезде и красном кольце живёт всегда; на
+      // старлетах — пока старлет существует.
+      if (ring.target === this.blackTarget || ring.target === this.ringTarget) {
+        return true;
+      }
+      return game.starlets.includes(ring.target);
+    });
+
+    for (const ring of this.rings) {
+      ring.pulse += delta * 3.4;
+    }
+  }
+
+  moveTowards(targetX, targetY, delta) {
+    const dx = targetX - this.x;
+    const dy = targetY - this.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist <= 0.001) return true;
+
+    const step = this.speed * delta;
+
+    if (dist <= step + this.arrivalThreshold) {
+      this.x = targetX;
+      this.y = targetY;
+      return true;
+    }
+
+    this.x += (dx / dist) * step;
+    this.y += (dy / dist) * step;
+    return false;
+  }
+
+  drawPathTrail(ctx) {
+    if (this.pathOpacity <= 0) return;
+
+    ctx.save();
+    ctx.globalAlpha = this.pathOpacity;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.setLineDash([6, 8]);
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = "rgba(255, 128, 142, 0.82)";
+
+    const black = this.blackTarget;
+    const ring = this.ringTarget;
+    const s1 = this.firstStar;
+    const s2 = this.secondStar;
+
+    // Чёрная звезда → кольцо.
+    if (this.phase === "toRing" && black && ring) {
+      ctx.beginPath();
+      ctx.moveTo(black.x, black.y);
+      ctx.lineTo(this.x, this.y);
+      ctx.stroke();
+    }
+
+    if (
+      black &&
+      ring &&
+      (this.phase === "markRing" ||
+        this.phase === "toStar" ||
+        this.phase === "markStar" ||
+        this.phase === "toStar2" ||
+        this.phase === "fading")
+    ) {
+      ctx.beginPath();
+      ctx.moveTo(black.x, black.y);
+      ctx.lineTo(ring.x, ring.y);
+      ctx.stroke();
+    }
+
+    // Кольцо → первый старлет.
+    if (this.phase === "toStar" && ring && s1) {
+      ctx.beginPath();
+      ctx.moveTo(ring.x, ring.y);
+      ctx.lineTo(this.x, this.y);
+      ctx.stroke();
+    }
+
+    if (
+      ring &&
+      s1 &&
+      (this.phase === "markStar" ||
+        this.phase === "toStar2" ||
+        this.phase === "fading")
+    ) {
+      ctx.beginPath();
+      ctx.moveTo(ring.x, ring.y);
+      ctx.lineTo(s1.x, s1.y);
+      ctx.stroke();
+    }
+
+    // Первый → второй старлет.
+    if ((this.phase === "toStar2" || this.phase === "fading") && s1 && s2) {
+      const endX = this.phase === "fading" ? s2.x : this.x;
+      const endY = this.phase === "fading" ? s2.y : this.y;
+      ctx.beginPath();
+      ctx.moveTo(s1.x, s1.y);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  drawRings(ctx) {
+    if (!this.rings.length || this.pathOpacity <= 0) return;
+
+    ctx.save();
+    ctx.globalAlpha = this.pathOpacity;
+
+    for (const ring of this.rings) {
+      const target = ring.target;
+      if (!target) continue;
+
+      const pulse = 1 + Math.sin(ring.pulse) * 0.08;
+      const radius = ring.radius * pulse;
+
+      ctx.beginPath();
+      ctx.arc(target.x, target.y, radius, 0, Math.PI * 2);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(255, 128, 142, 0.85)";
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(target.x, target.y, radius + 4, 0, Math.PI * 2);
+      ctx.lineWidth = 0.9;
+      ctx.strokeStyle = "rgba(255, 128, 142, 0.35)";
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  drawGuideRing(ctx) {
+    if (
+      this.phase === "waiting" ||
+      this.phase === "restart" ||
+      this.phase === "done"
+    ) {
+      return;
+    }
+
+    if (this.phase === "markBlack" && this.blackTarget) {
+      this.x = this.blackTarget.x + 30;
+      this.y = this.blackTarget.y - 18;
+    }
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, this.pathOpacity);
+    ctx.translate(this.x, this.y);
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = this.glowColor;
+
+    ctx.beginPath();
+    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+    ctx.lineWidth = 2.4;
+    ctx.strokeStyle = "rgba(255, 110, 126, 0.95)";
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(255, 220, 226, 0.85)";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(-2, -2, 1.8, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  draw(ctx) {
+    const hasVisuals =
+      this.active ||
+      this.phase === "fading" ||
+      this.rings.length > 0 ||
+      this.pathOpacity > 0;
+
+    if (!hasVisuals || this.completed || !this.enabled) return;
+
+    this.drawPathTrail(ctx);
+    this.drawRings(ctx);
+    this.drawGuideRing(ctx);
+  }
+}
+
+// ============================================================================
+//  GameplayScene7 — главный класс сцены (перевёрнутый режим).
+// ============================================================================
+export class GameplayScene7 {
   constructor({
     sceneId = "game7",
     sceneManager = null,
@@ -1538,6 +2311,13 @@ class Obstacle {
     this.sceneId = sceneId;
     this.sceneManager = sceneManager;
     this.audio = audio ?? new GameAudio();
+    // Main.js передаёт общий аудио-движок из своего модуля, в котором нет
+    // нового playEatSound(). Чтобы не падать и всё же играть звук поедания,
+    // держим собственный экземпляр GameAudio из этого файла как fallback.
+    this.eatAudio =
+      this.audio && typeof this.audio.playEatSound === "function"
+        ? this.audio
+        : new GameAudio();
     this.onNext = onNext;
     this.onRoundFinished = onRoundFinished;
     this.sceneMusicUrl = "../../assets/audio/game7.mp3";
@@ -1573,21 +2353,29 @@ class Obstacle {
 
     this.rotateHint = document.getElementById("rotateHint");
 
+    // Стартовый экран и чекбокс туториала. Имена id — по модели StarLineGame.
+    // Если в проекте они называются иначе — поправить здесь одну-две строки.
+    this.startScreen = document.getElementById("startScreen");
+    this.tutorialEnabledInput = document.getElementById("tutorialEnabled");
+
     this.levelTargetScore = 400;
     this.levelPassed = false;
     this.displayedHeartProgress = 0;
     this.targetHeartProgress = 0;
     this.heartPulseTimeout = null;
 
-    this.homeStars = [];
-    this.blacklet = null;
-    this.starlets = [];
+    // --- Игровые объекты перевёрнутого режима ---
+    this.homeStar = null;       // одна домашняя звезда (левая треть)
+    this.blacklet = null;       // одна чёрная звезда игрока
+    this.redRing = null;        // одно красное кольцо
+    this.starlets = [];         // свободные старлеты (FreeStarlet)
     this.obstacles = [];
     this.particles = [];
 
     this.score = 0;
-    this.savedCount = 0;
-    this.lostCount = 0;
+    this.savedCount = 0;        // сколько старлетов съедено комбо (для HUD "спасено")
+    this.lostCount = 0;         // потеряно (препятствие/долетел до дома)
+    this.eatenCount = 0;        // реальные поедания комбо — триггер выключения туториала
 
     this.timeLeft = 50;
     this.totalTime = 50;
@@ -1603,6 +2391,17 @@ class Obstacle {
 
     this.isDragging = false;
     this.mousePos = { x: 0, y: 0 };
+    this.hasPlayerInteracted = false;
+
+    // --- Спавн-директор: машина состояний появления объектов ---
+    // intro_blacklet → intro_ring → intro_starlets_home → gameplay_live
+    this.spawnPhase = "intro_blacklet";
+    this.spawnTimer = 0;
+    this.starletsSpawned = false;
+
+    // Туториал (красная подсказка).
+    this.tutor = new TutorGuide2();
+    this.tutorialEnabledForRun = true;
 
     this.inputBound = false;
     this.handlePointerMoveCore = null;
@@ -1612,7 +2411,6 @@ class Obstacle {
 
     this.handleRestartClick = () => {
       if (this.isTransitioning) return;
-
       this.isDragging = false;
       this.resetGame({ restartAmbient: true });
     };
@@ -1715,19 +2513,30 @@ class Obstacle {
 
     this.setupInput();
 
-    this.homeStars = [
-      new HomeStar(this.sceneMetrics, "horizontal"),
-      new HomeStar(this.sceneMetrics, "arc"),
-    ];
-    this.homeStars[0].activateHorizontalFromLeft();
-
-    this.blacklet = new Blacklet(this.sceneMetrics);
-
-    this.spawnStarlets(10);
+    // Инициализация объектов перевёрнутого режима.
+    this.initSceneObjects();
 
     this.updateTargetScoreUI();
     this.updateUI();
     this.draw();
+  }
+
+  // Создаёт стартовый набор объектов согласно спавн-директору (начальная фаза).
+  initSceneObjects() {
+    this.homeStar = new HomeStar(this.sceneMetrics);
+    this.blacklet = new Blacklet(this.sceneMetrics);
+    this.redRing = new RedRing(this.sceneMetrics);
+
+    this.starlets = [];
+    this.obstacles = [];
+
+    // Спавн-директор стартует с появления чёрной звезды.
+    this.spawnPhase = "intro_blacklet";
+    this.spawnTimer = 0;
+    this.starletsSpawned = false;
+
+    // Кольцо появится «в середине трансформации» — пока придержим его за кадром.
+    this.redRing.spawnDelay = 0;
   }
 
   isLandscape() {
@@ -1753,27 +2562,6 @@ class Obstacle {
       homeRingRadius: clamp(52, 60 * playScale, 74),
       homeGlowRadius: clamp(116, 140 * playScale, 170),
 
-      homeLeftMinX: -width * 0.09,
-      homeLeftMaxX: width * 0.34,
-      homeRightMinX: width * 0.66,
-      homeRightMaxX: width + width * 0.09,
-      homeMinY: height * 0.3,
-      homeMaxY: height * 0.7,
-
-      homeHorizontalCenterX: width * 0.5,
-      homeHorizontalLeftOutsideX:
-        -clamp(52, 60 * playScale, 74) - width * 0.1,
-      homeHorizontalRightOutsideX:
-        width + clamp(52, 60 * playScale, 74) + width * 0.1,
-      homeHorizontalBaseY: height * 0.52,
-      homeHorizontalVerticalDrift: height * 0.045,
-
-      homeArcStartY: -clamp(52, 60 * playScale, 74) - height * 0.14,
-      homeArcEndY: height + clamp(52, 60 * playScale, 74) + height * 0.14,
-      homeArcCenterX: width * 0.54,
-      homeArcAmplitudeX: width * 0.18,
-      homeArcTiltX: width * 0.1,
-
       starletBaseRadius: clamp(6.6, 7.0 * playScale, 8.9),
       starletDragRadius: clamp(24, 28 * playScale, 34),
 
@@ -1790,12 +2578,14 @@ class Obstacle {
 
     this.computeSceneMetrics();
 
-    if (this.homeStars?.length) {
-      this.homeStars.forEach((star) => star.setBounds(this.sceneMetrics));
+    if (this.homeStar) {
+      this.homeStar.setBounds(this.sceneMetrics);
     }
-
     if (this.blacklet) {
       this.blacklet.setBounds(this.sceneMetrics);
+    }
+    if (this.redRing) {
+      this.redRing.setBounds(this.sceneMetrics);
     }
 
     if (this.rotateHint) {
@@ -1844,6 +2634,14 @@ class Obstacle {
     }
   }
 
+  // Включён ли туториал на этот запуск (читаем чекбокс стартового экрана).
+  readTutorialEnabled() {
+    if (this.tutorialEnabledInput) {
+      return !!this.tutorialEnabledInput.checked;
+    }
+    return true;
+  }
+
   async start() {
     console.log("START STATE", {
       isRunning: this.isRunning,
@@ -1876,6 +2674,10 @@ class Obstacle {
       console.log("rotate hint updated");
     }
 
+    // Туториал стартует с учётом чекбокса.
+    this.tutorialEnabledForRun = this.readTutorialEnabled();
+    this.tutor.reset({ enabled: this.tutorialEnabledForRun });
+
     this.isRunning = true;
     this.gameOver = false;
     this.lastTime = performance.now();
@@ -1883,30 +2685,6 @@ class Obstacle {
 
     this.startGameLoop();
     console.log("game loop started");
-  }
-
-  createSpawnPoint() {
-    const { width, height, offscreenOffset } = this.sceneMetrics;
-
-    const side = Math.random() < 0.5 ? "top" : "bottom";
-    const depth = offscreenOffset * (0.18 + Math.random() * 0.28);
-
-    const margin = 24;
-    const x = margin + Math.random() * Math.max(1, width - margin * 2);
-
-    if (side === "top") {
-      return {
-        x,
-        y: -depth,
-        side: "top",
-      };
-    }
-
-    return {
-      x,
-      y: height + depth,
-      side: "bottom",
-    };
   }
 
   getHeartProgress() {
@@ -2109,6 +2887,7 @@ class Obstacle {
     this.score = 0;
     this.savedCount = 0;
     this.lostCount = 0;
+    this.eatenCount = 0;
 
     this.displayedHeartProgress = 0;
     this.targetHeartProgress = 0;
@@ -2142,6 +2921,7 @@ class Obstacle {
 
     this.isDragging = false;
     this.mousePos = { x: 0, y: 0 };
+    this.hasPlayerInteracted = false;
 
     if (this.overlay) {
       this.overlay.classList.remove("show");
@@ -2163,31 +2943,51 @@ class Obstacle {
       this.nextBtn.style.removeProperty("--fade-glow-duration");
     }
 
-    this.homeStars = [
-      new HomeStar(this.sceneMetrics, "horizontal"),
-      new HomeStar(this.sceneMetrics, "arc"),
-    ];
-    this.homeStars[0].activateHorizontalFromLeft();
+    // Пересоздаём объекты перевёрнутого режима и спавн-директор.
+    this.initSceneObjects();
 
-    this.blacklet = new Blacklet(this.sceneMetrics);
+    // Туториал НЕ показываем при «Играть снова» (перезапуск уровня) —
+    // он играет только при первом входе в сцену (в start()).
+    this.tutorialEnabledForRun = false;
+    this.tutor.reset({ enabled: false });
 
-    this.spawnStarlets(12);
     this.updateUI();
     this.draw();
 
+    // Музыку НЕ перезапускаем при рестарте — она продолжает играть непрерывно.
+    // Только поднимаем громкость обратно (если она была приглушена оверлеем).
     if (restartAmbient) {
-      this.audio.startAmbient({ restart: true });
+      this.audio.startAmbient({ restart: false });
     }
 
     this.startGameLoop();
   };
 
+  // --- Спавн свободных старлетов с трёх краёв (верх / низ / право) ---
   spawnStarlets(count) {
+    const { width, height, offscreenOffset } = this.sceneMetrics;
+    const margin = 24;
+
     for (let i = 0; i < count; i++) {
-      const spawn = this.createSpawnPoint();
-      this.starlets.push(
-        new Starlet(spawn.x, spawn.y, spawn.side, this.sceneMetrics)
-      );
+      const sides = ["top", "bottom", "right"];
+      const side = sides[Math.floor(Math.random() * sides.length)];
+
+      const depth = offscreenOffset * (0.18 + Math.random() * 0.5);
+      let x, y;
+
+      if (side === "top") {
+        x = margin + Math.random() * Math.max(1, width - margin * 2);
+        y = -depth;
+      } else if (side === "bottom") {
+        x = margin + Math.random() * Math.max(1, width - margin * 2);
+        y = height + depth;
+      } else {
+        // right
+        x = width + depth;
+        y = margin + Math.random() * Math.max(1, height - margin * 2);
+      }
+
+      this.starlets.push(new FreeStarlet(x, y, side, this.sceneMetrics));
     }
   }
 
@@ -2209,51 +3009,112 @@ class Obstacle {
     }
   }
 
-  emitFollowingTrail(starlet, followingCount, delta) {
-    if (!starlet.following) {
-      starlet.trailTimer = 0;
-      return;
-    }
+  // Красный «хвост» от чёрной звезды под курсором (мелкий).
+  emitBlackletTrail(delta) {
+    const b = this.blacklet;
+    if (!b || !b.following) return;
 
-    const intensity = Math.min(1, 0.45 + followingCount * 0.14);
-    const interval = Math.max(0.035, 0.085 - followingCount * 0.008);
+    this._blackTrailTimer = (this._blackTrailTimer ?? 0) + delta;
+    const interval = 0.05;
 
-    starlet.trailTimer += delta;
+    while (this._blackTrailTimer >= interval) {
+      this._blackTrailTimer -= interval;
 
-    while (starlet.trailTimer >= interval) {
-      starlet.trailTimer -= interval;
+      const angle = Math.random() * Math.PI * 2;
+      const r = b.radius * (0.2 + Math.random() * 0.5);
+      const px = b.x + Math.cos(angle) * r;
+      const py = b.y + Math.sin(angle) * r;
 
-      const burstCount =
-        followingCount >= 4
-          ? 2
-          : followingCount >= 2 && Math.random() < 0.45
-          ? 2
-          : 1;
-
-      for (let i = 0; i < burstCount; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const radius = starlet.radius * (0.2 + Math.random() * 0.9);
-
-        const px = starlet.x + Math.cos(angle) * radius * 0.55;
-        const py = starlet.y + Math.sin(angle) * radius * 0.55;
-
-        this.particles.push(
-          new Particle(px, py, "rgba(255, 236, 176, 0.95)", false, {
-            vx: (Math.random() - 0.5) * 0.45 - 0.15,
-            vy: (Math.random() - 0.5) * 0.45 + 0.08,
-            life: 0.7 + Math.random() * 0.25,
-            decay: 0.04 + Math.random() * 0.025,
-            size: 0.9 + Math.random() * 1.5 * intensity,
-            gravity: -0.002,
-            shrink: 0.01,
-            alphaBoost: 0.65 + intensity * 0.25,
-          })
-        );
-      }
+      this.particles.push(
+        new Particle(px, py, "rgba(224, 70, 86, 0.9)", false, {
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.5) * 0.4 + 0.06,
+          life: 0.6 + Math.random() * 0.2,
+          decay: 0.05 + Math.random() * 0.03,
+          size: 0.8 + Math.random() * 1.3,
+          gravity: -0.0015,
+          shrink: 0.012,
+          alphaBoost: 0.6,
+        })
+      );
     }
   }
 
-    setupInput() {
+  // Более крупный красный хвост от кольца, когда комбо активно.
+  emitComboTrail(delta) {
+    const b = this.blacklet;
+    if (!b || !b.canAbsorb()) return;
+
+    this._comboTrailTimer = (this._comboTrailTimer ?? 0) + delta;
+    const interval = 0.045;
+
+    while (this._comboTrailTimer >= interval) {
+      this._comboTrailTimer -= interval;
+
+      const angle = Math.random() * Math.PI * 2;
+      const r = b.getEatRadius() * (0.4 + Math.random() * 0.5);
+      const px = b.x + Math.cos(angle) * r;
+      const py = b.y + Math.sin(angle) * r;
+
+      this.particles.push(
+        new Particle(px, py, "rgba(255, 110, 126, 0.85)", false, {
+          vx: (Math.random() - 0.5) * 0.55,
+          vy: (Math.random() - 0.5) * 0.55,
+          life: 0.7 + Math.random() * 0.25,
+          decay: 0.045 + Math.random() * 0.025,
+          size: 1.4 + Math.random() * 2.0,
+          gravity: -0.001,
+          shrink: 0.015,
+          alphaBoost: 0.7,
+        })
+      );
+    }
+  }
+
+  // Анимация всасывания/вспышки, когда комбо съедает старлет.
+  emitEatBurst(x, y) {
+    const center = { x: this.blacklet.x, y: this.blacklet.y };
+
+    // Частицы старлета, втягиваемые в центр комбо.
+    for (let i = 0; i < 14; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.6 + Math.random() * 1.4;
+
+      this.particles.push(
+        new Particle(x, y, "rgba(255, 236, 176, 0.95)", false, {
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0.7 + Math.random() * 0.3,
+          decay: 0.05 + Math.random() * 0.03,
+          size: 1.2 + Math.random() * 2.2,
+          shrink: 0.02,
+          alphaBoost: 0.85,
+          attractTo: center,
+          attractPull: 0.08 + Math.random() * 0.06,
+        })
+      );
+    }
+
+    // Короткая красная вспышка захвата.
+    for (let i = 0; i < 8; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.0 + Math.random() * 1.6;
+
+      this.particles.push(
+        new Particle(center.x, center.y, "rgba(255, 110, 126, 0.95)", false, {
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0.5 + Math.random() * 0.25,
+          decay: 0.06 + Math.random() * 0.03,
+          size: 1.4 + Math.random() * 2.0,
+          shrink: 0.02,
+          alphaBoost: 0.8,
+        })
+      );
+    }
+  }
+
+  setupInput() {
     if (this.inputBound) return;
 
     this.handlePointerMoveCore = (x, y) => {
@@ -2262,12 +3123,11 @@ class Obstacle {
     };
 
     this.handlePointerEnd = (e) => {
-  this.isDragging = false;
-  if (e?.pointerId != null && this.canvas?.hasPointerCapture?.(e.pointerId)) {
-    this.canvas.releasePointerCapture(e.pointerId);
-  }
-};
-
+      this.isDragging = false;
+      if (e?.pointerId != null && this.canvas?.hasPointerCapture?.(e.pointerId)) {
+        this.canvas.releasePointerCapture(e.pointerId);
+      }
+    };
 
     this.handlePointerDown = (e) => {
       if (!this.isRunning || this.gameOver) return;
@@ -2290,6 +3150,58 @@ class Obstacle {
     this.canvas.addEventListener("pointerleave", this.handlePointerEnd);
 
     this.inputBound = true;
+  }
+
+  // --- Спавн-директор: продвигает фазы появления объектов ---
+  updateSpawnDirector(delta) {
+    this.spawnTimer += delta;
+
+    if (this.spawnPhase === "intro_blacklet") {
+      // Чёрная звезда уже на сцене и формируется. Как только начнётся
+      // покраснение (середина трансформации) — выпускаем кольцо.
+      if (this.blacklet && this.blacklet.redness > 0.25) {
+        this.spawnPhase = "intro_ring";
+        this.spawnTimer = 0;
+        // Выпускаем кольцо сразу в видимую правую зону, чтобы оно не «ползло»
+        // из-за кадра десятки секунд.
+        if (this.redRing) {
+          this.redRing.activateIntro();
+        }
+      }
+      return;
+    }
+
+    if (this.spawnPhase === "intro_ring") {
+      // Кольцо дрейфует и может пристыковаться. Даём ему подрейфовать
+      // фиксированное время и выпускаем старлеты + домашнюю звезду.
+      //
+      // ВАЖНО: нельзя зависеть от blacklet.isTransformed(), потому что при
+      // ранней стыковке кольца чёрная звезда переходит в "linked" и её
+      // трансформация замораживается (transformProgress навсегда < 1) —
+      // тогда директор зависает навечно и старлеты/дом/препятствия не появляются.
+      if (this.spawnTimer >= 1.6) {
+        this.spawnPhase = "intro_starlets_home";
+        this.spawnTimer = 0;
+      }
+      return;
+    }
+
+    if (this.spawnPhase === "intro_starlets_home") {
+      if (!this.starletsSpawned) {
+        this.homeStar.activateFromLeft();
+        this.spawnStarlets(12);
+        this.starletsSpawned = true;
+      }
+      // Препятствия — в последнюю очередь.
+      if (this.spawnTimer >= 0.8) {
+        this.spawnPhase = "gameplay_live";
+        this.spawnTimer = 0;
+        this.obstacleTimer = 0;
+      }
+      return;
+    }
+
+    // gameplay_live — полноценный игровой процесс (препятствия идут).
   }
 
   update(currentTime) {
@@ -2321,67 +3233,51 @@ class Obstacle {
       return;
     }
 
-    let swarmCenter = null;
-    if (this.starlets.length > 0) {
-      let sx = 0,
-        sy = 0;
-      for (const s of this.starlets) {
-        sx += s.x;
-        sy += s.y;
-      }
-      swarmCenter = {
-        x: sx / this.starlets.length,
-        y: sy / this.starlets.length,
-      };
-    }
+    // Продвигаем спавн-директор.
+    this.updateSpawnDirector(delta);
 
-    const followingCount = this.starlets.reduce(
-      (count, s) => count + (s.following ? 1 : 0),
-      0
-    );
+    const liveGameplay = this.spawnPhase === "gameplay_live";
+    const homeForDrift = this.homeStar?.active ? this.homeStar : null;
 
-    this.starlets.forEach((s) => {
-      const justCaught = s.update(this.mousePos, this.isDragging, swarmCenter);
-      if (justCaught) this.audio.playCatchSound();
-
-      this.emitFollowingTrail(s, followingCount, delta);
-    });
-
-    this.removeOffscreenStarlets();
-
+    // --- Чёрная звезда (игрок) ---
     if (this.blacklet) {
       this.blacklet.update(this.mousePos, this.isDragging, delta);
     }
 
-    this.homeStars.forEach((star) => star.update(delta));
-
-    const horizontalStar = this.homeStars.find(
-      (star) => star.role === "horizontal"
-    );
-    const arcStar = this.homeStars.find((star) => star.role === "arc");
-
-    if (horizontalStar?.shouldTriggerPartner()) {
-      arcStar?.activateArcFromTop();
+    // --- Красное кольцо (стыковка/распад/респавн) ---
+    if (this.redRing) {
+      this.redRing.update(delta, this.blacklet);
     }
 
-    if (arcStar?.shouldTriggerPartner()) {
-      if (horizontalStar?.horizontalState === "rightToCenter") {
-        horizontalStar.activateHorizontalFromRight();
-      } else {
-        horizontalStar?.activateHorizontalFromLeft();
-      }
+    this.emitBlackletTrail(delta);
+    this.emitComboTrail(delta);
+
+    // --- Свободные старлеты: автономно дрейфуют к домашней звезде ---
+    this.starlets.forEach((s) => s.update(homeForDrift, delta));
+    this.removeOffscreenStarlets();
+
+    // --- Домашняя звезда ---
+    if (this.homeStar) {
+      this.homeStar.update(delta);
     }
 
-    this.obstacles.forEach((o) => {
-      o.update();
+    // --- Препятствия (только в боевой фазе) ---
+    if (liveGameplay) {
+      this.obstacles.forEach((o) => {
+        o.update();
 
-      this.homeStars.forEach((star) => {
-        if (star.blocksObstacle(o)) {
-          star.repelObstacle(o);
+        // Комбо/кольцо и домашняя звезда отталкивают препятствия как раньше.
+        if (this.homeStar && this.homeStar.blocksObstacle(o)) {
+          this.homeStar.repelObstacle(o);
         }
+        if (this.redRing && this.redRing.blocksObstacle(o)) {
+          this.redRing.repelObstacle(o);
+        }
+        // Чёрная звезда сквозь препятствия проходит — намеренно НЕ трогаем.
       });
-    });
+    }
 
+    // --- Частицы ---
     for (let i = this.particles.length - 1; i >= 0; i--) {
       this.particles[i].update();
       if (this.particles[i].life <= 0) this.particles.splice(i, 1);
@@ -2389,26 +3285,58 @@ class Obstacle {
 
     this.obstacles = this.obstacles.filter((o) => !o.isOffscreen());
 
-    this.checkCollisions();
-    this.checkHomeHits();
+    // --- Коллизии ---
+    this.checkComboEats();           // комбо съедает старлет (+5)
+    if (liveGameplay) {
+      this.checkObstacleCollisions(); // препятствие уничтожает старлет (−5)
+    }
+    this.checkHomeArrivals();        // старлет долетел до дома (−10)
 
-    this.obstacleTimer += delta * 1000;
-    if (this.obstacleTimer >= this.obstacleInterval) {
-      this.spawnObstacle();
-      this.obstacleTimer = 0;
+    // --- Спавн препятствий и нарастание сложности (боевая фаза) ---
+    if (liveGameplay) {
+      this.obstacleTimer += delta * 1000;
+      if (this.obstacleTimer >= this.obstacleInterval) {
+        this.spawnObstacle();
+        this.obstacleTimer = 0;
+      }
+
+      if (this.score >= 60) this.obstacleInterval = 2000;
+      if (this.score >= 140) this.obstacleInterval = 1800;
+      if (this.score >= 260) this.obstacleInterval = 1600;
+
+      // Респавн старлетов: при <8 добиваем до 12 (как в других сценах).
+      if (this.starlets.length < 8) {
+        this.spawnStarlets(12 - this.starlets.length);
+      }
     }
 
-    if (this.score >= 60) this.obstacleInterval = 2000;
-    if (this.score >= 140) this.obstacleInterval = 1800;
-    if (this.score >= 260) this.obstacleInterval = 1600;
-
-    if (this.starlets.length < 8) this.spawnStarlets(4);
+    // --- Туториал ---
+    this.tutor.update(delta, this);
 
     this.updateHeartProgress(delta);
     this.updateUI();
   }
 
-  checkCollisions() {
+  // Активное комбо (чёрная звезда + кольцо) поедает старлеты → +5.
+  checkComboEats() {
+    const b = this.blacklet;
+    if (!b || !b.canAbsorb()) return;
+
+    for (let i = this.starlets.length - 1; i >= 0; i--) {
+      const starlet = this.starlets[i];
+      if (b.eats(starlet)) {
+        this.score += 5;
+        this.savedCount += 1;
+        this.eatenCount += 1; // триггер выключения туториала
+        this.eatAudio.playEatSound();
+        this.emitEatBurst(starlet.x, starlet.y);
+        this.starlets.splice(i, 1);
+      }
+    }
+  }
+
+  // Препятствие уничтожает старлет → −5.
+  checkObstacleCollisions() {
     for (let i = this.starlets.length - 1; i >= 0; i--) {
       const starlet = this.starlets[i];
       for (let obstacle of this.obstacles) {
@@ -2424,27 +3352,17 @@ class Obstacle {
     }
   }
 
-  checkHomeHits() {
+  // Свободный старлет долетел до домашней звезды → −10.
+  checkHomeArrivals() {
+    if (!this.homeStar || !this.homeStar.active) return;
+
     for (let i = this.starlets.length - 1; i >= 0; i--) {
       const starlet = this.starlets[i];
-
-      const hitHome = this.homeStars.some((homeStar) => homeStar.isHit(starlet));
-
-      if (hitHome) {
-        this.score += 10;
-        this.savedCount += 1;
-        this.audio.playScoreSound();
-
-        const targetHome =
-          this.homeStars.reduce((best, star) => {
-            const dx = starlet.x - star.x;
-            const dy = starlet.y - star.y;
-            const dist = dx * dx + dy * dy;
-            if (!best || dist < best.dist) return { star, dist };
-            return best;
-          }, null)?.star ?? this.homeStars[0];
-
-        this.spawnScatterEffect(targetHome.x, targetHome.y, "#DEA15E", true);
+      if (this.homeStar.isHit(starlet)) {
+        this.score = Math.max(0, this.score - 10);
+        this.lostCount += 1;
+        this.audio.playHitSound();
+        this.spawnScatterEffect(this.homeStar.x, this.homeStar.y, "#DEA15E", true);
         this.starlets.splice(i, 1);
       }
     }
@@ -2499,16 +3417,34 @@ class Obstacle {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.drawBackgroundDust();
 
-    this.homeStars.forEach((star) => star.draw(this.ctx));
+    // Домашняя звезда и препятствия — нижний слой.
+    if (this.homeStar) {
+      this.homeStar.draw(this.ctx);
+    }
     this.obstacles.forEach((o) => o.draw(this.ctx));
 
+    // Свободные старлеты.
+    this.starlets.forEach((s) => s.draw(this.ctx));
+
+    // Красное кольцо под чёрной звездой (чтобы звезда читалась поверх).
+    if (this.redRing) {
+      this.redRing.draw(this.ctx);
+    }
+
+    // Чёрная звезда игрока.
     if (this.blacklet) {
       this.blacklet.draw(this.ctx);
     }
 
-    this.starlets.forEach((s) => s.draw(this.ctx));
+    // Частицы.
     this.particles.forEach((p) => p.draw(this.ctx));
 
+    // Обучающая подсказка — поверх всего.
+    if (this.tutor) {
+      this.tutor.draw(this.ctx);
+    }
+
+    // Кольцо-курсор (как в исходной сцене).
     if (this.isDragging && this.isRunning && !this.gameOver) {
       this.ctx.strokeStyle = "rgba(53, 97, 132, 0.55)";
       this.ctx.lineWidth = 2;
@@ -2553,6 +3489,9 @@ class Obstacle {
     this.applySceneBackground();
     this.applySceneAudio();
 
+    // Красное сердце цели — спец-класс сцены (используется только в 7 и 8).
+    this.heartIconElement?.classList.add("heart-icon--scene7");
+
     if (this.overlay) {
       this.overlay.classList.remove("show");
     }
@@ -2576,6 +3515,9 @@ class Obstacle {
     if (this.rotateHint) {
       this.rotateHint.classList.toggle("show", !this.isLandscape());
     }
+
+    // Свежий набор объектов на вход в сцену.
+    this.initSceneObjects();
 
     this.updateTargetScoreUI();
     this.updateUI();
@@ -2627,6 +3569,9 @@ class Obstacle {
     this.handlePointerEnd = null;
 
     window.removeEventListener("resize", this.handleResize);
+
+    // Снимаем спец-класс красного сердца.
+    this.heartIconElement?.classList.remove("heart-icon--scene7");
 
     if (this.overlay) {
       this.overlay.classList.remove("show");
