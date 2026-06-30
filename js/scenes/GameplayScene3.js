@@ -446,6 +446,15 @@ class Starlet {
 
     ctx.restore();
   }
+  isOffscreen() {
+  const { width, height, offscreenOffset } = this.sceneMetrics;
+  return (
+    this.x < -offscreenOffset ||
+    this.x > width + offscreenOffset ||
+    this.y < -offscreenOffset ||
+    this.y > height + offscreenOffset
+  );
+}
 }
         
 class Obstacle {
@@ -771,80 +780,79 @@ class Obstacle {
 } 
 
         export class GameplayScene3 {
-
   constructor({
-  sceneId = "game3",
-  sceneManager = null,
-  audio = null,
-  onNext = null,
-  onRoundFinished = null,
-} = {}) {
-  this.sceneId = sceneId;
-  this.sceneManager = sceneManager;
-  this.audio = audio ?? new GameAudio();
-  this.onNext = onNext;
-  this.onRoundFinished = onRoundFinished;
-  this.sceneMusicUrl = "../../assets/audio/game3.mp3";
-this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg3.webp";
-this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
+    sceneId = "game3",
+    sceneManager = null,
+    audio = null,
+    onNext = null,
+    onRoundFinished = null,
+  } = {}) {
+    this.sceneId = sceneId;
+    this.sceneManager = sceneManager;
+    this.audio = audio ?? new GameAudio();
+    this.onNext = onNext;
+    this.onRoundFinished = onRoundFinished;
+    this.sceneMusicUrl = "../../assets/audio/game3.mp3";
+    this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg3.webp";
+    this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
 
-  this.canvas = document.getElementById("gameCanvas");
-  this.ctx = this.canvas.getContext("2d");
+    this.canvas = document.getElementById("gameCanvas");
+    this.ctx = this.canvas.getContext("2d");
 
-  this.savedCountElement = document.getElementById("savedCount");
-  this.lostCountElement = document.getElementById("lostCount");
-  this.scoreElement = document.getElementById("scoreValue");
-  this.heartFillRect = document.getElementById("heartFillRect");
-  this.heartIconElement = document.querySelector(".heart-icon");
-  this.timeFillElement = document.getElementById("timeFill");
+    this.savedCountElement = document.getElementById("savedCount");
+    this.lostCountElement = document.getElementById("lostCount");
+    this.scoreElement = document.getElementById("scoreValue");
+    this.heartFillRect = document.getElementById("heartFillRect");
+    this.heartIconElement = document.querySelector(".heart-icon");
+    this.timeFillElement = document.getElementById("timeFill");
 
-  this.overlay = document.getElementById("overlay");
-  this.finalScoreElement = document.getElementById("finalScore");
-  this.resultMessageElement = document.getElementById("resultMessage");
-  this.resultTitleElement = document.getElementById("resultTitle");
-  this.targetScoreElement = document.getElementById("targetScore");
+    this.overlay = document.getElementById("overlay");
+    this.finalScoreElement = document.getElementById("finalScore");
+    this.resultMessageElement = document.getElementById("resultMessage");
+    this.resultTitleElement = document.getElementById("resultTitle");
+    this.targetScoreElement = document.getElementById("targetScore");
 
-  this.rankMedalElements = Array.from(
-    document.querySelectorAll("[data-rank-medal]")
-  );
-  this.finalRankMedalElements = Array.from(
-    document.querySelectorAll("[data-final-rank-medal]")
-  );
-  this.finalRankLabelElement = document.getElementById("finalRankLabel");
+    this.rankMedalElements = Array.from(
+      document.querySelectorAll("[data-rank-medal]")
+    );
+    this.finalRankMedalElements = Array.from(
+      document.querySelectorAll("[data-final-rank-medal]")
+    );
+    this.finalRankLabelElement = document.getElementById("finalRankLabel");
 
-  this.restartBtn = document.getElementById("restartBtn");
-  this.nextBtn = document.getElementById("nextBtn");
+    this.restartBtn = document.getElementById("restartBtn");
+    this.nextBtn = document.getElementById("nextBtn");
 
-  this.rotateHint = document.getElementById("rotateHint");
+    this.rotateHint = document.getElementById("rotateHint");
 
-  this.levelTargetScore = 400;
-  this.levelPassed = false;
-  this.displayedHeartProgress = 0;
-  this.targetHeartProgress = 0;
-  this.heartPulseTimeout = null;
+    this.levelTargetScore = 400;
+    this.levelPassed = false;
+    this.displayedHeartProgress = 0;
+    this.targetHeartProgress = 0;
+    this.heartPulseTimeout = null;
 
-  this.homeStars = [];
-  this.starlets = [];
-  this.obstacles = [];
-  this.particles = [];
+    this.homeStars = [];
+    this.starlets = [];
+    this.obstacles = [];
+    this.particles = [];
 
-  this.score = 0;
-  this.savedCount = 0;
-  this.lostCount = 0;
+    this.score = 0;
+    this.savedCount = 0;
+    this.lostCount = 0;
 
-  this.timeLeft = 50;
-  this.totalTime = 50;
+    this.timeLeft = 50;
+    this.totalTime = 50;
 
-   this.gameOver = false;
+    this.gameOver = false;
     this.isRunning = false;
     this.isTransitioning = false;
     this.lastTime = performance.now();
     this.rafId = null;
 
-  this.obstacleTimer = 0;
-  this.obstacleInterval = 2200;
+    this.obstacleTimer = 0;
+    this.obstacleInterval = 2200;
 
- this.isDragging = false;
+    this.isDragging = false;
     this.mousePos = { x: 0, y: 0 };
 
     this.inputBound = false;
@@ -853,442 +861,441 @@ this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
     this.handlePointerMove = null;
     this.handlePointerEnd = null;
 
-
     // Рестарт
-this.handleRestartClick = () => {
-  if (this.isTransitioning) return;
+    this.handleRestartClick = () => {
+      if (this.isTransitioning) return;
 
-  this.isDragging = false;
-  this.resetGame({ restartAmbient: true });
-};
+      this.isDragging = false;
+      this.resetGame({ restartAmbient: true });
+    };
 
-// Кнопка дальше
-this.handleNextClick = async () => {
-  if (this.isTransitioning) return;
+    // Кнопка дальше
+    this.handleNextClick = async () => {
+      if (this.isTransitioning) return;
 
-  console.log("[StarLine] next click", {
-    sceneId: this.sceneId,
-    levelPassed: this.levelPassed,
-    onNext: !!this.onNext,
-    hasSceneManagerNext: !!this.sceneManager?.next,
-  });
+      console.log("[StarLine] next click", {
+        sceneId: this.sceneId,
+        levelPassed: this.levelPassed,
+        onNext: !!this.onNext,
+        hasSceneManagerNext: !!this.sceneManager?.next,
+      });
 
-  if (!this.levelPassed) return;
+      if (!this.levelPassed) return;
 
-  this.isTransitioning = true;
+      this.isTransitioning = true;
 
-const fadeDuration = 0.28;
+      const fadeDuration = 0.28;
 
-  try {
-    if (this.nextBtn) {
-      this.nextBtn.classList.add("actionBtn-disabled");
-      this.nextBtn.disabled = true;
-      this.playButtonFadeGlow(this.nextBtn, fadeDuration);
-    }
+      try {
+        if (this.nextBtn) {
+          this.nextBtn.classList.add("actionBtn-disabled");
+          this.nextBtn.disabled = true;
+          this.playButtonFadeGlow(this.nextBtn, fadeDuration);
+        }
 
-    if (this.restartBtn) {
-      this.restartBtn.classList.add("actionBtn-disabled");
-      this.restartBtn.disabled = true;
-    }
+        if (this.restartBtn) {
+          this.restartBtn.classList.add("actionBtn-disabled");
+          this.restartBtn.disabled = true;
+        }
 
-    this.isDragging = false;
-    this.isRunning = false;
+        this.isDragging = false;
+        this.isRunning = false;
 
-    if (this.rafId) {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = null;
-    }
+        if (this.rafId) {
+          cancelAnimationFrame(this.rafId);
+          this.rafId = null;
+        }
 
-   await this.audio.fadeOutAmbient(fadeDuration); 
+        await this.audio.fadeOutAmbient(fadeDuration);
 
-    if (this.overlay) {
-      this.overlay.classList.remove("show");
-    }
+        if (this.overlay) {
+          this.overlay.classList.remove("show");
+        }
 
-  console.log("[StarLine] next -> transition");
+        console.log("[StarLine] next -> transition");
 
-const sceneRank = this.getSceneRank();
-const sceneRankLabel = this.getSceneRankLabel(sceneRank);
-const sceneRankTitle = this.getSceneRankTitle(sceneRank);
+        const sceneRank = this.getSceneRank();
+        const sceneRankLabel = this.getSceneRankLabel(sceneRank);
+        const sceneRankTitle = this.getSceneRankTitle(sceneRank);
 
-this.onRoundFinished?.({
-  sceneId: this.sceneId,
-  score: this.score,
-  savedCount: this.savedCount,
-  lostCount: this.lostCount,
-  levelPassed: this.levelPassed,
-  levelTargetScore: this.levelTargetScore,
-  sceneRank,
-  sceneRankLabel,
-  sceneRankTitle,
-});
+        this.onRoundFinished?.({
+          sceneId: this.sceneId,
+          score: this.score,
+          savedCount: this.savedCount,
+          lostCount: this.lostCount,
+          levelPassed: this.levelPassed,
+          levelTargetScore: this.levelTargetScore,
+          sceneRank,
+          sceneRankLabel,
+          sceneRankTitle,
+        });
 
-if (this.onNext) {
-  await this.onNext();
-} else if (this.sceneManager?.next) {
-  await this.sceneManager.next();
-}  
-  } catch (error) {
-    console.error("[StarLine] next transition failed", error);
+        if (this.onNext) {
+          await this.onNext();
+        } else if (this.sceneManager?.next) {
+          await this.sceneManager.next();
+        }
+      } catch (error) {
+        console.error("[StarLine] next transition failed", error);
 
-    if (this.overlay) {
-      this.overlay.classList.add("show");
-    }
+        if (this.overlay) {
+          this.overlay.classList.add("show");
+        }
 
-    if (this.nextBtn) {
-      this.nextBtn.classList.remove("actionBtn-disabled");
-      this.nextBtn.disabled = false;
-      this.nextBtn.classList.remove("actionBtn-fade-glow");
-      this.nextBtn.style.removeProperty("--fade-glow-duration");
-    }
+        if (this.nextBtn) {
+          this.nextBtn.classList.remove("actionBtn-disabled");
+          this.nextBtn.disabled = false;
+          this.nextBtn.classList.remove("actionBtn-fade-glow");
+          this.nextBtn.style.removeProperty("--fade-glow-duration");
+        }
 
-    if (this.restartBtn) {
-      this.restartBtn.classList.remove("actionBtn-disabled");
-      this.restartBtn.disabled = false;
-    }
-  } finally {
-    this.isTransitioning = false;
-  }
-};
+        if (this.restartBtn) {
+          this.restartBtn.classList.remove("actionBtn-disabled");
+          this.restartBtn.disabled = false;
+        }
+      } finally {
+        this.isTransitioning = false;
+      }
+    };
 
+    this.handleResize = this.resize.bind(this);
 
+    this.restartBtn?.addEventListener("click", this.handleRestartClick);
+    this.nextBtn?.addEventListener("click", this.handleNextClick);
 
+    this.resize();
+    window.addEventListener("resize", this.handleResize);
 
+    this.setupInput();
 
-  this.handleResize = this.resize.bind(this);
+    this.homeStars = [
+      new HomeStar(this.sceneMetrics, "left", 0),
+      new HomeStar(this.sceneMetrics, "right", Math.PI),
+    ];
+    this.spawnStarlets(10);
 
-  this.restartBtn?.addEventListener("click", this.handleRestartClick);
-  this.nextBtn?.addEventListener("click", this.handleNextClick);
-
-  this.resize();
-  window.addEventListener("resize", this.handleResize);
-
-  this.setupInput();
-
-  this.homeStars = [
-  new HomeStar(this.sceneMetrics, "left", 0),
-  new HomeStar(this.sceneMetrics, "right", Math.PI),
-];
-  this.spawnStarlets(10);
-
-  this.updateTargetScoreUI();
-  this.updateUI();
-  this.draw();
-}
-  
-              isLandscape() { return window.innerWidth >= window.innerHeight; }
-
-              computeSceneMetrics() {
-  const width = this.canvas.width;
-  const height = this.canvas.height;
-  const clamp = (min, value, max) => Math.max(min, Math.min(max, value));
-  const playScale = clamp(0.9, width / 1366, 1.18);
-
-  this.sceneMetrics = {
-    width,
-    height,
-    playScale,
-
-    laneInsetX: width * 0.04,
-    offscreenOffset: width * 0.06,
-    obstacleCullOffset: width * 0.16,
-
-    homeRadius: clamp(30, 34 * playScale, 42),
-    homeRingRadius: clamp(52, 60 * playScale, 74),
-    homeGlowRadius: clamp(116, 140 * playScale, 170),
-
-    homeLeftMinX: -width * 0.09,
-    homeLeftMaxX: width * 0.34,
-    homeRightMinX: width * 0.66,
-    homeRightMaxX: width + width * 0.09,
-    homeMinY: height * 0.3,
-    homeMaxY: height * 0.7,
-
-    starletBaseRadius: clamp(6.6, 7.0 * playScale, 8.9),
-    starletDragRadius: clamp(24, 28 * playScale, 34),
-
-    obstacleMinWidth: clamp(37, 44 * playScale, 56),
-    obstacleMaxWidth: clamp(74, 88 * playScale, 104),
-    obstacleMinHeight: clamp(60, 70 * playScale, 84),
-    obstacleMaxHeight: clamp(104, 123 * playScale, 144),
-  };
-}
-  
-    resize() {
-  this.canvas.width = window.innerWidth;
-  this.canvas.height = window.innerHeight;
-
-  this.computeSceneMetrics();
-
-  if (this.homeStars?.length) {
-    this.homeStars.forEach((star) => star.setBounds(this.sceneMetrics));
+    this.updateTargetScoreUI();
+    this.updateUI();
+    this.draw();
   }
 
-  if (this.rotateHint) {
-    this.rotateHint.classList.toggle(
-      "show",
-      !this.isLandscape() && !this.gameOver && !this.isRunning
-    );
-  }
-}
-
-  playButtonFadeGlow(button, duration = 0.32) {
-  if (!button) return;
-
-  button.classList.remove("actionBtn-fade-glow");
-  void button.offsetWidth;
-  button.style.setProperty("--fade-glow-duration", `${duration}s`);
-  button.classList.add("actionBtn-fade-glow");
-
-  window.setTimeout(() => {
-    button.classList.remove("actionBtn-fade-glow");
-    button.style.removeProperty("--fade-glow-duration");
-  }, duration * 1000 + 40);
-}
-
-applySceneBackground() {
-  if (!this.sceneBackgroundUrl) return;
-
-  const bgUrl = new URL(this.sceneBackgroundUrl, import.meta.url).href;
-  document.documentElement.style.setProperty(
-    "--scene-bg-image",
-    `url("${bgUrl}")`
-  );
-}
-
-resetSceneBackground() {
-  const fallbackUrl = new URL(this.defaultBackgroundUrl, import.meta.url).href;
-  document.documentElement.style.setProperty(
-    "--scene-bg-image",
-    `url("${fallbackUrl}")`
-  );
-}
-
-applySceneAudio() {
-  if (typeof this.audio?.setMusic === "function") {
-    this.audio.setMusic(this.sceneMusicUrl);
-  }
-}
-
-   async start() {
-  console.log("START STATE", {
-    isRunning: this.isRunning,
-    gameOver: this.gameOver,
-    isTransitioning: this.isTransitioning,
-    startScreenShown: this.startScreen?.classList.contains("show"),
-  });
-
-  if (this.isTransitioning) return;
-  if (this.isRunning && !this.gameOver) return;
-
-  this.applySceneAudio();
-  this.applySceneBackground();
-
-  try {
-    await this.audio.init();
-    this.audio.startAmbient();
-    console.log("audio init ok");
-  } catch (e) {
-    console.warn("Audio init skipped", e);
+  isLandscape() {
+    return window.innerWidth >= window.innerHeight;
   }
 
-  if (this.startScreen) {
-    this.startScreen.classList.remove("show");
-    console.log("startScreen hidden");
-  }
+  computeSceneMetrics() {
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    const clamp = (min, value, max) => Math.max(min, Math.min(max, value));
+    const playScale = clamp(0.9, width / 1366, 1.18);
 
-  if (this.rotateHint) {
-    this.rotateHint.classList.toggle("show", !this.isLandscape());
-    console.log("rotate hint updated");
-  }
+    this.sceneMetrics = {
+      width,
+      height,
+      playScale,
 
-  this.isRunning = true;
-  this.gameOver = false;
-  this.lastTime = performance.now();
-  console.log("before game loop");
+      laneInsetX: width * 0.04,
+      offscreenOffset: width * 0.06,
+      obstacleCullOffset: width * 0.16,
 
-  this.startGameLoop();
-  console.log("game loop started");
-}
-  
- createSpawnPoint() {
-  const { width, height, offscreenOffset } = this.sceneMetrics;
+      homeRadius: clamp(30, 34 * playScale, 42),
+      homeRingRadius: clamp(52, 60 * playScale, 74),
+      homeGlowRadius: clamp(116, 140 * playScale, 170),
 
-  const side = Math.random() < 0.5 ? "top" : "bottom";
-  const depth = offscreenOffset * (0.18 + Math.random() * 0.28);
+      homeLeftMinX: -width * 0.09,
+      homeLeftMaxX: width * 0.34,
+      homeRightMinX: width * 0.66,
+      homeRightMaxX: width + width * 0.09,
+      homeMinY: height * 0.3,
+      homeMaxY: height * 0.7,
 
-  const margin = 24;
-  const x = margin + Math.random() * Math.max(1, width - margin * 2);
+      starletBaseRadius: clamp(6.6, 7.0 * playScale, 8.9),
+      starletDragRadius: clamp(24, 28 * playScale, 34),
 
-  if (side === "top") {
-    return {
-      x,
-      y: -depth,
-      side: "top",
+      obstacleMinWidth: clamp(37, 44 * playScale, 56),
+      obstacleMaxWidth: clamp(74, 88 * playScale, 104),
+      obstacleMinHeight: clamp(60, 70 * playScale, 84),
+      obstacleMaxHeight: clamp(104, 123 * playScale, 144),
     };
   }
 
-  return {
-    x,
-    y: height + depth,
-    side: "bottom",
-  };
-}
-  
-              getHeartProgress() {
-                return Math.max(0, Math.min(1, this.score / this.levelTargetScore));
-              }
-              
-              updateHeartProgress(delta) {
-                const wasComplete = this.targetHeartProgress >= 1;
-              
-                this.targetHeartProgress = this.getHeartProgress();
-              
-                const speed = 3.6;
-                const blend = 1 - Math.exp(-speed * delta);
-                this.displayedHeartProgress += (this.targetHeartProgress - this.displayedHeartProgress) * blend;
-              
-                if (Math.abs(this.targetHeartProgress - this.displayedHeartProgress) < 0.002) {
-                  this.displayedHeartProgress = this.targetHeartProgress;
-                }
-              
-                if (this.heartFillRect) {
-                  const heartMaskMaxWidth = 43.5;
-                  this.heartFillRect.setAttribute("width", heartMaskMaxWidth * this.displayedHeartProgress);
-                }
-              
-                if (this.heartIconElement) {
-                  this.heartIconElement.classList.toggle("is-active", this.displayedHeartProgress > 0.02);
-              
-                  const isComplete = this.targetHeartProgress >= 1;
-                  this.heartIconElement.classList.toggle("is-complete", isComplete);
-              
-                  if (!wasComplete && isComplete) {
-                    this.heartIconElement.classList.add("is-pulsing");
-              
-                    if (this.heartPulseTimeout) {
-                      clearTimeout(this.heartPulseTimeout);
-                    }
-              
-                    this.heartPulseTimeout = setTimeout(() => {
-                      if (this.heartIconElement) {
-                        this.heartIconElement.classList.remove("is-pulsing");
-                      }
-                      this.heartPulseTimeout = null;
-                    }, 2200);
-                  }
-              
-                  if (!isComplete) {
-                    this.heartIconElement.classList.remove("is-pulsing");
-                  }
-                }
-              }
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
 
-              getRankThresholds() {
-  return {
-    oneMedalScore: Math.ceil(this.levelTargetScore * 1.25),
-    twoMedalScore: Math.ceil(this.levelTargetScore * 1.6),
-    threeMedalScore: 1200,
-  };
-}
+    this.computeSceneMetrics();
 
-getSceneRank() {
-  if (!this.levelPassed) return 0;
+    if (this.homeStars?.length) {
+      this.homeStars.forEach((star) => star.setBounds(this.sceneMetrics));
+    }
 
-  const { oneMedalScore, twoMedalScore, threeMedalScore } =
-    this.getRankThresholds();
-
-  if (this.score >= threeMedalScore) return 3;
-  if (this.score >= twoMedalScore) return 2;
-  if (this.score >= oneMedalScore) return 1;
-  return 0;
-}
-
-getSceneRankLabel(rank = this.getSceneRank()) {
-  switch (rank) {
-    case 3:
-      return "Космический друг";
-    case 2:
-      return "Звездочет";
-    case 1:
-      return "Проводник звезд";
-    default:
-      return "Юный проводник";
+    if (this.rotateHint) {
+      this.rotateHint.classList.toggle(
+        "show",
+        !this.isLandscape() && !this.gameOver && !this.isRunning
+      );
+    }
   }
-}
 
-getSceneRankTitle(rank = this.getSceneRank()) {
-  switch (rank) {
-    case 3:
-      return "Космический друг";
-    case 2:
-      return "Звездочет";
-    case 1:
-      return "Проводник звезд";
-    default:
-      return "Юный проводник";
+  playButtonFadeGlow(button, duration = 0.32) {
+    if (!button) return;
+
+    button.classList.remove("actionBtn-fade-glow");
+    void button.offsetWidth;
+    button.style.setProperty("--fade-glow-duration", `${duration}s`);
+    button.classList.add("actionBtn-fade-glow");
+
+    window.setTimeout(() => {
+      button.classList.remove("actionBtn-fade-glow");
+      button.style.removeProperty("--fade-glow-duration");
+    }, duration * 1000 + 40);
   }
-}
 
-updateRankUI() {
-  const passedByScore = this.score >= this.levelTargetScore;
-  const { oneMedalScore, twoMedalScore, threeMedalScore } =
-    this.getRankThresholds();
+  applySceneBackground() {
+    if (!this.sceneBackgroundUrl) return;
 
-  let liveMedalCount = 0;
-  if (passedByScore && this.score >= oneMedalScore) liveMedalCount = 1;
-  if (passedByScore && this.score >= twoMedalScore) liveMedalCount = 2;
-  if (passedByScore && this.score >= threeMedalScore) liveMedalCount = 3;
-
-  this.rankMedalElements.forEach((element, index) => {
-    const medalIndex = index + 1;
-    element.classList.toggle("is-lit", liveMedalCount >= medalIndex);
-    element.classList.toggle("is-locked", liveMedalCount < medalIndex);
-  });
-
-  const finalRank = this.getSceneRank();
-
-  this.finalRankMedalElements.forEach((element, index) => {
-    const medalIndex = index + 1;
-    element.classList.toggle("is-lit", finalRank >= medalIndex);
-    element.classList.toggle("is-locked", finalRank < medalIndex);
-  });
-
-  if (this.finalRankLabelElement) {
-    this.finalRankLabelElement.textContent = this.getSceneRankLabel(finalRank);
+    const bgUrl = new URL(this.sceneBackgroundUrl, import.meta.url).href;
+    document.documentElement.style.setProperty(
+      "--scene-bg-image",
+      `url("${bgUrl}")`
+    );
   }
-}
+
+  resetSceneBackground() {
+    const fallbackUrl = new URL(this.defaultBackgroundUrl, import.meta.url).href;
+    document.documentElement.style.setProperty(
+      "--scene-bg-image",
+      `url("${fallbackUrl}")`
+    );
+  }
+
+  applySceneAudio() {
+    if (typeof this.audio?.setMusic === "function") {
+      this.audio.setMusic(this.sceneMusicUrl);
+    }
+  }
+
+  async start() {
+    console.log("START STATE", {
+      isRunning: this.isRunning,
+      gameOver: this.gameOver,
+      isTransitioning: this.isTransitioning,
+      startScreenShown: this.startScreen?.classList.contains("show"),
+    });
+
+    if (this.isTransitioning) return;
+    if (this.isRunning && !this.gameOver) return;
+
+    this.applySceneAudio();
+    this.applySceneBackground();
+
+    try {
+      await this.audio.init();
+      this.audio.startAmbient();
+      console.log("audio init ok");
+    } catch (e) {
+      console.warn("Audio init skipped", e);
+    }
+
+    if (this.startScreen) {
+      this.startScreen.classList.remove("show");
+      console.log("startScreen hidden");
+    }
+
+    if (this.rotateHint) {
+      this.rotateHint.classList.toggle("show", !this.isLandscape());
+      console.log("rotate hint updated");
+    }
+
+    this.isRunning = true;
+    this.gameOver = false;
+    this.lastTime = performance.now();
+    console.log("before game loop");
+
+    this.startGameLoop();
+    console.log("game loop started");
+  }
+
+  createSpawnPoint() {
+    const { width, height, offscreenOffset } = this.sceneMetrics;
+
+    const side = Math.random() < 0.5 ? "top" : "bottom";
+    const depth = offscreenOffset * (0.18 + Math.random() * 0.28);
+
+    const margin = 24;
+    const x = margin + Math.random() * Math.max(1, width - margin * 2);
+
+    if (side === "top") {
+      return {
+        x,
+        y: -depth,
+        side: "top",
+      };
+    }
+
+    return {
+      x,
+      y: height + depth,
+      side: "bottom",
+    };
+  }
+
+  getHeartProgress() {
+    return Math.max(0, Math.min(1, this.score / this.levelTargetScore));
+  }
+
+  updateHeartProgress(delta) {
+    const wasComplete = this.targetHeartProgress >= 1;
+
+    this.targetHeartProgress = this.getHeartProgress();
+
+    const speed = 3.6;
+    const blend = 1 - Math.exp(-speed * delta);
+    this.displayedHeartProgress +=
+      (this.targetHeartProgress - this.displayedHeartProgress) * blend;
+
+    if (Math.abs(this.targetHeartProgress - this.displayedHeartProgress) < 0.002) {
+      this.displayedHeartProgress = this.targetHeartProgress;
+    }
+
+    if (this.heartFillRect) {
+      const heartMaskMaxWidth = 43.5;
+      this.heartFillRect.setAttribute(
+        "width",
+        heartMaskMaxWidth * this.displayedHeartProgress
+      );
+    }
+
+    if (this.heartIconElement) {
+      this.heartIconElement.classList.toggle(
+        "is-active",
+        this.displayedHeartProgress > 0.02
+      );
+
+      const isComplete = this.targetHeartProgress >= 1;
+      this.heartIconElement.classList.toggle("is-complete", isComplete);
+
+      if (!wasComplete && isComplete) {
+        this.heartIconElement.classList.add("is-pulsing");
+
+        if (this.heartPulseTimeout) {
+          clearTimeout(this.heartPulseTimeout);
+        }
+
+        this.heartPulseTimeout = setTimeout(() => {
+          if (this.heartIconElement) {
+            this.heartIconElement.classList.remove("is-pulsing");
+          }
+          this.heartPulseTimeout = null;
+        }, 2200);
+      }
+
+      if (!isComplete) {
+        this.heartIconElement.classList.remove("is-pulsing");
+      }
+    }
+  }
+
+  getRankThresholds() {
+    return {
+      oneMedalScore: Math.ceil(this.levelTargetScore * 1.25),
+      twoMedalScore: Math.ceil(this.levelTargetScore * 1.6),
+      threeMedalScore: 1200,
+    };
+  }
+
+  getSceneRank() {
+    if (!this.levelPassed) return 0;
+
+    const { oneMedalScore, twoMedalScore, threeMedalScore } =
+      this.getRankThresholds();
+
+    if (this.score >= threeMedalScore) return 3;
+    if (this.score >= twoMedalScore) return 2;
+    if (this.score >= oneMedalScore) return 1;
+    return 0;
+  }
+
+  getSceneRankLabel(rank = this.getSceneRank()) {
+    switch (rank) {
+      case 3:
+        return "Космический друг";
+      case 2:
+        return "Звездочет";
+      case 1:
+        return "Проводник звезд";
+      default:
+        return "Юный проводник";
+    }
+  }
+
+  getSceneRankTitle(rank = this.getSceneRank()) {
+    switch (rank) {
+      case 3:
+        return "Космический друг";
+      case 2:
+        return "Звездочет";
+      case 1:
+        return "Проводник звезд";
+      default:
+        return "Юный проводник";
+    }
+  }
+
+  updateRankUI() {
+    const passedByScore = this.score >= this.levelTargetScore;
+    const { oneMedalScore, twoMedalScore, threeMedalScore } =
+      this.getRankThresholds();
+
+    let liveMedalCount = 0;
+    if (passedByScore && this.score >= oneMedalScore) liveMedalCount = 1;
+    if (passedByScore && this.score >= twoMedalScore) liveMedalCount = 2;
+    if (passedByScore && this.score >= threeMedalScore) liveMedalCount = 3;
+
+    this.rankMedalElements.forEach((element, index) => {
+      const medalIndex = index + 1;
+      element.classList.toggle("is-lit", liveMedalCount >= medalIndex);
+      element.classList.toggle("is-locked", liveMedalCount < medalIndex);
+    });
+
+    const finalRank = this.getSceneRank();
+
+    this.finalRankMedalElements.forEach((element, index) => {
+      const medalIndex = index + 1;
+      element.classList.toggle("is-lit", finalRank >= medalIndex);
+      element.classList.toggle("is-locked", finalRank < medalIndex);
+    });
+
+    if (this.finalRankLabelElement) {
+      this.finalRankLabelElement.textContent = this.getSceneRankLabel(finalRank);
+    }
+  }
 
   showRoundResult() {
     if (this.isTransitioning) return;
 
-    // levelPassed уже считается перед вызовом этого метода
     if (this.finalScoreElement) {
-    this.finalScoreElement.textContent = this.score;
-  }
+      this.finalScoreElement.textContent = this.score;
+    }
 
-  if (this.targetScoreElement) {
-    this.targetScoreElement.textContent = this.levelTargetScore;
-  }
+    if (this.targetScoreElement) {
+      this.targetScoreElement.textContent = this.levelTargetScore;
+    }
 
-  // Заголовок: пройден / почти получилось
-  if (this.resultTitleElement) {
-    this.resultTitleElement.textContent = this.levelPassed
-      ? 'Ночь закончилась'
-      : 'Почти получилось';
-  }
+    if (this.resultTitleElement) {
+      this.resultTitleElement.textContent = this.levelPassed
+        ? "Ночь закончилась"
+        : "Почти получилось";
+    }
 
-  // Фраза про девочку
-  if (this.resultMessageElement) {
-    this.resultMessageElement.textContent = this.levelPassed
-      ? 'Девочка счастлива — она спасла так много звёзд!'
-      : 'Девочка надеялась спасти больше звёзд.';
-  }
+    if (this.resultMessageElement) {
+      this.resultMessageElement.textContent = this.levelPassed
+        ? "Девочка счастлива — она спасла так много звёзд!"
+        : "Девочка надеялась спасти больше звёзд.";
+    }
 
-  // Обновляем ранги (HUD + финальный блок)
-  this.updateRankUI();
+    this.updateRankUI();
 
-     // Кнопка "Дальше" доступна только если уровень пройден
     if (this.nextBtn) {
       this.nextBtn.classList.remove("actionBtn-fade-glow");
       this.nextBtn.style.removeProperty("--fade-glow-duration");
@@ -1309,14 +1316,12 @@ updateRankUI() {
       this.restartBtn.disabled = false;
     }
 
-  // Показываем оверлей
-  this.audio.playGameOverSound();
-  this.overlay?.classList.add('show');
-  this.updateUI();
-}
+    this.audio.playGameOverSound();
+    this.overlay?.classList.add("show");
+    this.updateUI();
+  }
 
   resetGame = ({ restartAmbient = false } = {}) => {
-
     console.log("[StarLine] resetGame()", {
       sceneId: this.sceneId,
       overlayShown: this.overlay?.classList.contains("show"),
@@ -1371,7 +1376,10 @@ updateRankUI() {
     }
 
     if (this.restartBtn) {
-      this.restartBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
+      this.restartBtn.classList.remove(
+        "actionBtn-disabled",
+        "actionBtn-fade-glow"
+      );
       this.restartBtn.disabled = false;
       this.restartBtn.style.removeProperty("--fade-glow-duration");
     }
@@ -1384,9 +1392,9 @@ updateRankUI() {
     }
 
     this.homeStars = [
-  new HomeStar(this.sceneMetrics, "left", 0),
-  new HomeStar(this.sceneMetrics, "right", Math.PI),
-];
+      new HomeStar(this.sceneMetrics, "left", 0),
+      new HomeStar(this.sceneMetrics, "right", Math.PI),
+    ];
     this.spawnStarlets(12);
     this.updateUI();
     this.draw();
@@ -1397,67 +1405,79 @@ updateRankUI() {
 
     this.startGameLoop();
   };
-            
-  
-             spawnStarlets(count) {
-  for (let i = 0; i < count; i++) {
-    const spawn = this.createSpawnPoint();
-    this.starlets.push(
-      new Starlet(spawn.x, spawn.y, spawn.side, this.sceneMetrics)
-    );
-  }
-} 
-  
-              spawnObstacle() {
-  this.obstacles.push(new Obstacle(this.sceneMetrics));
-}
-  
-              spawnScatterEffect(x, y, color, cool = false) {
-                  for (let i = 0; i < 12; i++) this.particles.push(new Particle(x, y, color, cool));
-              }
 
-              emitFollowingTrail(starlet, followingCount, delta) {
-  if (!starlet.following) {
-    starlet.trailTimer = 0;
-    return;
-  }
-
-  const intensity = Math.min(1, 0.45 + followingCount * 0.14);
-  const interval = Math.max(0.035, 0.085 - followingCount * 0.008);
-
-  starlet.trailTimer += delta;
-
-  while (starlet.trailTimer >= interval) {
-    starlet.trailTimer -= interval;
-
-    const burstCount =
-      followingCount >= 4 ? 2 :
-      followingCount >= 2 && Math.random() < 0.45 ? 2 : 1;
-
-    for (let i = 0; i < burstCount; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const radius = starlet.radius * (0.2 + Math.random() * 0.9);
-
-      const px = starlet.x + Math.cos(angle) * radius * 0.55;
-      const py = starlet.y + Math.sin(angle) * radius * 0.55;
-
-      this.particles.push(
-        new Particle(px, py, "rgba(255, 236, 176, 0.95)", false, {
-          vx: (Math.random() - 0.5) * 0.45 - 0.15,
-          vy: (Math.random() - 0.5) * 0.45 + 0.08,
-          life: 0.7 + Math.random() * 0.25,
-          decay: 0.04 + Math.random() * 0.025,
-          size: 0.9 + Math.random() * 1.5 * intensity,
-          gravity: -0.002,
-          shrink: 0.01,
-          alphaBoost: 0.65 + intensity * 0.25,
-        })
+  spawnStarlets(count) {
+    for (let i = 0; i < count; i++) {
+      const spawn = this.createSpawnPoint();
+      this.starlets.push(
+        new Starlet(spawn.x, spawn.y, spawn.side, this.sceneMetrics)
       );
     }
   }
-}
-  
-        setupInput() {
+
+  removeOffscreenStarlets() {
+    for (let i = this.starlets.length - 1; i >= 0; i--) {
+      if (this.starlets[i].isOffscreen()) {
+        this.starlets.splice(i, 1);
+      }
+    }
+  }
+
+  spawnObstacle() {
+    this.obstacles.push(new Obstacle(this.sceneMetrics));
+  }
+
+  spawnScatterEffect(x, y, color, cool = false) {
+    for (let i = 0; i < 12; i++) {
+      this.particles.push(new Particle(x, y, color, cool));
+    }
+  }
+
+  emitFollowingTrail(starlet, followingCount, delta) {
+    if (!starlet.following) {
+      starlet.trailTimer = 0;
+      return;
+    }
+
+    const intensity = Math.min(1, 0.45 + followingCount * 0.14);
+    const interval = Math.max(0.035, 0.085 - followingCount * 0.008);
+
+    starlet.trailTimer += delta;
+
+    while (starlet.trailTimer >= interval) {
+      starlet.trailTimer -= interval;
+
+      const burstCount =
+        followingCount >= 4
+          ? 2
+          : followingCount >= 2 && Math.random() < 0.45
+          ? 2
+          : 1;
+
+      for (let i = 0; i < burstCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = starlet.radius * (0.2 + Math.random() * 0.9);
+
+        const px = starlet.x + Math.cos(angle) * radius * 0.55;
+        const py = starlet.y + Math.sin(angle) * radius * 0.55;
+
+        this.particles.push(
+          new Particle(px, py, "rgba(255, 236, 176, 0.95)", false, {
+            vx: (Math.random() - 0.5) * 0.45 - 0.15,
+            vy: (Math.random() - 0.5) * 0.45 + 0.08,
+            life: 0.7 + Math.random() * 0.25,
+            decay: 0.04 + Math.random() * 0.025,
+            size: 0.9 + Math.random() * 1.5 * intensity,
+            gravity: -0.002,
+            shrink: 0.01,
+            alphaBoost: 0.65 + intensity * 0.25,
+          })
+        );
+      }
+    }
+  }
+
+  setupInput() {
     if (this.inputBound) return;
 
     this.handlePointerMoveCore = (x, y) => {
@@ -1492,244 +1512,250 @@ updateRankUI() {
     this.canvas.addEventListener("pointerleave", this.handlePointerEnd);
 
     this.inputBound = true;
-  }        
-  
-        update(currentTime) {
-    if (!this.isRunning || this.gameOver) return;       
-  
-    if (this.rotateHint) {
-    this.rotateHint.classList.toggle("show", !this.isLandscape());
   }
-  
+
+  update(currentTime) {
+    if (!this.isRunning || this.gameOver) return;
+
+    if (this.rotateHint) {
+      this.rotateHint.classList.toggle("show", !this.isLandscape());
+    }
+
     const delta = (currentTime - this.lastTime) / 1000;
     this.lastTime = currentTime;
-  
+
     this.timeLeft -= delta;
 
-if (this.timeLeft <= 12 && !this.gameOver) {
-  this.audio.duckAmbientForOverlay(12);
-}
+    if (this.timeLeft <= 12 && !this.gameOver) {
+      this.audio.duckAmbientForOverlay(12);
+    }
 
-if (this.timeLeft <= 0) {
-  this.timeLeft = 0;
-  this.gameOver = true;
-  this.isRunning = false;
+    if (this.timeLeft <= 0) {
+      this.timeLeft = 0;
+      this.gameOver = true;
+      this.isRunning = false;
 
-  this.levelPassed = this.score >= this.levelTargetScore;
+      this.levelPassed = this.score >= this.levelTargetScore;
 
-  if (!this.isTransitioning) {
-  this.showRoundResult();
-}
-return;
-}
-  
+      if (!this.isTransitioning) {
+        this.showRoundResult();
+      }
+      return;
+    }
+
     let swarmCenter = null;
     if (this.starlets.length > 0) {
-      let sx = 0, sy = 0;
+      let sx = 0,
+        sy = 0;
       for (const s of this.starlets) {
         sx += s.x;
         sy += s.y;
       }
       swarmCenter = {
         x: sx / this.starlets.length,
-        y: sy / this.starlets.length
+        y: sy / this.starlets.length,
       };
     }
-  
+
     const followingCount = this.starlets.reduce(
-  (count, s) => count + (s.following ? 1 : 0),
-  0
-);
+      (count, s) => count + (s.following ? 1 : 0),
+      0
+    );
 
-this.starlets.forEach((s) => {
-  const justCaught = s.update(this.mousePos, this.isDragging, swarmCenter);
-  if (justCaught) this.audio.playCatchSound();
+    this.starlets.forEach((s) => {
+      const justCaught = s.update(this.mousePos, this.isDragging, swarmCenter);
+      if (justCaught) this.audio.playCatchSound();
 
-  this.emitFollowingTrail(s, followingCount, delta);
-});
-  
-  this.obstacles.forEach((o) => {
-  o.update();
+      this.emitFollowingTrail(s, followingCount, delta);
+    });
 
-  this.homeStars.forEach((star) => {
-    if (star.blocksObstacle(o)) {
-      star.repelObstacle(o);
-    }
-  });
-});  
-  
+    this.removeOffscreenStarlets();
+
+    this.obstacles.forEach((o) => {
+      o.update();
+
+      this.homeStars.forEach((star) => {
+        if (star.blocksObstacle(o)) {
+          star.repelObstacle(o);
+        }
+      });
+    });
+
     for (let i = this.particles.length - 1; i >= 0; i--) {
       this.particles[i].update();
       if (this.particles[i].life <= 0) this.particles.splice(i, 1);
     }
-  
+
     this.obstacles = this.obstacles.filter((o) => !o.isOffscreen());
-  
+
     this.checkCollisions();
     this.checkHomeHits();
-  
+
     this.obstacleTimer += delta * 1000;
-if (this.obstacleTimer >= this.obstacleInterval) {
-  this.spawnObstacle();
-  this.obstacleTimer = 0;
-}
+    if (this.obstacleTimer >= this.obstacleInterval) {
+      this.spawnObstacle();
+      this.obstacleTimer = 0;
+    }
 
-if (this.score >= 60) this.obstacleInterval = 2000;
-if (this.score >= 140) this.obstacleInterval = 1800;
-if (this.score >= 260) this.obstacleInterval = 1600;
+    if (this.score >= 60) this.obstacleInterval = 2000;
+    if (this.score >= 140) this.obstacleInterval = 1800;
+    if (this.score >= 260) this.obstacleInterval = 1600;
 
-if (this.starlets.length < 8) this.spawnStarlets(4);
+    if (this.starlets.length < 8) this.spawnStarlets(4);
 
-this.updateHeartProgress(delta);
-this.updateUI();
+    this.updateHeartProgress(delta);
+    this.updateUI();
   }
-  
-              checkCollisions() {
-                  for (let i = this.starlets.length - 1; i >= 0; i--) {
-                      const starlet = this.starlets[i];
-                      for (let obstacle of this.obstacles) {
-                          if (obstacle.collidesWith(starlet)) {
-                              this.score = Math.max(0, this.score - 5);
-                              this.lostCount += 1;
-                              this.audio.playHitSound();
-                              this.spawnScatterEffect(starlet.x, starlet.y, '#7e3c48', true);
-                              this.starlets.splice(i, 1);
-                              break;
-                          }
-                      }
-                  }
-              }
-  
-              checkHomeHits() {
-  for (let i = this.starlets.length - 1; i >= 0; i--) {
-    const starlet = this.starlets[i];
 
-    const hitHome = this.homeStars.some((homeStar) => homeStar.isHit(starlet));
-
-    if (hitHome) {
-      this.score += 10;
-      this.savedCount += 1;
-      this.audio.playScoreSound();
-
-      const targetHome =
-        this.homeStars.reduce((best, star) => {
-          const dx = starlet.x - star.x;
-          const dy = starlet.y - star.y;
-          const dist = dx * dx + dy * dy;
-          if (!best || dist < best.dist) return { star, dist };
-          return best;
-        }, null)?.star ?? this.homeStars[0];
-
-      this.spawnScatterEffect(targetHome.x, targetHome.y, "#DEA15E", true);
-      this.starlets.splice(i, 1);
+  checkCollisions() {
+    for (let i = this.starlets.length - 1; i >= 0; i--) {
+      const starlet = this.starlets[i];
+      for (let obstacle of this.obstacles) {
+        if (obstacle.collidesWith(starlet)) {
+          this.score = Math.max(0, this.score - 5);
+          this.lostCount += 1;
+          this.audio.playHitSound();
+          this.spawnScatterEffect(starlet.x, starlet.y, "#7e3c48", true);
+          this.starlets.splice(i, 1);
+          break;
+        }
+      }
     }
   }
-}
-  
-              updateTargetScoreUI() {
+
+  checkHomeHits() {
+    for (let i = this.starlets.length - 1; i >= 0; i--) {
+      const starlet = this.starlets[i];
+
+      const hitHome = this.homeStars.some((homeStar) => homeStar.isHit(starlet));
+
+      if (hitHome) {
+        this.score += 10;
+        this.savedCount += 1;
+        this.audio.playScoreSound();
+
+        const targetHome =
+          this.homeStars.reduce((best, star) => {
+            const dx = starlet.x - star.x;
+            const dy = starlet.y - star.y;
+            const dist = dx * dx + dy * dy;
+            if (!best || dist < best.dist) return { star, dist };
+            return best;
+          }, null)?.star ?? this.homeStars[0];
+
+        this.spawnScatterEffect(targetHome.x, targetHome.y, "#DEA15E", true);
+        this.starlets.splice(i, 1);
+      }
+    }
+  }
+
+  updateTargetScoreUI() {
     if (this.targetScoreElement) {
       this.targetScoreElement.textContent = this.levelTargetScore;
     }
   }
-  
-            updateUI() {
-  if (this.savedCountElement) {
-    this.savedCountElement.textContent = this.savedCount;
+
+  updateUI() {
+    if (this.savedCountElement) {
+      this.savedCountElement.textContent = this.savedCount;
+    }
+
+    if (this.lostCountElement) {
+      this.lostCountElement.textContent = this.lostCount;
+    }
+
+    if (this.scoreElement) {
+      this.scoreElement.textContent = this.score;
+    }
+
+    if (this.timeFillElement) {
+      const progress = Math.max(0, Math.min(1, this.timeLeft / this.totalTime));
+      this.timeFillElement.style.width = `${progress * 100}%`;
+    }
+
+    this.updateRankUI();
   }
 
-  if (this.lostCountElement) {
-    this.lostCountElement.textContent = this.lostCount;
+  drawBackgroundDust() {
+    const g = this.ctx.createRadialGradient(
+      this.canvas.width * 0.32,
+      this.canvas.height * 0.5,
+      40,
+      this.canvas.width * 0.32,
+      this.canvas.height * 0.5,
+      Math.max(this.canvas.width, this.canvas.height) * 0.85
+    );
+
+    g.addColorStop(0, "rgba(53, 97, 132, 0.08)");
+    g.addColorStop(0.35, "rgba(12, 43, 74, 0.03)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+
+    this.ctx.fillStyle = g;
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  if (this.scoreElement) {
-    this.scoreElement.textContent = this.score;
+  draw() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.drawBackgroundDust();
+
+    this.homeStars.forEach((star) => star.draw(this.ctx));
+    this.obstacles.forEach((o) => o.draw(this.ctx));
+    this.starlets.forEach((s) => s.draw(this.ctx));
+    this.particles.forEach((p) => p.draw(this.ctx));
+
+    if (this.isDragging && this.isRunning && !this.gameOver) {
+      this.ctx.strokeStyle = "rgba(53, 97, 132, 0.55)";
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.arc(this.mousePos.x, this.mousePos.y, 28, 0, Math.PI * 2);
+      this.ctx.stroke();
+
+      this.ctx.beginPath();
+      this.ctx.arc(this.mousePos.x, this.mousePos.y, 20, 0, Math.PI * 2);
+      this.ctx.lineWidth = 0.8;
+      this.ctx.strokeStyle = "rgba(12, 43, 74, 0.6)";
+      this.ctx.stroke();
+    }
   }
 
-  if (this.timeFillElement) {
-    const progress = Math.max(0, Math.min(1, this.timeLeft / this.totalTime));
-    this.timeFillElement.style.width = `${progress * 100}%`;
-  }
-
-  this.updateRankUI();
-}
-
-drawBackgroundDust() {
-  const g = this.ctx.createRadialGradient(
-    this.canvas.width * 0.32,
-    this.canvas.height * 0.5,
-    40,
-    this.canvas.width * 0.32,
-    this.canvas.height * 0.5,
-    Math.max(this.canvas.width, this.canvas.height) * 0.85
-  );
-
-  g.addColorStop(0, "rgba(53, 97, 132, 0.08)");
-  g.addColorStop(0.35, "rgba(12, 43, 74, 0.03)");
-  g.addColorStop(1, "rgba(0,0,0,0)");
-
-  this.ctx.fillStyle = g;
-  this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-}
-
-draw() {
-  this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-  this.drawBackgroundDust();
-
- this.homeStars.forEach((star) => star.draw(this.ctx));
-  this.obstacles.forEach((o) => o.draw(this.ctx));
-  this.starlets.forEach((s) => s.draw(this.ctx));
-  this.particles.forEach((p) => p.draw(this.ctx));
-
-  if (this.isDragging && this.isRunning && !this.gameOver) {
-    this.ctx.strokeStyle = "rgba(53, 97, 132, 0.55)";
-    this.ctx.lineWidth = 2;
-    this.ctx.beginPath();
-    this.ctx.arc(this.mousePos.x, this.mousePos.y, 28, 0, Math.PI * 2);
-    this.ctx.stroke();
-
-    this.ctx.beginPath();
-    this.ctx.arc(this.mousePos.x, this.mousePos.y, 20, 0, Math.PI * 2);
-    this.ctx.lineWidth = 0.8;
-    this.ctx.strokeStyle = "rgba(12, 43, 74, 0.6)";
-    this.ctx.stroke();
-  }
-} 
-  
-   startGameLoop() {
+  startGameLoop() {
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
 
-   const loop = (time) => {
-  this.update(time);
-  this.draw();
+    const loop = (time) => {
+      this.update(time);
+      this.draw();
 
-  if (this.isRunning && !this.gameOver) {
+      if (this.isRunning && !this.gameOver) {
+        this.rafId = requestAnimationFrame(loop);
+      } else {
+        this.rafId = null;
+      }
+    };
+
     this.rafId = requestAnimationFrame(loop);
-  } else {
-    this.rafId = null;
   }
-}; 
 
-    this.rafId = requestAnimationFrame(loop);
-  } 
-  
-    async enter() {
+  async enter() {
     this.isRunning = false;
     this.gameOver = false;
     this.isTransitioning = false;
     this.isDragging = false;
 
     this.applySceneBackground();
-  this.applySceneAudio();
-  
-       if (this.overlay) {
+    this.applySceneAudio();
+
+    if (this.overlay) {
       this.overlay.classList.remove("show");
     }
 
     if (this.restartBtn) {
-      this.restartBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
+      this.restartBtn.classList.remove(
+        "actionBtn-disabled",
+        "actionBtn-fade-glow"
+      );
       this.restartBtn.disabled = false;
       this.restartBtn.style.removeProperty("--fade-glow-duration");
     }
@@ -1748,77 +1774,84 @@ draw() {
     this.updateTargetScoreUI();
     this.updateUI();
     this.draw();
-  
+
     await this.start();
   }
-  
+
   async exit() {
     this.destroy();
   }
-  
-   destroy() {
+
+  destroy() {
     this.isRunning = false;
     this.gameOver = true;
     this.isTransitioning = false;
     this.isDragging = false;
 
-  if (this.rafId) {
-    cancelAnimationFrame(this.rafId);
-    this.rafId = null;
-  }
-
-  if (this.heartPulseTimeout) {
-    clearTimeout(this.heartPulseTimeout);
-    this.heartPulseTimeout = null;
-  }
-
-  if (this.canvas) {
-    if (this.handlePointerDown) {
-      this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
     }
 
-    if (this.handlePointerMove) {
-      this.canvas.removeEventListener("pointermove", this.handlePointerMove);
+    if (this.heartPulseTimeout) {
+      clearTimeout(this.heartPulseTimeout);
+      this.heartPulseTimeout = null;
     }
 
-    if (this.handlePointerEnd) {
-      this.canvas.removeEventListener("pointerup", this.handlePointerEnd);
-      this.canvas.removeEventListener("pointercancel", this.handlePointerEnd);
-      this.canvas.removeEventListener("pointerleave", this.handlePointerEnd);
-    }
-  }
+    if (this.canvas) {
+      if (this.handlePointerDown) {
+        this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
+      }
 
-  this.inputBound = false;
-  this.handlePointerMoveCore = null;
-  this.handlePointerDown = null;
-  this.handlePointerMove = null;
-  this.handlePointerEnd = null;
+      if (this.handlePointerMove) {
+        this.canvas.removeEventListener("pointermove", this.handlePointerMove);
+      }
+
+      if (this.handlePointerEnd) {
+        this.canvas.removeEventListener("pointerup", this.handlePointerEnd);
+        this.canvas.removeEventListener("pointercancel", this.handlePointerEnd);
+        this.canvas.removeEventListener("pointerleave", this.handlePointerEnd);
+      }
+    }
+
+    this.inputBound = false;
+    this.handlePointerMoveCore = null;
+    this.handlePointerDown = null;
+    this.handlePointerMove = null;
+    this.handlePointerEnd = null;
 
     window.removeEventListener("resize", this.handleResize);
 
-  if (this.overlay) {
-    this.overlay.classList.remove("show");
-  }
+    if (this.overlay) {
+      this.overlay.classList.remove("show");
+    }
 
-  if (this.startScreen) {
-    this.startScreen.classList.remove("show");
-  }
+    if (this.startScreen) {
+      this.startScreen.classList.remove("show");
+    }
 
-  if (this.rotateHint) {
-    this.rotateHint.classList.remove("show");
-  }
+    if (this.rotateHint) {
+      this.rotateHint.classList.remove("show");
+    }
 
-  if (this.restartBtn) {
-    this.restartBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
-    this.restartBtn.disabled = false;
-    this.restartBtn.style.removeProperty("--fade-glow-duration");
-  }
+    if (this.restartBtn) {
+      this.restartBtn.classList.remove(
+        "actionBtn-disabled",
+        "actionBtn-fade-glow"
+      );
+      this.restartBtn.disabled = false;
+      this.restartBtn.style.removeProperty("--fade-glow-duration");
+    }
 
-  if (this.nextBtn) {
-    this.nextBtn.classList.remove("actionBtn-disabled", "actionBtn-fade-glow");
-    this.nextBtn.disabled = false;
-    this.nextBtn.style.removeProperty("--fade-glow-duration");
+    if (this.nextBtn) {
+      this.nextBtn.classList.remove(
+        "actionBtn-disabled",
+        "actionBtn-fade-glow"
+      );
+      this.nextBtn.disabled = false;
+      this.nextBtn.style.removeProperty("--fade-glow-duration");
+    }
+
+    this.resetSceneBackground();
   }
-   this.resetSceneBackground();
 }
-  }
