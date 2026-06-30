@@ -348,6 +348,583 @@ export class GameAudio {
     });
   }
 }
+
+class Blacklet {
+  constructor(sceneMetrics) {
+    this.sceneMetrics = sceneMetrics;
+
+    this.entrySide = "right";
+
+    this.x = 0;
+    this.y = 0;
+    this.targetX = 0;
+    this.targetY = 0;
+
+    this.vx = 0;
+    this.vy = 0;
+
+    this.following = false;
+    this.state = "forming"; // forming -> ready -> linked
+    this.isLinked = false;
+
+    this.lagFactor = 0.078;
+    this.linkedLagFactor = 0.064;
+    this.dragRadius = (sceneMetrics?.starletDragRadius ?? 28) * 1.2;
+    this.linkRadius = (sceneMetrics?.starletDragRadius ?? 28) * 1.55;
+
+    const baseStarletRadius = sceneMetrics?.starletBaseRadius ?? 8;
+    this.radius = baseStarletRadius * 1.33 * 1.5;
+    this.innerRadius = this.radius * 0.48;
+
+    this.phase = Math.random() * Math.PI * 2;
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotationSpeed = 0.0115;
+    this.wander = 0.26;
+    this.wanderY = 0.34;
+    this.jitterPhase = Math.random() * Math.PI * 2;
+
+    this.transformProgress = 0;
+    this.formationDuration = 5.2;
+    this.coreDarkness = 0;
+    this.redness = 0;
+
+    this.linkedRing = null;
+
+    this.setBounds(sceneMetrics);
+    this.reset();
+  }
+
+  setBounds(sceneMetrics) {
+    this.sceneMetrics = sceneMetrics;
+
+    const baseStarletRadius = sceneMetrics?.starletBaseRadius ?? 8;
+    this.radius = baseStarletRadius * 1.33 * 1.5;
+    this.innerRadius = this.radius * 0.48;
+
+    this.dragRadius = (sceneMetrics?.starletDragRadius ?? 28) * 1.2;
+    this.linkRadius = (sceneMetrics?.starletDragRadius ?? 28) * 1.55;
+
+    this.spawnX = sceneMetrics.width * 0.78;
+
+    this.minX = sceneMetrics.width * 0.56;
+    this.maxX = sceneMetrics.width * 0.9;
+    this.minY = sceneMetrics.height * 0.2;
+    this.maxY = sceneMetrics.height * 0.8;
+  }
+
+  reset() {
+    this.state = "forming";
+    this.isLinked = false;
+    this.linkedRing = null;
+    this.following = false;
+
+    this.transformProgress = 0;
+    this.coreDarkness = 0;
+    this.redness = 0;
+
+    this.x = this.spawnX;
+    this.y = this.minY + Math.random() * Math.max(24, this.maxY - this.minY);
+    this.targetX = this.x;
+    this.targetY = this.y;
+
+    this.vx = -0.24 - Math.random() * 0.1;
+    this.vy = (Math.random() - 0.5) * 0.14;
+  }
+
+  canAbsorb() {
+    return this.state === "linked";
+  }
+
+  canLink() {
+    return this.state === "forming" || this.state === "ready";
+  }
+
+  isReady() {
+    return this.state === "ready" || this.state === "linked";
+  }
+
+  setLinked(redRing = null) {
+    this.state = "linked";
+    this.isLinked = true;
+    this.linkedRing = redRing;
+  }
+
+  clearLinked() {
+    if (this.state === "linked") {
+      this.state = "ready";
+    }
+    this.isLinked = false;
+    this.linkedRing = null;
+  }
+
+  absorbRingCenter(x, y, pull = 0.16) {
+    this.x += (x - this.x) * pull;
+    this.y += (y - this.y) * pull;
+    this.targetX = this.x;
+    this.targetY = this.y;
+  }
+
+  update(mousePos, isDragging, delta = 0.016) {
+    const catchRadius = this.isLinked ? this.linkRadius : this.dragRadius;
+
+    if (!this.following && isDragging) {
+      const dx = this.x - mousePos.x;
+      const dy = this.y - mousePos.y;
+      if (Math.sqrt(dx * dx + dy * dy) < catchRadius) {
+        this.following = true;
+      }
+    }
+
+    if (this.following) {
+      this.targetX = mousePos.x;
+      this.targetY = mousePos.y;
+
+      const lag = this.isLinked ? this.linkedLagFactor : this.lagFactor;
+      this.x += (this.targetX - this.x) * lag;
+      this.y += (this.targetY - this.y) * lag;
+    } else {
+      this.x += this.vx;
+      this.y += this.vy;
+
+      const t = performance.now();
+      this.x += Math.sin(t * 0.0017 + this.phase) * this.wander;
+      this.y += Math.cos(t * 0.0013 + this.phase) * this.wanderY;
+
+      if (this.x < this.minX) this.vx = Math.abs(this.vx) * 0.92;
+      if (this.x > this.maxX) this.vx = -Math.abs(this.vx) * 0.92;
+      if (this.y < this.minY) this.vy = Math.abs(this.vy) * 0.92;
+      if (this.y > this.maxY) this.vy = -Math.abs(this.vy) * 0.92;
+    }
+
+    if (this.state === "forming") {
+      this.transformProgress = Math.min(
+        1,
+        this.transformProgress + delta / this.formationDuration
+      );
+
+      const redStart = 0.18;
+      const blackStart = 0.56;
+
+      this.redness =
+        this.transformProgress <= redStart
+          ? 0
+          : Math.min(1, (this.transformProgress - redStart) / (1 - redStart));
+
+      this.coreDarkness =
+        this.transformProgress <= blackStart
+          ? 0
+          : Math.min(1, (this.transformProgress - blackStart) / (1 - blackStart));
+
+      if (this.transformProgress >= 1) {
+        this.state = "ready";
+      }
+    }
+
+    this.rotation += this.rotationSpeed;
+    this.jitterPhase += delta * 8.5;
+  }
+
+  draw(ctx) {
+    const jitterStrength =
+      this.state === "forming"
+        ? 0.55 + (1 - this.transformProgress) * 0.8
+        : 0.14;
+
+    const jitterX = Math.sin(this.jitterPhase) * jitterStrength;
+    const jitterY = Math.cos(this.jitterPhase * 0.87) * jitterStrength;
+
+    const glowBoost =
+      this.state === "linked"
+        ? 1.15
+        : this.state === "ready"
+        ? 1
+        : 0.72 + this.redness * 0.2;
+
+    const yellow = { r: 245, g: 182, b: 112 };
+    const amber = { r: 255, g: 240, b: 184 };
+    const red = { r: 208, g: 74, b: 88 };
+    const deepRed = { r: 126, g: 60, b: 72 };
+
+    const mix = (a, b, t) => ({
+      r: a.r + (b.r - a.r) * t,
+      g: a.g + (b.g - a.g) * t,
+      b: a.b + (b.b - a.b) * t,
+    });
+
+    const toRgb = (c, alpha = 1) =>
+      `rgba(${c.r | 0}, ${c.g | 0}, ${c.b | 0}, ${alpha})`;
+
+    const outerWarm = mix(yellow, red, this.redness * 0.82);
+    const edgeColor = mix(amber, red, this.redness);
+    const shadowColor = mix(red, deepRed, this.coreDarkness * 0.35);
+
+    const coreFill =
+      this.coreDarkness <= 0
+        ? outerWarm
+        : mix(outerWarm, { r: 13, g: 20, b: 39 }, this.coreDarkness);
+
+    const coreHighlight = mix(
+      amber,
+      { r: 255, g: 210, b: 210 },
+      this.redness * 0.45
+    );
+
+    const glowRadius = this.radius * (3.0 + 0.3 * glowBoost);
+
+    ctx.save();
+    ctx.translate(this.x + jitterX, this.y + jitterY);
+    ctx.rotate(this.rotation);
+
+    const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, glowRadius);
+    glow.addColorStop(0, toRgb(edgeColor, 0.2 * glowBoost));
+    glow.addColorStop(0.45, toRgb(shadowColor, 0.12 * glowBoost));
+    glow.addColorStop(1, toRgb(deepRed, 0));
+
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    drawStarPath(ctx, 0, 0, this.radius, this.innerRadius, 5);
+    ctx.shadowBlur = 18 * glowBoost;
+    ctx.shadowColor = toRgb(edgeColor, 0.52);
+    ctx.fillStyle = toRgb(coreFill, 1);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    drawStarPath(ctx, 0, 0, this.radius, this.innerRadius, 5);
+    ctx.lineWidth = this.state === "forming" ? 1.1 : 1.25;
+    ctx.strokeStyle = toRgb(edgeColor, 0.96);
+    ctx.stroke();
+
+    drawStarPath(
+      ctx,
+      -this.radius * 0.16,
+      -this.radius * 0.18,
+      this.radius * 0.36,
+      this.radius * 0.15,
+      5
+    );
+    ctx.fillStyle = toRgb(
+      coreHighlight,
+      Math.max(0.18, 0.4 - this.coreDarkness * 0.22)
+    );
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+class RedRing {
+  constructor(sceneMetrics) {
+    this.sceneMetrics = sceneMetrics;
+
+    this.x = 0;
+    this.y = 0;
+
+    this.anchorBlacklet = null;
+    this.isAttached = false;
+
+    this.entrySide = "top";
+    this.state = "spawning"; // spawning -> drifting -> attached -> fading
+
+    this.vx = 0;
+    this.vy = 0;
+
+    this.alpha = 1;
+    this.fadeProgress = 0;
+    this.fadeDuration = 2.1;
+
+    this.spawnDelay = 0;
+    this.respawnDelay = 0.45;
+
+    this.attachPull = 0.18;
+
+    this.phase = Math.random() * Math.PI * 2;
+    this.pulsePhase = Math.random() * Math.PI * 2;
+    this.glowPhase = Math.random() * Math.PI * 2;
+
+    this.baseRadius = 0;
+    this.dotRadius = 0;
+    this.ringRadius = 0;
+    this.outerGlowRadius = 0;
+    this.collisionRadius = 0;
+
+    this.spawnMinX = 0;
+    this.spawnMaxX = 0;
+    this.spawnMinY = 0;
+    this.spawnMaxY = 0;
+
+    this.setBounds(sceneMetrics);
+    this.reset();
+  }
+
+  setBounds(sceneMetrics) {
+    this.sceneMetrics = sceneMetrics;
+
+    const baseStarletRadius = sceneMetrics?.starletBaseRadius ?? 8;
+    const playScale = sceneMetrics?.playScale ?? 1;
+    const offscreenOffset = sceneMetrics?.offscreenOffset ?? 60;
+    const { width = 1366, height = 768 } = sceneMetrics ?? {};
+
+    this.baseRadius = baseStarletRadius * 1.25;
+    this.dotRadius = this.baseRadius * 0.68;
+    this.ringRadius = this.baseRadius * 2.15;
+    this.outerGlowRadius = this.ringRadius * 2.7;
+    this.collisionRadius = this.ringRadius * 0.92;
+
+    this.spawnMinX = width * 0.68;
+    this.spawnMaxX = width * 0.92;
+
+    this.driftMinX = width * 0.64;
+    this.driftMaxX = width * 0.94;
+    this.driftMinY = height * 0.14;
+    this.driftMaxY = height * 0.86;
+
+    this.topSpawnY = -offscreenOffset * (1.2 + 0.35 * playScale);
+    this.bottomSpawnY = height + offscreenOffset * (1.2 + 0.35 * playScale);
+
+    if (this.state !== "attached" || !this.anchorBlacklet) {
+      this.x = Math.max(this.spawnMinX, Math.min(this.spawnMaxX, this.x || this.spawnMinX));
+      this.y = Math.max(
+        this.topSpawnY,
+        Math.min(this.bottomSpawnY, this.y || height * 0.5)
+      );
+    }
+  }
+
+  reset() {
+    this.anchorBlacklet = null;
+    this.isAttached = false;
+    this.state = "spawning";
+
+    this.alpha = 1;
+    this.fadeProgress = 0;
+    this.spawnDelay = 0;
+
+    this.phase = Math.random() * Math.PI * 2;
+    this.pulsePhase = Math.random() * Math.PI * 2;
+    this.glowPhase = Math.random() * Math.PI * 2;
+
+    this.entrySide = Math.random() < 0.5 ? "top" : "bottom";
+
+    this.x =
+      this.spawnMinX +
+      Math.random() * Math.max(24, this.spawnMaxX - this.spawnMinX);
+
+    this.y = this.entrySide === "top" ? this.topSpawnY : this.bottomSpawnY;
+
+    this.vx = -0.035 - Math.random() * 0.05;
+    this.vy =
+      this.entrySide === "top"
+        ? 0.16 + Math.random() * 0.08
+        : -0.16 - Math.random() * 0.08;
+  }
+
+  respawn() {
+    this.reset();
+  }
+
+  canAttach() {
+    return !this.isAttached && this.state !== "fading";
+  }
+
+  canDestroyStarlet() {
+    return this.isAttached && (this.state === "attached" || this.state === "fading");
+  }
+
+  attachToBlacklet(blacklet) {
+    if (!blacklet) return;
+    if (!this.canAttach()) return;
+
+    this.anchorBlacklet = blacklet;
+    this.isAttached = true;
+    this.state = "attached";
+
+    this.fadeProgress = 0;
+    this.alpha = 1;
+
+    this.absorbToBlackletCenter(blacklet, 0.28);
+  }
+
+  detach() {
+    this.anchorBlacklet = null;
+    this.isAttached = false;
+    this.state = "fading";
+    this.fadeProgress = 0;
+  }
+
+  absorbToBlackletCenter(blacklet, pull = this.attachPull) {
+    if (!blacklet) return;
+
+    this.x += (blacklet.x - this.x) * pull;
+    this.y += (blacklet.y - this.y) * pull;
+  }
+
+  collidesWithBlacklet(blacklet) {
+    if (!blacklet || !this.canAttach()) return false;
+
+    const dx = blacklet.x - this.x;
+    const dy = blacklet.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    const blackletLinkRadius =
+      blacklet.radius * 0.72 + this.collisionRadius;
+
+    return dist < blackletLinkRadius;
+  }
+
+  collidesWithStarlet(starlet) {
+    if (!starlet || !this.canDestroyStarlet()) return false;
+
+    const dx = starlet.x - this.x;
+    const dy = starlet.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    return dist < this.collisionRadius + starlet.radius;
+  }
+
+  isReadyToRespawn() {
+    return this.state === "fading" && this.fadeProgress >= 1;
+  }
+
+  update(delta = 0.016, blacklet = null) {
+    this.pulsePhase += delta * 5.4;
+    this.glowPhase += delta * 2.8;
+    this.phase += delta * 1.9;
+
+    if (this.spawnDelay > 0) {
+      this.spawnDelay = Math.max(0, this.spawnDelay - delta);
+      return;
+    }
+
+    if (this.state === "spawning" || this.state === "drifting") {
+      this.state = "drifting";
+
+      this.x += this.vx;
+      this.y += this.vy;
+
+      this.x += Math.sin(this.phase) * 0.06;
+      this.y += Math.cos(this.phase * 0.92) * 0.09;
+
+      if (this.x < this.driftMinX) this.vx = Math.abs(this.vx) * 0.92;
+      if (this.x > this.driftMaxX) this.vx = -Math.abs(this.vx) * 0.92;
+      if (this.y < this.driftMinY) this.vy = Math.abs(this.vy) * 0.92;
+      if (this.y > this.driftMaxY) this.vy = -Math.abs(this.vy) * 0.92;
+
+      if (blacklet && this.collidesWithBlacklet(blacklet)) {
+        this.attachToBlacklet(blacklet);
+      }
+
+      return;
+    }
+
+    if (this.state === "attached") {
+      if (!blacklet) {
+        this.detach();
+        return;
+      }
+
+      this.anchorBlacklet = blacklet;
+      this.absorbToBlackletCenter(blacklet, 0.22);
+
+      this.fadeProgress += delta / this.fadeDuration;
+      if (this.fadeProgress >= 1) {
+        this.fadeProgress = 1;
+        this.state = "fading";
+      }
+
+      this.alpha = Math.max(0, 1 - this.fadeProgress);
+      return;
+    }
+
+    if (this.state === "fading") {
+      if (this.anchorBlacklet) {
+        this.absorbToBlackletCenter(this.anchorBlacklet, 0.18);
+      }
+
+      this.fadeProgress += delta / Math.max(0.0001, this.fadeDuration * 0.28);
+      this.alpha = Math.max(0, 1 - this.fadeProgress);
+
+      if (this.fadeProgress >= 1) {
+        this.alpha = 0;
+        this.spawnDelay = this.respawnDelay;
+        this.respawn();
+      }
+    }
+  }
+
+  draw(ctx) {
+    if (this.alpha <= 0.001) return;
+
+    const pulse = 1 + Math.sin(this.pulsePhase) * 0.08;
+    const heartBeat = Math.max(0, Math.sin(this.pulsePhase)) ** 6;
+    const ringPulse = 1 + heartBeat * 0.2;
+
+    const dotRadius = this.dotRadius * pulse;
+    const ringRadius = this.ringRadius * ringPulse;
+    const glowRadius = this.outerGlowRadius * (0.92 + Math.sin(this.glowPhase) * 0.04 + heartBeat * 0.08);
+
+    const ringAlpha = this.alpha * 0.92;
+    const glowAlpha = this.alpha * (this.isAttached ? 0.24 : 0.18);
+    const dotAlpha = this.isAttached ? 0 : this.alpha;
+
+    ctx.save();
+
+    const glow = ctx.createRadialGradient(
+      this.x,
+      this.y,
+      dotRadius * 0.8,
+      this.x,
+      this.y,
+      glowRadius
+    );
+    glow.addColorStop(0, `rgba(255, 110, 126, ${0.16 * glowAlpha})`);
+    glow.addColorStop(0.4, `rgba(208, 74, 88, ${0.14 * glowAlpha})`);
+    glow.addColorStop(1, "rgba(126, 60, 72, 0)");
+
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(1.1, this.baseRadius * 0.16);
+    ctx.strokeStyle = `rgba(255, 128, 142, ${ringAlpha})`;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, ringRadius * 0.74, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(0.75, this.baseRadius * 0.1);
+    ctx.strokeStyle = `rgba(126, 60, 72, ${ringAlpha * 0.78})`;
+    ctx.stroke();
+
+    if (dotAlpha > 0.001) {
+      const core = ctx.createRadialGradient(
+        this.x - dotRadius * 0.38,
+        this.y - dotRadius * 0.44,
+        dotRadius * 0.18,
+        this.x,
+        this.y,
+        dotRadius
+      );
+      core.addColorStop(0, `rgba(255, 205, 214, ${dotAlpha})`);
+      core.addColorStop(0.46, `rgba(255, 105, 124, ${dotAlpha})`);
+      core.addColorStop(1, `rgba(208, 74, 88, ${dotAlpha})`);
+
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = `rgba(208, 74, 88, ${0.52 * dotAlpha})`;
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, dotRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+  }
+}
     
 class Starlet {
   constructor(x, y, entrySide = "top", sceneMetrics) {
@@ -1003,6 +1580,7 @@ class Obstacle {
     this.heartPulseTimeout = null;
 
     this.homeStars = [];
+    this.blacklet = null;
     this.starlets = [];
     this.obstacles = [];
     this.particles = [];
@@ -1032,7 +1610,6 @@ class Obstacle {
     this.handlePointerMove = null;
     this.handlePointerEnd = null;
 
-    // Рестарт
     this.handleRestartClick = () => {
       if (this.isTransitioning) return;
 
@@ -1040,7 +1617,6 @@ class Obstacle {
       this.resetGame({ restartAmbient: true });
     };
 
-    // Кнопка дальше
     this.handleNextClick = async () => {
       if (this.isTransitioning) return;
 
@@ -1144,6 +1720,9 @@ class Obstacle {
       new HomeStar(this.sceneMetrics, "arc"),
     ];
     this.homeStars[0].activateHorizontalFromLeft();
+
+    this.blacklet = new Blacklet(this.sceneMetrics);
+
     this.spawnStarlets(10);
 
     this.updateTargetScoreUI();
@@ -1183,19 +1762,17 @@ class Obstacle {
 
       homeHorizontalCenterX: width * 0.5,
       homeHorizontalLeftOutsideX:
-        -clamp(52, 60 * playScale, 74) - width * 0.10,
+        -clamp(52, 60 * playScale, 74) - width * 0.1,
       homeHorizontalRightOutsideX:
-        width + clamp(52, 60 * playScale, 74) + width * 0.10,
+        width + clamp(52, 60 * playScale, 74) + width * 0.1,
       homeHorizontalBaseY: height * 0.52,
       homeHorizontalVerticalDrift: height * 0.045,
 
-      homeArcStartY:
-        -clamp(52, 60 * playScale, 74) - height * 0.14,
-      homeArcEndY:
-        height + clamp(52, 60 * playScale, 74) + height * 0.14,
+      homeArcStartY: -clamp(52, 60 * playScale, 74) - height * 0.14,
+      homeArcEndY: height + clamp(52, 60 * playScale, 74) + height * 0.14,
       homeArcCenterX: width * 0.54,
       homeArcAmplitudeX: width * 0.18,
-      homeArcTiltX: width * 0.10,
+      homeArcTiltX: width * 0.1,
 
       starletBaseRadius: clamp(6.6, 7.0 * playScale, 8.9),
       starletDragRadius: clamp(24, 28 * playScale, 34),
@@ -1215,6 +1792,10 @@ class Obstacle {
 
     if (this.homeStars?.length) {
       this.homeStars.forEach((star) => star.setBounds(this.sceneMetrics));
+    }
+
+    if (this.blacklet) {
+      this.blacklet.setBounds(this.sceneMetrics);
     }
 
     if (this.rotateHint) {
@@ -1586,8 +2167,9 @@ class Obstacle {
       new HomeStar(this.sceneMetrics, "horizontal"),
       new HomeStar(this.sceneMetrics, "arc"),
     ];
-
     this.homeStars[0].activateHorizontalFromLeft();
+
+    this.blacklet = new Blacklet(this.sceneMetrics);
 
     this.spawnStarlets(12);
     this.updateUI();
@@ -1671,7 +2253,7 @@ class Obstacle {
     }
   }
 
-  setupInput() {
+    setupInput() {
     if (this.inputBound) return;
 
     this.handlePointerMoveCore = (x, y) => {
@@ -1680,14 +2262,12 @@ class Obstacle {
     };
 
     this.handlePointerEnd = (e) => {
-      this.isDragging = false;
-      if (
-        e?.pointerId != null &&
-        this.canvas?.hasPointerCapture?.(e.pointerId)
-      ) {
-        this.canvas.releasePointerCapture(e.pointerId);
-      }
-    };
+  this.isDragging = false;
+  if (e?.pointerId != null && this.canvas?.hasPointerCapture?.(e.pointerId)) {
+    this.canvas.releasePointerCapture(e.pointerId);
+  }
+};
+
 
     this.handlePointerDown = (e) => {
       if (!this.isRunning || this.gameOver) return;
@@ -1768,6 +2348,10 @@ class Obstacle {
     });
 
     this.removeOffscreenStarlets();
+
+    if (this.blacklet) {
+      this.blacklet.update(this.mousePos, this.isDragging, delta);
+    }
 
     this.homeStars.forEach((star) => star.update(delta));
 
@@ -1917,6 +2501,11 @@ class Obstacle {
 
     this.homeStars.forEach((star) => star.draw(this.ctx));
     this.obstacles.forEach((o) => o.draw(this.ctx));
+
+    if (this.blacklet) {
+      this.blacklet.draw(this.ctx);
+    }
+
     this.starlets.forEach((s) => s.draw(this.ctx));
     this.particles.forEach((p) => p.draw(this.ctx));
 
