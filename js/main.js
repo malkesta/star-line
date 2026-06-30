@@ -10,7 +10,7 @@ import { GameplayScene6 } from "./scenes/GameplayScene6.js";
 import { GameplayScene7 } from "./scenes/GameplayScene7.js";
 import { GameAudio } from "./legacy/StarLineGame.js";
 
-const DEBUG_START_SCENE = "game7";
+const DEBUG_START_SCENE = null;
 // null    -> обычный порядок
 // "intro" -> только IntroScene
 // "start" -> только StartScreenScene
