@@ -784,20 +784,18 @@ class RedRing {
     this.entrySide = "top";
     this.entering = false; // true пока кольцо залетает из-за края в видимую зону
     this.hidden = true;    // true до первой activateIntro(): кольцо спит за кадром
-    this.state = "idle"; // idle -> attached -> decaying -> gone -> (respawn) idle
+    this.state = "idle";   // idle -> attached -> decaying -> gone -> (respawn) idle
 
     this.vx = 0;
     this.vy = 0;
 
     this.alpha = 1;
 
-    // Распад строго 6 секунд после стыковки.
+    // Распад ~9 секунд после стыковки.
     this.decayProgress = 0;
-    this.decayDuration = 6.0;
+    this.decayDuration = 9.0;
 
     this.spawnDelay = 0;
-    // Короткий зазор после исчезновения — новое кольцо появляется почти сразу,
-    // чтобы игрок не терял очки без возможности есть старлеты.
     this.respawnDelay = 0.15;
 
     this.attachPull = 0.2;
@@ -809,6 +807,8 @@ class RedRing {
     this.baseRadius = 0;
     this.dotRadius = 0;
     this.ringRadius = 0;
+    this.ringThickness = 0;
+    this.innerRingRadius = 0;
     this.outerGlowRadius = 0;
     this.collisionRadius = 0;
 
@@ -824,12 +824,35 @@ class RedRing {
     const offscreenOffset = sceneMetrics?.offscreenOffset ?? 60;
     const { width = 1366, height = 768 } = sceneMetrics ?? {};
 
-    this.baseRadius = baseStarletRadius * 1.3;
-    // Центральная точка была слишком крупной — делаем её компактнее.
-    this.dotRadius = this.baseRadius * 0.34;
+    const clamp = (min, value, max) => Math.max(min, Math.min(max, value));
+
+    // Базовый размер — больше в 1.5 раза относительно старого.
+    this.baseRadius = baseStarletRadius * 1.95;
+
+    // Точка в центре в 1.5 раза меньше прежнего коэффициента.
+    this.dotRadius = this.baseRadius * (0.34 / 1.5);
+
+    // Основной радиус кольца.
     this.ringRadius = this.baseRadius * 2.25;
-    this.outerGlowRadius = this.ringRadius * 2.7;
-    this.collisionRadius = this.ringRadius * 0.95;
+
+    // Толщина кольца — относительная, с ограничением по clamp.
+    this.ringThickness = clamp(
+      this.baseRadius * 0.2,
+      this.baseRadius * 0.3,
+      this.baseRadius * 0.42
+    );
+
+    // Внутренний контур кольца (для тонкой внутренней линии).
+    this.innerRingRadius = Math.max(
+      this.ringRadius - this.ringThickness,
+      this.ringRadius * 0.42
+    );
+
+    // Внешнее свечение делаем немного компактнее, чтобы не заливать половину экрана.
+    this.outerGlowRadius = this.ringRadius * 2.5;
+
+    // Хитбокс чуть шире визуального кольца.
+    this.collisionRadius = this.ringRadius * 1.02;
 
     // Появляется/дрейфует в правой части экрана (рядом с чёрной звездой).
     this.spawnMinX = width * 0.66;
@@ -876,21 +899,16 @@ class RedRing {
 
     this.y = this.entrySide === "top" ? this.topSpawnY : this.bottomSpawnY;
 
-    // Скорость захода — соизмерима со старлетами/домашней звездой, иначе кольцо
-    // «ползёт» за кадром десятки секунд и кажется, что оно не появляется.
     this.vx = -0.5 - Math.random() * 0.4;
     this.vy =
       this.entrySide === "top"
         ? 2.2 + Math.random() * 0.8
         : -2.2 - Math.random() * 0.8;
 
-    // Помечаем, что кольцо ещё заходит на экран (нужно затормозить у границы).
     this.entering = true;
   }
 
   // Активирует кольцо: единый плавный заход из-за ПРАВОГО края в видимую зону.
-  // Вызывается спавн-директором в фазе intro_ring. До этого момента кольцо
-  // "спит" за кадром (hidden), поэтому никакого телепорта/прыжка не возникает.
   activateIntro() {
     this.state = "idle";
     this.isAttached = false;
@@ -903,28 +921,21 @@ class RedRing {
 
     const { width = 1366, height = 768 } = this.sceneMetrics ?? {};
 
-    // Заходим из-за правого края на одной высоте — без вертикальных скачков.
     this.x = width + this.outerGlowRadius;
     this.y = height * (0.34 + Math.random() * 0.32);
 
-    // Быстрый заход влево; лёгкая вертикальная составляющая для живости.
     this.vx = -6.0 - Math.random() * 1.5;
     this.vy = (Math.random() - 0.5) * 0.6;
   }
 
-  // Респавн после распада: сразу в видимую зону (быстрый заход с правого
-  // края), а не глубоко за кадром — чтобы зазор был минимальным.
   respawn() {
     this.activateIntro();
   }
 
-  // Можно ли пристыковать к чёрной звезде.
   canAttach() {
     return this.state === "idle" && !this.isAttached;
   }
 
-  // Активно ли кольцо (часть рабочего комбо). Используется для отталкивания
-  // препятствий И как индикатор «комбо способно есть».
   isActiveCombo() {
     return this.state === "attached" || this.state === "decaying";
   }
@@ -943,7 +954,6 @@ class RedRing {
 
     blacklet.setLinked(this);
 
-    // Сразу встаём в центр чёрной звезды — комбо движется как единое целое.
     this.x = blacklet.x;
     this.y = blacklet.y;
   }
@@ -963,7 +973,6 @@ class RedRing {
     this.y += (blacklet.y - this.y) * pull;
   }
 
-  // Достаточно ли близко кольцо к чёрной звезде для стыковки.
   collidesWithBlacklet(blacklet) {
     if (!blacklet || !this.canAttach()) return false;
     if (!blacklet.canLink()) return false;
@@ -981,7 +990,6 @@ class RedRing {
   }
 
   update(delta = 0.016, blacklet = null) {
-    // Пока кольцо не активировано (спит за кадром) — никакого движения.
     if (this.hidden) return;
 
     this.pulsePhase += delta * 5.4;
@@ -999,8 +1007,6 @@ class RedRing {
       this.y += this.vy;
 
       if (this.entering) {
-        // Фаза захода на экран: летим внутрь, пока не окажемся в видимой зоне
-        // дрейфа, затем гасим скорость до мягкого блуждания.
         const insideX = this.x > this.driftMinX && this.x < this.driftMaxX;
         const insideY = this.y > this.driftMinY && this.y < this.driftMaxY;
         if (insideX && insideY) {
@@ -1018,7 +1024,6 @@ class RedRing {
         if (this.y > this.driftMaxY) this.vy = -Math.abs(this.vy) * 0.92;
       }
 
-      // Стыковка происходит, только когда чёрная звезда трансформировалась.
       if (blacklet && blacklet.canLink() && this.collidesWithBlacklet(blacklet)) {
         this.attachToBlacklet(blacklet);
       }
@@ -1035,8 +1040,6 @@ class RedRing {
       }
 
       this.anchorBlacklet = blacklet;
-      // Жёстко прибиваемся к центру чёрной звезды — в комбо они движутся
-      // как единый объект, без отставания.
       this.x = blacklet.x;
       this.y = blacklet.y;
 
@@ -1047,8 +1050,6 @@ class RedRing {
         return;
       }
 
-      // Материальность тает: чем дальше распад, тем ниже базовая прозрачность,
-      // плюс она «моргает» с каждым пульсом.
       const base = 1 - this.decayProgress;
       const flicker = 0.85 + 0.15 * Math.max(0, Math.sin(this.pulsePhase));
       this.alpha = Math.max(0, base * flicker);
@@ -1056,9 +1057,8 @@ class RedRing {
       return;
     }
 
-    // --- Распад: продолжает таять на чёрной звезде те же 6 секунд. ---
+    // --- Распад. ---
     if (this.state === "decaying") {
-      // Жёсткая привязка к центру чёрной звезды — без отставания.
       if (blacklet && blacklet.isLinked) {
         this.anchorBlacklet = blacklet;
         this.x = blacklet.x;
@@ -1098,8 +1098,6 @@ class RedRing {
     this.spawnDelay = this.respawnDelay;
   }
 
-  // Отталкивание препятствий — как у домашней звезды, и только пока кольцо
-  // материально (idle или активное комбо).
   canRepel() {
     return (
       (this.state === "idle" || this.isActiveCombo()) && this.alpha > 0.05
@@ -1148,7 +1146,8 @@ class RedRing {
     const heartBeat = Math.max(0, Math.sin(this.pulsePhase)) ** 6;
     const ringPulse = 1 + heartBeat * 0.2;
 
-    const dotRadius = this.dotRadius * pulse;
+    const dotRadius =
+      this.dotRadius * (1 + Math.sin(this.pulsePhase) * 0.035);
     const ringRadius = this.ringRadius * ringPulse;
     const glowRadius =
       this.outerGlowRadius *
@@ -1156,8 +1155,6 @@ class RedRing {
 
     const ringAlpha = this.alpha * 0.92;
     const glowAlpha = this.alpha * (this.isActiveCombo() ? 0.26 : 0.18);
-    // Центральная точка видна только у свободного кольца; у комбо центр занят
-    // чёрной звездой.
     const dotAlpha = this.isActiveCombo() ? 0 : this.alpha;
 
     ctx.save();
@@ -1179,38 +1176,26 @@ class RedRing {
     ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
     ctx.fill();
 
+    // Толстое внешнее кольцо.
     ctx.beginPath();
     ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
-    ctx.lineWidth = Math.max(1.1, this.baseRadius * 0.16);
+    ctx.lineWidth = this.ringThickness;
     ctx.strokeStyle = `rgba(255, 128, 142, ${ringAlpha})`;
     ctx.stroke();
 
+    // Тонкая внутренняя линия для контраста.
     ctx.beginPath();
-    ctx.arc(this.x, this.y, ringRadius * 0.74, 0, Math.PI * 2);
-    ctx.lineWidth = Math.max(0.75, this.baseRadius * 0.1);
-    ctx.strokeStyle = `rgba(126, 60, 72, ${ringAlpha * 0.78})`;
+    ctx.arc(this.x, this.y, this.innerRingRadius, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(1, this.ringThickness * 0.22);
+    ctx.strokeStyle = `rgba(126, 60, 72, ${ringAlpha * 0.72})`;
     ctx.stroke();
 
+    // Плоская центральная точка без градиента и без тени.
     if (dotAlpha > 0.001) {
-      const core = ctx.createRadialGradient(
-        this.x - dotRadius * 0.38,
-        this.y - dotRadius * 0.44,
-        dotRadius * 0.18,
-        this.x,
-        this.y,
-        dotRadius
-      );
-      core.addColorStop(0, `rgba(255, 205, 214, ${dotAlpha})`);
-      core.addColorStop(0.46, `rgba(255, 105, 124, ${dotAlpha})`);
-      core.addColorStop(1, `rgba(224, 58, 74, ${dotAlpha})`);
-
-      ctx.shadowBlur = 18;
-      ctx.shadowColor = `rgba(224, 58, 74, ${0.52 * dotAlpha})`;
-      ctx.fillStyle = core;
+      ctx.fillStyle = `rgba(224, 58, 74, ${dotAlpha})`;
       ctx.beginPath();
       ctx.arc(this.x, this.y, dotRadius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
     }
 
     ctx.restore();
@@ -3359,7 +3344,7 @@ export class GameplayScene7 {
     for (let i = this.starlets.length - 1; i >= 0; i--) {
       const starlet = this.starlets[i];
       if (this.homeStar.isHit(starlet)) {
-        this.score = Math.max(0, this.score - 10);
+        this.score = Math.max(0, this.score - 5);
         this.lostCount += 1;
         this.audio.playHitSound();
         this.spawnScatterEffect(this.homeStar.x, this.homeStar.y, "#DEA15E", true);
