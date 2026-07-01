@@ -1784,19 +1784,18 @@ class TutorGuide2 {
     this.y = 0;
     this.speed = 240;
 
-    // Красная палитра (вместо голубой в оригинале).
+    // Красная палитра
     this.color = "#ff6e7e";
     this.glowColor = "rgba(255, 110, 126, 0.45)";
 
     this.mode = "none";
-    // Фазы: waiting → markBlack → toRing → markRing → toStar → markStar →
-    //       toStar2 → fading → restart (зацикливается)
+    // waiting → markBlack → toRing → markRing → toStar → markStar → toStar2 → fading → restart
     this.phase = "waiting";
 
-    this.blackTarget = null; // чёрная звезда
-    this.ringTarget = null;  // красное кольцо
-    this.firstStar = null;   // первый старлет
-    this.secondStar = null;  // второй старлет
+    this.blackTarget = null;
+    this.ringTarget = null;
+    this.firstStar = null;
+    this.secondStar = null;
 
     this.pathOpacity = 1;
     this.rings = [];
@@ -1858,9 +1857,17 @@ class TutorGuide2 {
     this.startTimer = 0;
   }
 
-  // Игрок реально съел первый старлет комбо — подсказка больше не нужна.
+  // Игрок реально съел первый старлет комбо — подсказка больше не нужна
   notifySuccess() {
     this.disable();
+  }
+
+  // --- Ограничение зоны тутора правой половиной экрана ---
+
+  isInTutorZone(target, game) {
+    if (!target || !game?.sceneMetrics) return false;
+    const rightHalfMinX = game.sceneMetrics.width * 0.5;
+    return target.x >= rightHalfMinX;
   }
 
   update(delta, game) {
@@ -1870,7 +1877,7 @@ class TutorGuide2 {
 
     this.updateRings(delta, game);
 
-    // Отключаемся после первого реального поедания старлета.
+    // Отключаемся после первого реального поедания старлета
     if (game.eatenCount > 0) {
       this.disable();
       return;
@@ -1914,13 +1921,19 @@ class TutorGuide2 {
     }
   }
 
-  // Если ключевые цели исчезли (старлеты съедены/улетели) — плавно гаснем.
+  // Если ключевые цели исчезли или ушли из зоны — плавно гаснем
   handleTargetLoss(game) {
     if (this.mode !== "full") return;
 
-    const firstAlive = this.firstStar && game.starlets.includes(this.firstStar);
+    const firstAlive =
+      this.firstStar &&
+      game.starlets.includes(this.firstStar) &&
+      this.isInTutorZone(this.firstStar, game);
+
     const secondAlive =
-      this.secondStar && game.starlets.includes(this.secondStar);
+      this.secondStar &&
+      game.starlets.includes(this.secondStar) &&
+      this.isInTutorZone(this.secondStar, game);
 
     if (!firstAlive || !secondAlive) {
       this.startFadeOut();
@@ -1928,13 +1941,16 @@ class TutorGuide2 {
   }
 
   beginFullHint(game) {
-    // Нужны: чёрная звезда, кольцо и минимум 2 старлета.
+    // Нужны: чёрная звезда, кольцо и минимум 2 старлета в правой половине экрана
     if (!game.blacklet || !game.starlets || game.starlets.length < 2) {
       this.phase = "waiting";
       return false;
     }
 
-    const pool = game.starlets.slice();
+    const pool = game.starlets.filter((starlet) =>
+      this.isInTutorZone(starlet, game)
+    );
+
     if (pool.length < 2) {
       this.phase = "waiting";
       return false;
@@ -1942,6 +1958,7 @@ class TutorGuide2 {
 
     const firstIndex = Math.floor(Math.random() * pool.length);
     this.firstStar = pool.splice(firstIndex, 1)[0];
+
     const secondIndex = Math.floor(Math.random() * pool.length);
     this.secondStar = pool[secondIndex];
 
@@ -1966,30 +1983,39 @@ class TutorGuide2 {
   }
 
   updateFullMode(delta, game) {
-    // Обновляем ссылки на живые объекты.
     this.blackTarget = game.blacklet;
     this.ringTarget = game.redRing;
 
-    if (!this.firstStar || !game.starlets.includes(this.firstStar)) {
-      this.startFadeOut();
-      return;
-    }
-    if (!this.secondStar || !game.starlets.includes(this.secondStar)) {
+    if (
+      !this.firstStar ||
+      !game.starlets.includes(this.firstStar) ||
+      !this.isInTutorZone(this.firstStar, game)
+    ) {
       this.startFadeOut();
       return;
     }
 
-    // 1) Отметить чёрную звезду.
+    if (
+      !this.secondStar ||
+      !game.starlets.includes(this.secondStar) ||
+      !this.isInTutorZone(this.secondStar, game)
+    ) {
+      this.startFadeOut();
+      return;
+    }
+
+    // 1) Отметить чёрную звезду
     if (this.phase === "markBlack") {
       this.holdTimer -= delta;
       if (this.holdTimer <= 0) this.phase = "toRing";
       return;
     }
 
-    // 2) Вести от чёрной звезды к красному кольцу.
+    // 2) Вести от чёрной звезды к красному кольцу
     if (this.phase === "toRing") {
       const target = this.ringTarget ?? this.blackTarget;
       const arrived = this.moveTowards(target.x, target.y, delta);
+
       if (arrived) {
         if (this.ringTarget) this.addRing(this.ringTarget);
         this.phase = "markRing";
@@ -1998,20 +2024,21 @@ class TutorGuide2 {
       return;
     }
 
-    // 3) Отметить кольцо.
+    // 3) Отметить кольцо
     if (this.phase === "markRing") {
       this.holdTimer -= delta;
       if (this.holdTimer <= 0) this.phase = "toStar";
       return;
     }
 
-    // 4) Вести комбо к первому старлету.
+    // 4) Вести комбо к первому старлету (он гарантированно справа)
     if (this.phase === "toStar") {
       const arrived = this.moveTowards(
         this.firstStar.x,
         this.firstStar.y,
         delta
       );
+
       if (arrived) {
         this.addRing(this.firstStar);
         this.phase = "markStar";
@@ -2020,20 +2047,21 @@ class TutorGuide2 {
       return;
     }
 
-    // 5) Отметить первый старлет.
+    // 5) Отметить первый старлет
     if (this.phase === "markStar") {
       this.holdTimer -= delta;
       if (this.holdTimer <= 0) this.phase = "toStar2";
       return;
     }
 
-    // 6) Вести ко второму старлету, затем гаснем.
+    // 6) Вести ко второму старлету, затем гаснем
     if (this.phase === "toStar2") {
       const arrived = this.moveTowards(
         this.secondStar.x,
         this.secondStar.y,
         delta
       );
+
       if (arrived) {
         this.addRing(this.secondStar);
         this.active = false;
@@ -2079,6 +2107,7 @@ class TutorGuide2 {
 
   addRing(target) {
     if (!target) return;
+
     const exists = this.rings.some((ring) => ring.target === target);
     if (exists) return;
 
@@ -2093,11 +2122,13 @@ class TutorGuide2 {
     this.rings = this.rings.filter((ring) => {
       if (!ring.target) return false;
       if (this.phase === "fading" || this.phase === "done") return true;
-      // Кольцо-маркер на чёрной звезде и красном кольце живёт всегда; на
-      // старлетах — пока старлет существует.
+
+      // Маркеры на blacklet и red ring живут всегда,
+      // на starlets — пока starlet существует (и тутор ещё не погас)
       if (ring.target === this.blackTarget || ring.target === this.ringTarget) {
         return true;
       }
+
       return game.starlets.includes(ring.target);
     });
 
@@ -2135,14 +2166,14 @@ class TutorGuide2 {
     ctx.lineJoin = "round";
     ctx.setLineDash([6, 8]);
     ctx.lineWidth = 1.6;
-    ctx.strokeStyle = "rgba(255, 128, 142, 0.82)";
+    ctx.strokeStyle = "rgba(255, 68, 89, 0.82)";
 
     const black = this.blackTarget;
     const ring = this.ringTarget;
     const s1 = this.firstStar;
     const s2 = this.secondStar;
 
-    // Чёрная звезда → кольцо.
+    // Чёрная звезда → кольцо (в фазе toRing курсор ещё не на кольце)
     if (this.phase === "toRing" && black && ring) {
       ctx.beginPath();
       ctx.moveTo(black.x, black.y);
@@ -2165,7 +2196,7 @@ class TutorGuide2 {
       ctx.stroke();
     }
 
-    // Кольцо → первый старлет.
+    // Кольцо → первый старлет
     if (this.phase === "toStar" && ring && s1) {
       ctx.beginPath();
       ctx.moveTo(ring.x, ring.y);
@@ -2186,10 +2217,11 @@ class TutorGuide2 {
       ctx.stroke();
     }
 
-    // Первый → второй старлет.
+    // Первый → второй старлет
     if ((this.phase === "toStar2" || this.phase === "fading") && s1 && s2) {
       const endX = this.phase === "fading" ? s2.x : this.x;
       const endY = this.phase === "fading" ? s2.y : this.y;
+
       ctx.beginPath();
       ctx.moveTo(s1.x, s1.y);
       ctx.lineTo(endX, endY);
@@ -2215,7 +2247,7 @@ class TutorGuide2 {
       ctx.beginPath();
       ctx.arc(target.x, target.y, radius, 0, Math.PI * 2);
       ctx.lineWidth = 2;
-      ctx.strokeStyle = "rgba(255, 128, 142, 0.85)";
+      ctx.strokeStyle = "rgba(255, 80, 100, 0.85)";
       ctx.stroke();
 
       ctx.beginPath();
@@ -2228,60 +2260,46 @@ class TutorGuide2 {
     ctx.restore();
   }
 
-  drawGuideRing(ctx) {
-    if (
-      this.phase === "waiting" ||
-      this.phase === "restart" ||
-      this.phase === "done"
-    ) {
-      return;
-    }
-
-    if (this.phase === "markBlack" && this.blackTarget) {
-      this.x = this.blackTarget.x + 30;
-      this.y = this.blackTarget.y - 18;
-    }
+  drawCursor(ctx) {
+    if (!this.active || this.pathOpacity <= 0) return;
 
     ctx.save();
-    ctx.globalAlpha = Math.max(0, this.pathOpacity);
-    ctx.translate(this.x, this.y);
-    ctx.shadowBlur = 16;
-    ctx.shadowColor = this.glowColor;
+    ctx.globalAlpha = this.pathOpacity;
+
+    const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 24);
+    glow.addColorStop(0, "rgba(255, 128, 142, 0.30)");
+    glow.addColorStop(1, "rgba(255, 128, 142, 0)");
+
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 24, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.beginPath();
-    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, 10, 0, Math.PI * 2);
     ctx.lineWidth = 2.4;
-    ctx.strokeStyle = "rgba(255, 110, 126, 0.95)";
-    ctx.stroke();
-
-    ctx.shadowBlur = 0;
-
-    ctx.beginPath();
-    ctx.arc(0, 0, 6, 0, Math.PI * 2);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(255, 220, 226, 0.85)";
+    ctx.strokeStyle = "rgba(255, 74, 95, 0.95)";
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(-2, -2, 1.8, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 139, 153, 0.95)";
     ctx.fill();
 
     ctx.restore();
   }
 
   draw(ctx) {
-    const hasVisuals =
-      this.active ||
-      this.phase === "fading" ||
-      this.rings.length > 0 ||
-      this.pathOpacity > 0;
-
-    if (!hasVisuals || this.completed || !this.enabled) return;
+    if (
+      (!this.enabled && this.pathOpacity <= 0) ||
+      this.phase === "done"
+    ) {
+      return;
+    }
 
     this.drawPathTrail(ctx);
     this.drawRings(ctx);
-    this.drawGuideRing(ctx);
+    this.drawCursor(ctx);
   }
 }
 

@@ -25,6 +25,8 @@ export class GameAudio {
     this.lastCatchTime = 0;
     this.lastScoreTime = 0;
     this.lastHitTime = 0;
+    this.lastEatTime = 0;
+    this.lastRingGoneTime = 0;
   }
 
   setMusic(url) {
@@ -258,11 +260,17 @@ export class GameAudio {
 
       osc.type = i === 0 ? "sine" : "triangle";
       osc.frequency.setValueAtTime(freq, now + i * 0.015);
-      osc.frequency.exponentialRampToValueAtTime(freq * 0.96, now + 0.24 + i * 0.015);
+      osc.frequency.exponentialRampToValueAtTime(
+        freq * 0.96,
+        now + 0.24 + i * 0.015
+      );
 
       gain.gain.setValueAtTime(0.0001, now + i * 0.015);
       gain.gain.linearRampToValueAtTime(0.04 - i * 0.01, now + 0.02 + i * 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35 + i * 0.015);
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 0.35 + i * 0.015
+      );
 
       osc.connect(gain);
       gain.connect(this.master);
@@ -312,6 +320,161 @@ export class GameAudio {
     osc2.stop(now + 0.18);
   }
 
+  playEatSound() {
+    if (!this.ctx) return;
+    const now = this.now();
+    if (now - this.lastEatTime < 0.045) return;
+    this.lastEatTime = now;
+
+    const masterGain = this.ctx.createGain();
+    masterGain.gain.value = 0.72;
+    masterGain.connect(this.master);
+
+    const glassVerb = this.createReverb(1.1, 2.9);
+    const wet = this.ctx.createGain();
+    wet.gain.value = 0.12;
+    glassVerb.connect(wet);
+    wet.connect(this.master);
+
+    const band = this.ctx.createBiquadFilter();
+    band.type = "highpass";
+    band.frequency.value = 1400;
+    band.connect(masterGain);
+    band.connect(glassVerb);
+
+    const partials = [
+      { freq: 1480, time: 0.000, gain: 0.030, q: 10 },
+      { freq: 1960, time: 0.006, gain: 0.026, q: 12 },
+      { freq: 2430, time: 0.012, gain: 0.022, q: 14 },
+      { freq: 3180, time: 0.018, gain: 0.018, q: 16 },
+      { freq: 4020, time: 0.024, gain: 0.014, q: 18 },
+    ];
+
+    partials.forEach(({ freq, time, gain, q }, index) => {
+      const osc = this.ctx.createOscillator();
+      const oscGain = this.ctx.createGain();
+      const notch = this.ctx.createBiquadFilter();
+
+      osc.type = index % 2 === 0 ? "triangle" : "sine";
+      osc.frequency.setValueAtTime(freq, now + time);
+      osc.frequency.exponentialRampToValueAtTime(
+        Math.max(420, freq * 0.72),
+        now + time + 0.085
+      );
+
+      notch.type = "bandpass";
+      notch.frequency.value = freq;
+      notch.Q.value = q;
+
+      oscGain.gain.setValueAtTime(0.0001, now + time);
+      oscGain.gain.linearRampToValueAtTime(gain, now + time + 0.003);
+      oscGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + time + 0.095
+      );
+
+      osc.connect(notch);
+      notch.connect(oscGain);
+      oscGain.connect(band);
+
+      osc.start(now + time);
+      osc.stop(now + time + 0.11);
+    });
+
+    const click = this.ctx.createBufferSource();
+    const clickBuffer = this.ctx.createBuffer(
+      1,
+      Math.floor(this.ctx.sampleRate * 0.028),
+      this.ctx.sampleRate
+    );
+    const data = clickBuffer.getChannelData(0);
+
+    for (let i = 0; i < data.length; i++) {
+      const t = i / data.length;
+      data[i] =
+        (Math.random() * 2 - 1) *
+        Math.pow(1 - t, 5) *
+        (0.65 + Math.random() * 0.35);
+    }
+
+    click.buffer = clickBuffer;
+
+    const clickFilter = this.ctx.createBiquadFilter();
+    clickFilter.type = "highpass";
+    clickFilter.frequency.value = 2600;
+
+    const clickGain = this.ctx.createGain();
+    clickGain.gain.setValueAtTime(0.0001, now);
+    clickGain.gain.linearRampToValueAtTime(0.018, now + 0.002);
+    clickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+
+    click.connect(clickFilter);
+    clickFilter.connect(clickGain);
+    clickGain.connect(masterGain);
+    clickGain.connect(glassVerb);
+
+    click.start(now);
+  }
+
+  playRingGoneSound() {
+    if (!this.ctx) return;
+    const now = this.now();
+    if (now - this.lastRingGoneTime < 0.12) return;
+    this.lastRingGoneTime = now;
+
+    const reverb = this.createReverb(2.2, 2.7);
+    const wet = this.ctx.createGain();
+    wet.gain.value = 0.2;
+    reverb.connect(wet);
+    wet.connect(this.master);
+
+    const tone = this.ctx.createOscillator();
+    const toneGain = this.ctx.createGain();
+    const toneFilter = this.ctx.createBiquadFilter();
+
+    tone.type = "sine";
+    tone.frequency.setValueAtTime(620, now);
+    tone.frequency.exponentialRampToValueAtTime(210, now + 0.42);
+
+    toneFilter.type = "lowpass";
+    toneFilter.frequency.value = 1200;
+
+    toneGain.gain.setValueAtTime(0.0001, now);
+    toneGain.gain.linearRampToValueAtTime(0.028, now + 0.018);
+    toneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+
+    tone.connect(toneFilter);
+    toneFilter.connect(toneGain);
+    toneGain.connect(this.master);
+    toneGain.connect(reverb);
+
+    const air = this.ctx.createOscillator();
+    const airGain = this.ctx.createGain();
+    const airFilter = this.ctx.createBiquadFilter();
+
+    air.type = "triangle";
+    air.frequency.setValueAtTime(1180, now);
+    air.frequency.exponentialRampToValueAtTime(480, now + 0.24);
+
+    airFilter.type = "bandpass";
+    airFilter.frequency.value = 900;
+    airFilter.Q.value = 1.4;
+
+    airGain.gain.setValueAtTime(0.0001, now);
+    airGain.gain.linearRampToValueAtTime(0.016, now + 0.012);
+    airGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+
+    air.connect(airFilter);
+    airFilter.connect(airGain);
+    airGain.connect(this.master);
+
+    tone.start(now);
+    air.start(now);
+
+    tone.stop(now + 0.55);
+    air.stop(now + 0.28);
+  }
+
   playGameOverSound() {
     if (!this.ctx) return;
     const now = this.now();
@@ -337,8 +500,14 @@ export class GameAudio {
       modGain.gain.value = 10 - i * 2;
 
       gain.gain.setValueAtTime(0.0001, now + i * 0.05);
-      gain.gain.linearRampToValueAtTime(0.035 - i * 0.007, now + 0.04 + i * 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1 + i * 0.08);
+      gain.gain.linearRampToValueAtTime(
+        0.035 - i * 0.007,
+        now + 0.04 + i * 0.05
+      );
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + 1.1 + i * 0.08
+      );
 
       mod.connect(modGain);
       modGain.connect(osc.frequency);
