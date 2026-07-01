@@ -782,16 +782,15 @@ class RedRing {
     this.isAttached = false;
 
     this.entrySide = "top";
-    this.entering = false; // true пока кольцо залетает из-за края в видимую зону
-    this.hidden = true;    // true до первой activateIntro(): кольцо спит за кадром
-    this.state = "idle";   // idle -> attached -> decaying -> gone -> (respawn) idle
+    this.entering = false;
+    this.hidden = true;
+    this.state = "idle";
 
     this.vx = 0;
     this.vy = 0;
 
     this.alpha = 1;
 
-    // Распад ~9 секунд после стыковки.
     this.decayProgress = 0;
     this.decayDuration = 9.0;
 
@@ -826,35 +825,24 @@ class RedRing {
 
     const clamp = (min, value, max) => Math.max(min, Math.min(max, value));
 
-    // Базовый размер — больше в 1.5 раза относительно старого.
     this.baseRadius = baseStarletRadius * 1.95;
-
-    // Точка в центре в 1.5 раза меньше прежнего коэффициента.
     this.dotRadius = this.baseRadius * (0.34 / 1.5);
-
-    // Основной радиус кольца.
     this.ringRadius = this.baseRadius * 2.25;
 
-    // Толщина кольца — относительная, с ограничением по clamp.
     this.ringThickness = clamp(
       this.baseRadius * 0.2,
       this.baseRadius * 0.3,
       this.baseRadius * 0.42
     );
 
-    // Внутренний контур кольца (для тонкой внутренней линии).
     this.innerRingRadius = Math.max(
       this.ringRadius - this.ringThickness,
       this.ringRadius * 0.42
     );
 
-    // Внешнее свечение делаем немного компактнее, чтобы не заливать половину экрана.
     this.outerGlowRadius = this.ringRadius * 2.5;
-
-    // Хитбокс чуть шире визуального кольца.
     this.collisionRadius = this.ringRadius * 1.02;
 
-    // Появляется/дрейфует в правой части экрана (рядом с чёрной звездой).
     this.spawnMinX = width * 0.66;
     this.spawnMaxX = width * 0.92;
 
@@ -908,7 +896,6 @@ class RedRing {
     this.entering = true;
   }
 
-  // Активирует кольцо: единый плавный заход из-за ПРАВОГО края в видимую зону.
   activateIntro() {
     this.state = "idle";
     this.isAttached = false;
@@ -1001,7 +988,6 @@ class RedRing {
       return;
     }
 
-    // --- Свободное состояние: плавает и пульсирует, без таймера. ---
     if (this.state === "idle") {
       this.x += this.vx;
       this.y += this.vy;
@@ -1032,7 +1018,6 @@ class RedRing {
       return;
     }
 
-    // --- Состыковано: центрируется на чёрной звезде, начинает распад. ---
     if (this.state === "attached") {
       if (!blacklet) {
         this.detach();
@@ -1057,7 +1042,6 @@ class RedRing {
       return;
     }
 
-    // --- Распад. ---
     if (this.state === "decaying") {
       if (blacklet && blacklet.isLinked) {
         this.anchorBlacklet = blacklet;
@@ -1080,7 +1064,6 @@ class RedRing {
       return;
     }
 
-    // --- Растворилось: ждём задержку и рождаем новое кольцо. ---
     if (this.state === "gone") {
       this.spawnDelay = this.respawnDelay;
       this.respawn();
@@ -1142,7 +1125,6 @@ class RedRing {
     if (this.hidden) return;
     if (this.alpha <= 0.001) return;
 
-    const pulse = 1 + Math.sin(this.pulsePhase) * 0.08;
     const heartBeat = Math.max(0, Math.sin(this.pulsePhase)) ** 6;
     const ringPulse = 1 + heartBeat * 0.2;
 
@@ -1167,35 +1149,56 @@ class RedRing {
       this.y,
       glowRadius
     );
-    glow.addColorStop(0, `rgba(255, 110, 126, ${0.16 * glowAlpha})`);
-    glow.addColorStop(0.4, `rgba(224, 58, 74, ${0.14 * glowAlpha})`);
-    glow.addColorStop(1, "rgba(126, 60, 72, 0)");
+    glow.addColorStop(0, `rgba(206, 69, 69, ${0.0 * glowAlpha})`);
+    glow.addColorStop(0.72, `rgba(206, 69, 69, ${0.06 * glowAlpha})`);
+    glow.addColorStop(0.9, `rgba(206, 69, 69, ${0.22 * glowAlpha})`);
+    glow.addColorStop(1, "rgba(206, 69, 69, 0)");
 
     ctx.fillStyle = glow;
     ctx.beginPath();
     ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Толстое внешнее кольцо.
     ctx.beginPath();
     ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
     ctx.lineWidth = this.ringThickness;
-    ctx.strokeStyle = `rgba(255, 128, 142, ${ringAlpha})`;
+    ctx.strokeStyle = `rgba(176, 40, 60, ${Math.min(1, ringAlpha * 0.9)})`;
     ctx.stroke();
 
-    // Тонкая внутренняя линия для контраста.
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(1.2, this.ringThickness * 0.58);
+    ctx.strokeStyle = `rgba(230, 90, 90, ${Math.min(1, 0.26 + ringAlpha * 0.2)})`;
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = "rgba(206, 69, 69, 0.24)";
+    ctx.stroke();
+
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.innerRingRadius, 0, Math.PI * 2);
-    ctx.lineWidth = Math.max(1, this.ringThickness * 0.22);
-    ctx.strokeStyle = `rgba(126, 60, 72, ${ringAlpha * 0.72})`;
+    ctx.lineWidth = Math.max(1, this.ringThickness * 0.16);
+    ctx.strokeStyle = `rgba(206, 69, 69, ${Math.min(1, 0.72 + ringAlpha * 0.2)})`;
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = "rgba(206, 69, 69, 0.24)";
     ctx.stroke();
 
-    // Плоская центральная точка без градиента и без тени.
+    ctx.shadowBlur = 0;
+
     if (dotAlpha > 0.001) {
-      ctx.fillStyle = `rgba(224, 58, 74, ${dotAlpha})`;
       ctx.beginPath();
       ctx.arc(this.x, this.y, dotRadius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(206, 69, 69, ${Math.min(1, 0.88 * dotAlpha + 0.12)})`;
       ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, dotRadius * 0.66, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 185, 185, ${0.34 * dotAlpha + 0.18})`;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, dotRadius, 0, Math.PI * 2);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = `rgba(255, 220, 220, ${0.58 * dotAlpha + 0.18})`;
+      ctx.stroke();
     }
 
     ctx.restore();
