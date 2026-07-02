@@ -3235,34 +3235,44 @@ this.ringGoneAudio =
 
   // Более крупный красный хвост от кольца, когда комбо активно.
   emitComboTrail(delta) {
-    const b = this.blacklet;
-    if (!b || !b.canAbsorb()) return;
+  const ring = this.redRing;
+  if (!ring || !ring.isActiveCombo?.()) {
+    this._comboTrailTimer = 0;
+    return;
+  }
 
-    this._comboTrailTimer = (this._comboTrailTimer ?? 0) + delta;
-    const interval = 0.045;
+  this._comboTrailTimer = (this._comboTrailTimer ?? 0) + delta;
 
-    while (this._comboTrailTimer >= interval) {
-      this._comboTrailTimer -= interval;
+  const intensity = ring.state === "decaying" ? 1.0 : 0.86;
+  const interval = 0.018;
 
+  while (this._comboTrailTimer >= interval) {
+    this._comboTrailTimer -= interval;
+
+    const burstCount = ring.state === "decaying" ? 3 : 2;
+
+    for (let i = 0; i < burstCount; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const r = b.getEatRadius() * (0.4 + Math.random() * 0.5);
-      const px = b.x + Math.cos(angle) * r;
-      const py = b.y + Math.sin(angle) * r;
+      const radius = ring.ringRadius * (0.82 + Math.random() * 0.34);
+
+      const px = ring.x + Math.cos(angle) * radius;
+      const py = ring.y + Math.sin(angle) * radius;
 
       this.particles.push(
-        new Particle(px, py, "rgba(255, 110, 126, 0.85)", false, {
-          vx: (Math.random() - 0.5) * 0.55,
-          vy: (Math.random() - 0.5) * 0.55,
-          life: 0.7 + Math.random() * 0.25,
-          decay: 0.045 + Math.random() * 0.025,
-          size: 1.4 + Math.random() * 2.0,
-          gravity: -0.001,
-          shrink: 0.015,
-          alphaBoost: 0.7,
+        new Particle(px, py, "rgba(255, 55, 78, 0.92)", false, {
+          vx: (Math.random() - 0.5) * 0.42 - 0.03,
+          vy: (Math.random() - 0.5) * 0.42 + 0.02,
+          life: 0.82 + Math.random() * 0.24,
+          decay: 0.032 + Math.random() * 0.016,
+          size: 1.0 + Math.random() * 1.45 * intensity,
+          gravity: -0.0012,
+          shrink: 0.008,
+          alphaBoost: 0.82 + intensity * 0.14,
         })
       );
     }
   }
+}
 
   // Анимация всасывания/вспышки, когда комбо съедает старлет.
   emitEatBurst(x, y) {
