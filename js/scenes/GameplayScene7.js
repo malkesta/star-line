@@ -50,6 +50,8 @@ export class GameAudio {
     this.lastScoreTime = 0;
     this.lastHitTime = 0;
     this.lastEatTime = 0; // НОВОЕ: антиспам для звука поедания
+    this.lastRingGoneTime = 0; // НОВОЕ: антиспам для звука исчезновения кольца
+
   }
 
   setMusic(url) {
@@ -396,6 +398,176 @@ export class GameAudio {
     spark.stop(now + 0.16);
   }
 
+  // НОВОЕ: звук исчезновения красного кольца после полного распада.
+// Мягкий нисходящий "выдох": тёплый низкий тон + короткий воздушный слой сверху.
+playRingGoneSound() {
+  if (!this.ctx) return;
+  const now = this.now();
+  if (now - this.lastRingGoneTime < 0.18) return;
+  this.lastRingGoneTime = now;
+
+  const masterGain = this.ctx.createGain();
+  masterGain.gain.value = 1.08;
+  masterGain.connect(this.master);
+
+  const reverb = this.createReverb(6.8, 3.8);
+  const wet = this.ctx.createGain();
+  wet.gain.value = 0.52;
+  reverb.connect(wet);
+  wet.connect(this.master);
+
+  const highpass = this.ctx.createBiquadFilter();
+  highpass.type = "highpass";
+  highpass.frequency.value = 70;
+
+  const lowpass = this.ctx.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 2200;
+
+  const presence = this.ctx.createBiquadFilter();
+  presence.type = "peaking";
+  presence.frequency.value = 820;
+  presence.Q.value = 1.1;
+  presence.gain.value = 2.8;
+
+  highpass.connect(presence);
+  presence.connect(lowpass);
+  lowpass.connect(masterGain);
+  lowpass.connect(reverb);
+
+  const partials = [
+    { type: "sine",     freq: 220, gain: 0.24, attack: 0.010, decay: 4.8, drift: 0.989, vibrato: 4.0, vibDepth: 6 },
+    { type: "triangle", freq: 330, gain: 0.19, attack: 0.008, decay: 4.3, drift: 0.990, vibrato: 4.6, vibDepth: 7 },
+    { type: "sine",     freq: 495, gain: 0.13, attack: 0.007, decay: 3.7, drift: 0.992, vibrato: 5.0, vibDepth: 8 },
+    { type: "triangle", freq: 740, gain: 0.080, attack: 0.006, decay: 2.9, drift: 0.994, vibrato: 5.4, vibDepth: 8 },
+    { type: "sine",     freq: 1110, gain: 0.040, attack: 0.005, decay: 2.1, drift: 0.996, vibrato: 6.0, vibDepth: 7 },
+  ];
+
+  partials.forEach(({ type, freq, gain, attack, decay, drift, vibrato, vibDepth }) => {
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    const band = this.ctx.createBiquadFilter();
+    const lfo = this.ctx.createOscillator();
+    const lfoGain = this.ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * drift, now + decay);
+
+    lfo.type = "sine";
+    lfo.frequency.setValueAtTime(vibrato, now);
+    lfoGain.gain.setValueAtTime(vibDepth, now);
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    band.type = "bandpass";
+    band.frequency.value = freq;
+    band.Q.value = freq < 500 ? 2.1 : 3.0;
+
+    oscGain.gain.setValueAtTime(0.0001, now);
+    oscGain.gain.linearRampToValueAtTime(gain, now + attack);
+    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
+    osc.connect(band);
+    band.connect(oscGain);
+    oscGain.connect(highpass);
+
+    osc.start(now);
+    lfo.start(now);
+    osc.stop(now + decay + 0.08);
+    lfo.stop(now + decay + 0.08);
+  });
+
+  const snap = this.ctx.createBufferSource();
+  const snapBuffer = this.ctx.createBuffer(
+    1,
+    Math.floor(this.ctx.sampleRate * 0.05),
+    this.ctx.sampleRate
+  );
+  const snapData = snapBuffer.getChannelData(0);
+
+  for (let i = 0; i < snapData.length; i++) {
+    const t = i / snapData.length;
+    snapData[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 5.6) * 0.28;
+  }
+
+  snap.buffer = snapBuffer;
+
+  const snapFilter = this.ctx.createBiquadFilter();
+  snapFilter.type = "bandpass";
+  snapFilter.frequency.value = 1200;
+  snapFilter.Q.value = 1.0;
+
+  const snapGain = this.ctx.createGain();
+  snapGain.gain.setValueAtTime(0.0001, now);
+  snapGain.gain.linearRampToValueAtTime(0.030, now + 0.003);
+  snapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.10);
+
+  snap.connect(snapFilter);
+  snapFilter.connect(snapGain);
+  snapGain.connect(masterGain);
+  snapGain.connect(reverb);
+
+  snap.start(now);
+
+  const tail = this.ctx.createOscillator();
+  const tailGain = this.ctx.createGain();
+  const tailFilter = this.ctx.createBiquadFilter();
+  const tailLfo = this.ctx.createOscillator();
+  const tailLfoGain = this.ctx.createGain();
+
+  tail.type = "triangle";
+  tail.frequency.setValueAtTime(250, now + 0.04);
+  tail.frequency.exponentialRampToValueAtTime(205, now + 4.8);
+
+  tailLfo.type = "sine";
+  tailLfo.frequency.setValueAtTime(3.4, now);
+  tailLfoGain.gain.setValueAtTime(12, now);
+  tailLfo.connect(tailLfoGain);
+  tailLfoGain.connect(tail.frequency);
+
+  tailFilter.type = "bandpass";
+  tailFilter.frequency.value = 300;
+  tailFilter.Q.value = 1.2;
+
+  tailGain.gain.setValueAtTime(0.0001, now + 0.04);
+  tailGain.gain.linearRampToValueAtTime(0.10, now + 0.09);
+  tailGain.gain.exponentialRampToValueAtTime(0.0001, now + 5.0);
+
+  tail.connect(tailFilter);
+  tailFilter.connect(tailGain);
+  tailGain.connect(masterGain);
+  tailGain.connect(reverb);
+
+  tail.start(now + 0.04);
+  tailLfo.start(now + 0.04);
+  tail.stop(now + 5.1);
+  tailLfo.stop(now + 5.1);
+
+  const shadow = this.ctx.createOscillator();
+  const shadowGain = this.ctx.createGain();
+  const shadowFilter = this.ctx.createBiquadFilter();
+
+  shadow.type = "sine";
+  shadow.frequency.setValueAtTime(110, now + 0.06);
+  shadow.frequency.exponentialRampToValueAtTime(82, now + 3.8);
+
+  shadowFilter.type = "lowpass";
+  shadowFilter.frequency.value = 180;
+
+  shadowGain.gain.setValueAtTime(0.0001, now + 0.06);
+  shadowGain.gain.linearRampToValueAtTime(0.045, now + 0.12);
+  shadowGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.9);
+
+  shadow.connect(shadowFilter);
+  shadowFilter.connect(shadowGain);
+  shadowGain.connect(masterGain);
+  shadowGain.connect(reverb);
+
+  shadow.start(now + 0.06);
+  shadow.stop(now + 4.0);
+}
+
   playGameOverSound() {
     if (!this.ctx) return;
     const now = this.now();
@@ -482,7 +654,7 @@ class Blacklet {
 
     // Прогресс трансформации жёлтый → красный → чёрная сердцевина.
     this.transformProgress = 0;
-    this.formationDuration = 5.2;
+    this.formationDuration = 1.8;
     this.coreDarkness = 0;
     this.redness = 0;
 
@@ -610,8 +782,8 @@ class Blacklet {
         this.transformProgress + delta / this.formationDuration
       );
 
-      const redStart = 0.18;
-      const blackStart = 0.56;
+      const redStart = 0.40;
+      const blackStart = 0.80;
 
       this.redness =
         this.transformProgress <= redStart
@@ -774,6 +946,7 @@ class Blacklet {
 class RedRing {
   constructor(sceneMetrics) {
     this.sceneMetrics = sceneMetrics;
+    this.onGone = null;
 
     this.x = 0;
     this.y = 0;
@@ -1071,15 +1244,17 @@ class RedRing {
   }
 
   finishDecay() {
-    this.alpha = 0;
-    this.isAttached = false;
-    if (this.anchorBlacklet) {
-      this.anchorBlacklet.clearLinked();
-    }
-    this.anchorBlacklet = null;
-    this.state = "gone";
-    this.spawnDelay = this.respawnDelay;
+  this.alpha = 0;
+  this.isAttached = false;
+  if (this.anchorBlacklet) {
+    this.anchorBlacklet.clearLinked();
   }
+
+  this.anchorBlacklet = null;
+  this.state = "gone";
+  this.spawnDelay = this.respawnDelay;
+  this.onGone?.();
+}
 
   canRepel() {
     return (
@@ -2317,17 +2492,22 @@ export class GameplayScene7 {
     this.sceneId = sceneId;
     this.sceneManager = sceneManager;
     this.audio = audio ?? new GameAudio();
-    // Main.js передаёт общий аудио-движок из своего модуля, в котором нет
-    // нового playEatSound(). Чтобы не падать и всё же играть звук поедания,
-    // держим собственный экземпляр GameAudio из этого файла как fallback.
-    this.eatAudio =
-      this.audio && typeof this.audio.playEatSound === "function"
-        ? this.audio
-        : new GameAudio();
+
+// Main.js пока может передавать старый audio без playEatSound.
+// Поэтому для еды используем либо общий audio, либо локальный GameAudio fallback.
+this.eatAudio =
+  this.audio && typeof this.audio.playEatSound === "function"
+    ? this.audio
+    : new GameAudio();
+
+this.ringGoneAudio =
+  this.audio && typeof this.audio.playRingGoneSound === "function"
+    ? this.audio
+    : this.eatAudio;        
     this.onNext = onNext;
     this.onRoundFinished = onRoundFinished;
     this.sceneMusicUrl = "../../assets/audio/game7.mp3";
-    this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg7.webp";
+    this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg7.jpg";
     this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
 
     this.canvas = document.getElementById("gameCanvas");
@@ -2373,7 +2553,8 @@ export class GameplayScene7 {
     // --- Игровые объекты перевёрнутого режима ---
     this.homeStar = null;       // одна домашняя звезда (левая треть)
     this.blacklet = null;       // одна чёрная звезда игрока
-    this.redRing = null;        // одно красное кольцо
+    this.redRing = null;
+    this.prevRedRingState = null;        // одно красное кольцо
     this.starlets = [];         // свободные старлеты (FreeStarlet)
     this.obstacles = [];
     this.particles = [];
@@ -2532,6 +2713,12 @@ export class GameplayScene7 {
     this.homeStar = new HomeStar(this.sceneMetrics);
     this.blacklet = new Blacklet(this.sceneMetrics);
     this.redRing = new RedRing(this.sceneMetrics);
+    this.redRing.onGone = () => {
+    console.log("RedRing onGone callback");
+    this.eatAudio.playRingGoneSound?.();
+  };
+
+    this.prevRedRingState = this.redRing?.state ?? null;
 
     this.starlets = [];
     this.obstacles = [];
@@ -3255,6 +3442,8 @@ export class GameplayScene7 {
       this.redRing.update(delta, this.blacklet);
     }
 
+    //this.checkRedRingAudioState();
+
     this.emitBlackletTrail(delta);
     this.emitComboTrail(delta);
 
@@ -3324,39 +3513,55 @@ export class GameplayScene7 {
   }
 
   // Активное комбо (чёрная звезда + кольцо) поедает старлеты → +5.
-  checkComboEats() {
-    const b = this.blacklet;
-    if (!b || !b.canAbsorb()) return;
+  // Активное комбо (чёрная звезда + кольцо) поедает старлеты → +5.
+checkComboEats() {
+  const b = this.blacklet;
+  if (!b || !b.canAbsorb()) return;
 
-    for (let i = this.starlets.length - 1; i >= 0; i--) {
-      const starlet = this.starlets[i];
-      if (b.eats(starlet)) {
-        this.score += 5;
-        this.savedCount += 1;
-        this.eatenCount += 1; // триггер выключения туториала
-        this.eatAudio.playEatSound();
-        this.emitEatBurst(starlet.x, starlet.y);
+  for (let i = this.starlets.length - 1; i >= 0; i--) {
+    const starlet = this.starlets[i];
+    if (b.eats(starlet)) {
+      this.score += 5;
+      this.savedCount += 1;
+      this.eatenCount += 1; // триггер выключения туториала
+      this.eatAudio.playEatSound();
+      this.emitEatBurst(starlet.x, starlet.y);
+      this.starlets.splice(i, 1);
+    }
+  }
+}
+
+checkRedRingAudioState() {
+  if (!this.redRing) {
+    this.prevRedRingState = null;
+    return;
+  }
+
+  const currentState = this.redRing.state;
+
+  if (this.prevRedRingState !== "gone" && currentState === "gone") {
+    this.ringGoneAudio.playRingGoneSound?.();
+  }
+
+  this.prevRedRingState = currentState;
+}
+
+// Препятствие уничтожает старлет → −5.
+checkObstacleCollisions() {
+  for (let i = this.starlets.length - 1; i >= 0; i--) {
+    const starlet = this.starlets[i];
+    for (let obstacle of this.obstacles) {
+      if (obstacle.collidesWith(starlet)) {
+        this.score = Math.max(0, this.score - 5);
+        this.lostCount += 1;
+        this.audio.playHitSound();
+        this.spawnScatterEffect(starlet.x, starlet.y, "#7e3c48", true);
         this.starlets.splice(i, 1);
+        break;
       }
     }
   }
-
-  // Препятствие уничтожает старлет → −5.
-  checkObstacleCollisions() {
-    for (let i = this.starlets.length - 1; i >= 0; i--) {
-      const starlet = this.starlets[i];
-      for (let obstacle of this.obstacles) {
-        if (obstacle.collidesWith(starlet)) {
-          this.score = Math.max(0, this.score - 5);
-          this.lostCount += 1;
-          this.audio.playHitSound();
-          this.spawnScatterEffect(starlet.x, starlet.y, "#7e3c48", true);
-          this.starlets.splice(i, 1);
-          break;
-        }
-      }
-    }
-  }
+}
 
   // Свободный старлет долетел до домашней звезды → −10.
   checkHomeArrivals() {

@@ -417,63 +417,172 @@ export class GameAudio {
   }
 
   playRingGoneSound() {
-    if (!this.ctx) return;
-    const now = this.now();
-    if (now - this.lastRingGoneTime < 0.12) return;
-    this.lastRingGoneTime = now;
+  if (!this.ctx) return;
+  const now = this.now();
+  if (now - this.lastRingGoneTime < 0.18) return;
+  this.lastRingGoneTime = now;
 
-    const reverb = this.createReverb(2.2, 2.7);
-    const wet = this.ctx.createGain();
-    wet.gain.value = 0.2;
-    reverb.connect(wet);
-    wet.connect(this.master);
+  const masterGain = this.ctx.createGain();
+  masterGain.gain.value = 1.08;
+  masterGain.connect(this.master);
 
-    const tone = this.ctx.createOscillator();
-    const toneGain = this.ctx.createGain();
-    const toneFilter = this.ctx.createBiquadFilter();
+  const reverb = this.createReverb(6.8, 3.8);
+  const wet = this.ctx.createGain();
+  wet.gain.value = 0.52;
+  reverb.connect(wet);
+  wet.connect(this.master);
 
-    tone.type = "sine";
-    tone.frequency.setValueAtTime(620, now);
-    tone.frequency.exponentialRampToValueAtTime(210, now + 0.42);
+  const highpass = this.ctx.createBiquadFilter();
+  highpass.type = "highpass";
+  highpass.frequency.value = 70;
 
-    toneFilter.type = "lowpass";
-    toneFilter.frequency.value = 1200;
+  const lowpass = this.ctx.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 2200;
 
-    toneGain.gain.setValueAtTime(0.0001, now);
-    toneGain.gain.linearRampToValueAtTime(0.028, now + 0.018);
-    toneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+  const presence = this.ctx.createBiquadFilter();
+  presence.type = "peaking";
+  presence.frequency.value = 820;
+  presence.Q.value = 1.1;
+  presence.gain.value = 2.8;
 
-    tone.connect(toneFilter);
-    toneFilter.connect(toneGain);
-    toneGain.connect(this.master);
-    toneGain.connect(reverb);
+  highpass.connect(presence);
+  presence.connect(lowpass);
+  lowpass.connect(masterGain);
+  lowpass.connect(reverb);
 
-    const air = this.ctx.createOscillator();
-    const airGain = this.ctx.createGain();
-    const airFilter = this.ctx.createBiquadFilter();
+  const partials = [
+    { type: "sine",     freq: 220, gain: 0.24, attack: 0.010, decay: 4.8, drift: 0.989, vibrato: 4.0, vibDepth: 6 },
+    { type: "triangle", freq: 330, gain: 0.19, attack: 0.008, decay: 4.3, drift: 0.990, vibrato: 4.6, vibDepth: 7 },
+    { type: "sine",     freq: 495, gain: 0.13, attack: 0.007, decay: 3.7, drift: 0.992, vibrato: 5.0, vibDepth: 8 },
+    { type: "triangle", freq: 740, gain: 0.080, attack: 0.006, decay: 2.9, drift: 0.994, vibrato: 5.4, vibDepth: 8 },
+    { type: "sine",     freq: 1110, gain: 0.040, attack: 0.005, decay: 2.1, drift: 0.996, vibrato: 6.0, vibDepth: 7 },
+  ];
 
-    air.type = "triangle";
-    air.frequency.setValueAtTime(1180, now);
-    air.frequency.exponentialRampToValueAtTime(480, now + 0.24);
+  partials.forEach(({ type, freq, gain, attack, decay, drift, vibrato, vibDepth }) => {
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    const band = this.ctx.createBiquadFilter();
+    const lfo = this.ctx.createOscillator();
+    const lfoGain = this.ctx.createGain();
 
-    airFilter.type = "bandpass";
-    airFilter.frequency.value = 900;
-    airFilter.Q.value = 1.4;
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * drift, now + decay);
 
-    airGain.gain.setValueAtTime(0.0001, now);
-    airGain.gain.linearRampToValueAtTime(0.016, now + 0.012);
-    airGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+    lfo.type = "sine";
+    lfo.frequency.setValueAtTime(vibrato, now);
+    lfoGain.gain.setValueAtTime(vibDepth, now);
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
 
-    air.connect(airFilter);
-    airFilter.connect(airGain);
-    airGain.connect(this.master);
+    band.type = "bandpass";
+    band.frequency.value = freq;
+    band.Q.value = freq < 500 ? 2.1 : 3.0;
 
-    tone.start(now);
-    air.start(now);
+    oscGain.gain.setValueAtTime(0.0001, now);
+    oscGain.gain.linearRampToValueAtTime(gain, now + attack);
+    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
 
-    tone.stop(now + 0.55);
-    air.stop(now + 0.28);
+    osc.connect(band);
+    band.connect(oscGain);
+    oscGain.connect(highpass);
+
+    osc.start(now);
+    lfo.start(now);
+    osc.stop(now + decay + 0.08);
+    lfo.stop(now + decay + 0.08);
+  });
+
+  const snap = this.ctx.createBufferSource();
+  const snapBuffer = this.ctx.createBuffer(
+    1,
+    Math.floor(this.ctx.sampleRate * 0.05),
+    this.ctx.sampleRate
+  );
+  const snapData = snapBuffer.getChannelData(0);
+
+  for (let i = 0; i < snapData.length; i++) {
+    const t = i / snapData.length;
+    snapData[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 5.6) * 0.28;
   }
+
+  snap.buffer = snapBuffer;
+
+  const snapFilter = this.ctx.createBiquadFilter();
+  snapFilter.type = "bandpass";
+  snapFilter.frequency.value = 1200;
+  snapFilter.Q.value = 1.0;
+
+  const snapGain = this.ctx.createGain();
+  snapGain.gain.setValueAtTime(0.0001, now);
+  snapGain.gain.linearRampToValueAtTime(0.030, now + 0.003);
+  snapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.10);
+
+  snap.connect(snapFilter);
+  snapFilter.connect(snapGain);
+  snapGain.connect(masterGain);
+  snapGain.connect(reverb);
+
+  snap.start(now);
+
+  const tail = this.ctx.createOscillator();
+  const tailGain = this.ctx.createGain();
+  const tailFilter = this.ctx.createBiquadFilter();
+  const tailLfo = this.ctx.createOscillator();
+  const tailLfoGain = this.ctx.createGain();
+
+  tail.type = "triangle";
+  tail.frequency.setValueAtTime(250, now + 0.04);
+  tail.frequency.exponentialRampToValueAtTime(205, now + 4.8);
+
+  tailLfo.type = "sine";
+  tailLfo.frequency.setValueAtTime(3.4, now);
+  tailLfoGain.gain.setValueAtTime(12, now);
+  tailLfo.connect(tailLfoGain);
+  tailLfoGain.connect(tail.frequency);
+
+  tailFilter.type = "bandpass";
+  tailFilter.frequency.value = 300;
+  tailFilter.Q.value = 1.2;
+
+  tailGain.gain.setValueAtTime(0.0001, now + 0.04);
+  tailGain.gain.linearRampToValueAtTime(0.10, now + 0.09);
+  tailGain.gain.exponentialRampToValueAtTime(0.0001, now + 5.0);
+
+  tail.connect(tailFilter);
+  tailFilter.connect(tailGain);
+  tailGain.connect(masterGain);
+  tailGain.connect(reverb);
+
+  tail.start(now + 0.04);
+  tailLfo.start(now + 0.04);
+  tail.stop(now + 5.1);
+  tailLfo.stop(now + 5.1);
+
+  const shadow = this.ctx.createOscillator();
+  const shadowGain = this.ctx.createGain();
+  const shadowFilter = this.ctx.createBiquadFilter();
+
+  shadow.type = "sine";
+  shadow.frequency.setValueAtTime(110, now + 0.06);
+  shadow.frequency.exponentialRampToValueAtTime(82, now + 3.8);
+
+  shadowFilter.type = "lowpass";
+  shadowFilter.frequency.value = 180;
+
+  shadowGain.gain.setValueAtTime(0.0001, now + 0.06);
+  shadowGain.gain.linearRampToValueAtTime(0.045, now + 0.12);
+  shadowGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.9);
+
+  shadow.connect(shadowFilter);
+  shadowFilter.connect(shadowGain);
+  shadowGain.connect(masterGain);
+  shadowGain.connect(reverb);
+
+  shadow.start(now + 0.06);
+  shadow.stop(now + 4.0);
+}
 
   playGameOverSound() {
     if (!this.ctx) return;
