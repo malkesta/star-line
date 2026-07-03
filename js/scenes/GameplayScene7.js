@@ -2543,6 +2543,11 @@ this.ringGoneAudio =
     // Если в проекте они называются иначе — поправить здесь одну-две строки.
     this.startScreen = document.getElementById("startScreen");
     this.tutorialEnabledInput = document.getElementById("tutorialEnabled");
+    this.instructionsElement = document.querySelector(".instructions");
+    this.defaultInstructionsText =
+    this.instructionsElement?.textContent?.trim() ||
+    "Соедини черную звезду и красное кольцо -> Поглощай мелкие звездочки. Помни: кольцо надо обновлять!";
+
 
     this.levelTargetScore = 400;
     this.levelPassed = false;
@@ -2834,6 +2839,13 @@ this.ringGoneAudio =
     }
     return true;
   }
+  getSceneInstructionsText() {
+  if (this.sceneId === "game7" || this.sceneId === "game8") {
+    return "Соедини черную звезду и красное кольцо -> Поглощай мелкие звездочки. Помни: кольцо надо обновлять!";
+  }
+
+  return this.defaultInstructionsText;
+}
 
   async start() {
     console.log("START STATE", {
@@ -2848,6 +2860,10 @@ this.ringGoneAudio =
 
     this.applySceneAudio();
     this.applySceneBackground();
+
+    if (this.instructionsElement) {
+      this.instructionsElement.textContent = this.getSceneInstructionsText();
+    }
 
     try {
       await this.audio.init();
@@ -3793,6 +3809,10 @@ checkObstacleCollisions() {
 
     // Снимаем спец-класс красного сердца.
     this.heartIconElement?.classList.remove("heart-icon--scene7");
+
+    if (this.instructionsElement) {
+  this.instructionsElement.textContent = this.defaultInstructionsText;
+}
 
     if (this.overlay) {
       this.overlay.classList.remove("show");
