@@ -22,6 +22,8 @@ const DEBUG_START_SCENE = null;
 // "game6" -> только GameplayScene6
 // "game7" -> только GameplayScene7
 
+//comment for deploy
+
 const audio = new GameAudio();
 
 const sceneManager = new SceneManager({
