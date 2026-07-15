@@ -8,7 +8,9 @@ import { GameplayScene4 } from "./scenes/GameplayScene4.js";
 import { GameplayScene5 } from "./scenes/GameplayScene5.js";
 import { GameplayScene6 } from "./scenes/GameplayScene6.js";
 import { GameplayScene7 } from "./scenes/GameplayScene7.js";
+import { GameplayScene8 } from "./scenes/GameplayScene8.js";
 import { GameAudio } from "./legacy/StarLineGame.js";
+
 
 const DEBUG_START_SCENE = null;
 // null    -> обычный порядок
@@ -21,16 +23,19 @@ const DEBUG_START_SCENE = null;
 // "game5" -> только GameplayScene5
 // "game6" -> только GameplayScene6
 // "game7" -> только GameplayScene7
+// "game8" -> только GameplayScene8
 
-//comment for deploy
 
 const audio = new GameAudio();
+
 
 const sceneManager = new SceneManager({
   sceneDefs: [],
 });
 
+
 const createSceneDef = (id, create) => ({ id, create });
+
 
 const allSceneDefs = {
   intro: createSceneDef("intro", () => new IntroScene({ sceneManager })),
@@ -42,7 +47,9 @@ const allSceneDefs = {
   game5: createSceneDef("game5", () => new GameplayScene5({ sceneManager, audio })),
   game6: createSceneDef("game6", () => new GameplayScene6({ sceneManager, audio })),
   game7: createSceneDef("game7", () => new GameplayScene7({ sceneManager, audio })),
+  game8: createSceneDef("game8", () => new GameplayScene8({ sceneManager, audio })),
 };
+
 
 const defaultSceneOrder = [
   allSceneDefs.intro,
@@ -54,7 +61,9 @@ const defaultSceneOrder = [
   allSceneDefs.game5,
   allSceneDefs.game6,
   allSceneDefs.game7,
+  allSceneDefs.game8,
 ];
+
 
 if (DEBUG_START_SCENE) {
   document.getElementById("introCinematic")?.classList.add("hidden");
@@ -63,10 +72,12 @@ if (DEBUG_START_SCENE) {
   document.getElementById("startScreen")?.classList.remove("show");
 }
 
+
 sceneManager.sceneDefs =
   DEBUG_START_SCENE && allSceneDefs[DEBUG_START_SCENE]
     ? [allSceneDefs[DEBUG_START_SCENE]]
     : defaultSceneOrder;
+
 
 if (DEBUG_START_SCENE) {
   try {
@@ -79,5 +90,6 @@ if (DEBUG_START_SCENE) {
     audio.startAmbient();
   }
 }
+
 
 await sceneManager.start();
