@@ -905,6 +905,382 @@ class Blacklet {
   }
 }
 
+class Redlet {
+  constructor(sceneMetrics) {
+    this.sceneMetrics = sceneMetrics;
+
+    this.x = 0;
+    this.y = 0;
+    this.vx = 0;
+    this.vy = 0;
+
+    this.state = "forming"; // forming -> huntingRing -> carryingRing
+    this.hasCapturedRing = false;
+    this.markedForRemoval = false;
+
+    this.followTargetX = 0;
+    this.followTargetY = 0;
+
+    this.phase = Math.random() * Math.PI * 2;
+    this.jitterPhase = Math.random() * Math.PI * 2;
+    this.pulsePhase = Math.random() * Math.PI * 2;
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotationSpeed = 0.014;
+
+    this.transformProgress = 0;
+    this.formationDuration = 1.1;
+
+    this.redness = 0;
+    this.coreDarkness = 0;
+
+    this.homingSpeed = 4.2;
+    this.carryingSpeed = 4.0;
+    this.steer = 0.075;
+    this.wander = 0.16;
+
+    this.radius = 0;
+    this.innerRadius = 0;
+    this.catchRadius = 0;
+    this.eatRadius = 0;
+
+    this.formingDriftX = 0;
+    this.formingRiseSpeed = 0;
+    this.formingTargetY = 0;
+    this.formingEdge = "top";
+
+    this.setBounds(sceneMetrics);
+    this.reset();
+  }
+
+  setBounds(sceneMetrics) {
+    this.sceneMetrics = sceneMetrics;
+
+    const baseStarletRadius = sceneMetrics?.starletBaseRadius ?? 8;
+    const offscreenOffset = sceneMetrics?.offscreenOffset ?? 60;
+    const width = sceneMetrics?.width ?? 1366;
+    const height = sceneMetrics?.height ?? 768;
+
+    this.radius = baseStarletRadius * 1.92;
+    this.innerRadius = this.radius * 0.48;
+    this.catchRadius = this.radius * 1.9;
+    this.eatRadius = this.radius * 2.4;
+
+    this.spawnInsetX = width * 0.06;
+    this.spawnInsetY = height * 0.08;
+
+    this.minX = width * 0.04;
+    this.maxX = width * 0.96;
+    this.minY = height * 0.06;
+    this.maxY = height * 0.94;
+
+    this.offscreenOffset = offscreenOffset * 1.3;
+  }
+
+  reset() {
+    this.state = "forming";
+    this.hasCapturedRing = false;
+    this.markedForRemoval = false;
+
+    this.transformProgress = 0;
+    this.redness = 0;
+    this.coreDarkness = 0;
+
+    this.phase = Math.random() * Math.PI * 2;
+    this.jitterPhase = Math.random() * Math.PI * 2;
+    this.pulsePhase = Math.random() * Math.PI * 2;
+    this.rotation = Math.random() * Math.PI * 2;
+
+    this.spawnFromEdge();
+  }
+
+  spawnFromEdge() {
+    const width = this.sceneMetrics?.width ?? 1366;
+    const height = this.sceneMetrics?.height ?? 768;
+    const d = this.offscreenOffset;
+
+    const edge = Math.random() < 0.5 ? "top" : "bottom";
+    this.formingEdge = edge;
+
+    this.x =
+      this.spawnInsetX +
+      Math.random() * Math.max(1, width - this.spawnInsetX * 2);
+
+    if (edge === "top") {
+      this.y = -d;
+    } else {
+      this.y = height + d;
+    }
+
+    this.formingDriftX =
+      (Math.random() < 0.5 ? -1 : 1) * (0.18 + Math.random() * 0.22);
+    this.formingRiseSpeed = 0.45 + Math.random() * 0.28;
+
+    this.formingTargetY =
+      edge === "top"
+        ? height * (0.18 + Math.random() * 0.18)
+        : height * (0.64 + Math.random() * 0.18);
+
+    this.vx = this.formingDriftX;
+    this.vy = edge === "top" ? this.formingRiseSpeed : -this.formingRiseSpeed;
+
+    this.followTargetX = this.x;
+    this.followTargetY = this.y;
+  }
+
+  isActive() {
+    return !this.markedForRemoval;
+  }
+
+  canCaptureRing() {
+    return this.state === "huntingRing" && !this.hasCapturedRing;
+  }
+
+  canEatStarlets() {
+    return this.state === "carryingRing" && this.hasCapturedRing;
+  }
+
+  getSpeed() {
+    return this.hasCapturedRing ? this.carryingSpeed : this.homingSpeed;
+  }
+
+  getEatRadius() {
+    return this.hasCapturedRing ? this.eatRadius * 1.15 : this.eatRadius;
+  }
+
+  collidesWithRing(redRing) {
+    if (!redRing || redRing.hidden || redRing.alpha <= 0.05) return false;
+    if (!this.canCaptureRing()) return false;
+
+    const dx = redRing.x - this.x;
+    const dy = redRing.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < this.catchRadius + redRing.collisionRadius;
+  }
+
+  eatsStarlet(starlet) {
+    if (!this.canEatStarlets() || !starlet) return false;
+
+    const dx = starlet.x - this.x;
+    const dy = starlet.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    return dist < this.getEatRadius() + starlet.radius;
+  }
+
+  captureRing() {
+    this.hasCapturedRing = true;
+    this.state = "carryingRing";
+  }
+
+  getTargetPoint(redRing, starlets) {
+    if (this.hasCapturedRing) {
+      let closest = null;
+      let closestDist = Infinity;
+
+      for (const starlet of starlets ?? []) {
+        const dx = starlet.x - this.x;
+        const dy = starlet.y - this.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < closestDist) {
+          closestDist = distSq;
+          closest = starlet;
+        }
+      }
+
+      if (closest) {
+        return { x: closest.x, y: closest.y };
+      }
+    }
+
+    if (redRing && !redRing.hidden && redRing.alpha > 0.01) {
+      return { x: redRing.x, y: redRing.y };
+    }
+
+    return {
+      x: this.sceneMetrics.width * 0.72,
+      y: this.sceneMetrics.height * 0.5,
+    };
+  }
+
+  update(delta = 0.016, redRing = null, starlets = []) {
+    this.phase += delta * 2.0;
+    this.jitterPhase += delta * 8.5;
+    this.pulsePhase += delta * 3.2;
+    this.rotation += this.rotationSpeed;
+
+    if (this.transformProgress < 1) {
+      this.transformProgress = Math.min(
+        1,
+        this.transformProgress + delta / this.formationDuration
+      );
+
+      const redStart = 0.28;
+      const blackStart = 0.68;
+
+      this.redness =
+        this.transformProgress < redStart
+          ? 0
+          : Math.min(1, (this.transformProgress - redStart) / (1 - redStart));
+
+      this.coreDarkness =
+        this.transformProgress < blackStart
+          ? 0
+          : Math.min(1, (this.transformProgress - blackStart) / (1 - blackStart));
+    }
+
+    if (this.state === "forming") {
+      this.x += this.vx;
+      this.y += this.vy;
+
+      this.x += Math.sin(this.phase) * this.wander * 0.45;
+      this.y += Math.cos(this.phase * 0.92) * this.wander * 0.18;
+
+      const reachedY =
+        this.vy > 0
+          ? this.y >= this.formingTargetY
+          : this.y <= this.formingTargetY;
+
+      if (reachedY) {
+        this.y = this.formingTargetY;
+        this.vy *= 0.92;
+      }
+
+      this.followTargetX = this.x;
+      this.followTargetY = this.y;
+
+      if (this.transformProgress >= 1) {
+        this.state = "huntingRing";
+      }
+    } else {
+      const target = this.getTargetPoint(redRing, starlets);
+      this.followTargetX = target.x;
+      this.followTargetY = target.y;
+
+      const dx = target.x - this.x;
+      const dy = target.y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
+      const speed = this.getSpeed();
+
+      const desiredVx = (dx / dist) * speed;
+      const desiredVy = (dy / dist) * speed;
+
+      this.vx += (desiredVx - this.vx) * this.steer;
+      this.vy += (desiredVy - this.vy) * this.steer;
+
+      this.x += this.vx;
+      this.y += this.vy;
+
+      this.x += Math.sin(this.phase) * this.wander;
+      this.y += Math.cos(this.phase * 0.92) * this.wander;
+    }
+
+    this.x = Math.max(this.minX, Math.min(this.maxX, this.x));
+    this.y = Math.max(this.minY, Math.min(this.maxY, this.y));
+  }
+
+  draw(ctx) {
+    if (!ctx || this.markedForRemoval) return;
+
+    const jitterStrength =
+      this.state === "forming"
+        ? 0.4 * (1 - this.transformProgress * 0.75)
+        : 0.14;
+    const jitterX = Math.sin(this.jitterPhase) * jitterStrength;
+    const jitterY = Math.cos(this.jitterPhase * 0.87) * jitterStrength;
+
+    const readyPulse =
+      1 + Math.sin(this.pulsePhase) * (this.hasCapturedRing ? 0.06 : 0.04);
+    const drawRadius = this.radius * readyPulse;
+    const drawInner = this.innerRadius * readyPulse;
+    const glowBoost = this.hasCapturedRing ? 1.35 : 1.0 + this.redness * 0.18;
+
+    const yellow = { r: 245, g: 182, b: 112 };
+    const amber = { r: 255, g: 240, b: 184 };
+    const red = { r: 224, g: 58, b: 74 };
+    const deepRed = { r: 126, g: 60, b: 72 };
+    const brightEdge = { r: 255, g: 86, b: 104 };
+
+    const mix = (a, b, t) => ({
+      r: a.r + (b.r - a.r) * t,
+      g: a.g + (b.g - a.g) * t,
+      b: a.b + (b.b - a.b) * t,
+    });
+
+    const toRgb = (c, alpha = 1) =>
+      `rgba(${c.r | 0}, ${c.g | 0}, ${c.b | 0}, ${alpha})`;
+
+    const outerWarm = mix(yellow, red, this.redness * 0.92);
+    const edgeColor = mix(amber, brightEdge, this.redness);
+    const shadowColor = mix(red, deepRed, this.coreDarkness * 0.42);
+    const coreFill = mix(
+      outerWarm,
+      { r: 160, g: 32, b: 48 },
+      Math.min(1, this.redness * 0.9 + this.coreDarkness * 0.35)
+    );
+    const coreHighlight = mix(
+      amber,
+      { r: 255, g: 210, b: 210 },
+      this.redness * 0.5
+    );
+
+    ctx.save();
+    ctx.translate(this.x + jitterX, this.y + jitterY);
+    ctx.rotate(this.rotation);
+
+    const glowRadius = drawRadius * (3.0 + 0.3 * glowBoost);
+    const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, glowRadius);
+    glow.addColorStop(0, toRgb(edgeColor, 0.24 * glowBoost));
+    glow.addColorStop(0.45, toRgb(shadowColor, 0.14 * glowBoost));
+    glow.addColorStop(1, toRgb(deepRed, 0));
+
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    drawStarPath(ctx, 0, 0, drawRadius, drawInner, 5);
+    ctx.shadowBlur = 20 * glowBoost;
+    ctx.shadowColor = toRgb(edgeColor, 0.58);
+    ctx.fillStyle = toRgb(coreFill, 1);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    drawStarPath(ctx, 0, 0, drawRadius, drawInner, 5);
+    ctx.lineWidth = this.state === "forming" ? 1.1 + this.redness * 1.3 : 2.2;
+    ctx.strokeStyle = toRgb(edgeColor, 0.98);
+    ctx.stroke();
+
+    drawStarPath(
+      ctx,
+      -drawRadius * 0.16,
+      -drawRadius * 0.18,
+      drawRadius * 0.36,
+      drawRadius * 0.15,
+      5
+    );
+    ctx.fillStyle = toRgb(
+      coreHighlight,
+      Math.max(0.16, 0.4 - this.coreDarkness * 0.24)
+    );
+    ctx.fill();
+
+    if (this.hasCapturedRing) {
+      ctx.beginPath();
+      ctx.arc(0, 0, drawRadius * 1.55, 0, Math.PI * 2);
+      ctx.lineWidth = Math.max(1.25, this.radius * 0.22);
+      ctx.strokeStyle = "rgba(176, 40, 60, 0.84)";
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, drawRadius * 1.55, 0, Math.PI * 2);
+      ctx.lineWidth = Math.max(1, this.radius * 0.11);
+      ctx.strokeStyle = "rgba(230, 90, 90, 0.24)";
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+}
+
 // ============================================================================
 //  RedRing — мягко пульсирующее красное кольцо.
 //
@@ -2491,6 +2867,10 @@ this.ringGoneAudio =
     // --- Игровые объекты перевёрнутого режима ---
     this.homeStar = null;       // одна домашняя звезда (левая треть)
     this.blacklet = null;       // одна чёрная звезда игрока
+    this.redlets = [];
+    this.redletSpawnTimer = 0;
+    this.redletSpawnInterval = 7.5;
+    this.redletTrailTimer = 0;
     this.redRing = null;
     this.prevRedRingState = null;        // одно красное кольцо
     this.starlets = [];         // свободные старлеты (FreeStarlet)
@@ -2659,6 +3039,10 @@ this.ringGoneAudio =
     this.prevRedRingState = this.redRing?.state ?? null;
 
     this.starlets = [];
+    this.redlets = [];
+    this.redletSpawnTimer = 0;
+    this.redletTrailTimer = 0;
+    this.redletSpawnInterval = 7.5;
     this.obstacles = [];
 
     // Спавн-директор стартует с появления чёрной звезды.
@@ -2716,6 +3100,10 @@ this.ringGoneAudio =
     }
     if (this.redRing) {
       this.redRing.setBounds(this.sceneMetrics);
+    }
+
+    if (this.redlets?.length) {
+      this.redlets.forEach((r) => r.setBounds(this.sceneMetrics));
     }
 
     if (this.rotateHint) {
@@ -3024,6 +3412,10 @@ this.ringGoneAudio =
     this.starlets = [];
     this.obstacles = [];
     this.particles = [];
+    this.redlets = [];
+    this.redletSpawnTimer = 0;
+    this.redletTrailTimer = 0;
+    this.redletSpawnInterval = 7.5;
 
     this.score = 0;
     this.savedCount = 0;
@@ -3140,6 +3532,30 @@ this.ringGoneAudio =
     }
   }
 
+  spawnRedlet() {
+    const redlet = new Redlet(this.sceneMetrics);
+    this.redlets.push(redlet);
+    return redlet;
+  }
+
+  forceDestroyRedRingForRedlet() {
+    if (!this.redRing) return;
+
+    if (this.redRing.anchorBlacklet) {
+      this.redRing.anchorBlacklet.clearLinked?.();
+    }
+
+    this.redRing.anchorBlacklet = null;
+    this.redRing.isAttached = false;
+    this.redRing.alpha = 0;
+    this.redRing.hidden = false;
+    this.redRing.decayProgress = 1;
+    this.redRing.state = "gone";
+    this.redRing.spawnDelay = this.redRing.respawnDelay ?? 0.15;
+
+    this.redRing.onGone?.();
+  }
+
   spawnObstacle() {
     this.obstacles.push(new Obstacle(this.sceneMetrics));
   }
@@ -3218,6 +3634,52 @@ this.ringGoneAudio =
           alphaBoost: 0.82 + intensity * 0.14,
         })
       );
+    }
+  }
+}
+
+emitRedletTrails(delta) {
+  if (!this.redlets?.length) return;
+
+  this.redletTrailTimer = (this.redletTrailTimer ?? 0) + delta;
+  const interval = 0.05;
+
+  while (this.redletTrailTimer >= interval) {
+    this.redletTrailTimer -= interval;
+
+    for (const redlet of this.redlets) {
+      if (!redlet?.hasCapturedRing || redlet.markedForRemoval) continue;
+
+      const angle = Math.random() * Math.PI * 2;
+      const r = redlet.radius * (0.2 + Math.random() * 0.55);
+      const px = redlet.x + Math.cos(angle) * r;
+      const py = redlet.y + Math.sin(angle) * r;
+
+      this.particles.push(
+        new Particle(px, py, "rgba(8, 14, 24, 0.92)", false, {
+          vx: (Math.random() - 0.5) * 0.7,
+          vy: (Math.random() - 0.5) * 0.7,
+          life: 0.44 + Math.random() * 0.16,
+          decay: 0.03 + Math.random() * 0.015,
+          size: 1.4 + Math.random() * 1.8,
+          shrink: 0.018,
+          alphaBoost: 0.9,
+        })
+      );
+
+      if (Math.random() < 0.45) {
+        this.particles.push(
+          new Particle(px, py, "rgba(126, 60, 72, 0.32)", false, {
+            vx: (Math.random() - 0.5) * 0.35,
+            vy: (Math.random() - 0.5) * 0.35,
+            life: 0.28 + Math.random() * 0.14,
+            decay: 0.035 + Math.random() * 0.015,
+            size: 0.8 + Math.random() * 1.2,
+            shrink: 0.016,
+            alphaBoost: 0.75,
+          })
+        );
+      }
     }
   }
 }
@@ -3405,6 +3867,24 @@ this.ringGoneAudio =
     this.emitBlackletTrail(delta);
     this.emitComboTrail(delta);
 
+    if (liveGameplay) {
+  this.redletSpawnTimer += delta;
+  if (this.redletSpawnTimer >= this.redletSpawnInterval) {
+    this.spawnRedlet();
+    this.redletSpawnTimer = 0;
+
+    if (this.redletSpawnInterval > 4.8) {
+      this.redletSpawnInterval -= 0.18;
+    }
+  }
+}
+
+if (this.redlets?.length) {
+  this.redlets.forEach((redlet) => redlet.update(delta, this.redRing, this.starlets));
+}
+
+this.emitRedletTrails(delta);
+
     // --- Свободные старлеты: автономно дрейфуют к домашней звезде ---
     this.starlets.forEach((s) => s.update(homeForDrift, delta));
     this.removeOffscreenStarlets();
@@ -3437,13 +3917,18 @@ this.ringGoneAudio =
     }
 
     this.obstacles = this.obstacles.filter((o) => !o.isOffscreen());
+    this.redlets = this.redlets.filter((r) => r && !r.markedForRemoval);
 
     // --- Коллизии ---
-    this.checkComboEats();           // комбо съедает старлет (+5)
+    this.checkComboEats();
+
     if (liveGameplay) {
-      this.checkObstacleCollisions(); // препятствие уничтожает старлет (−5)
+      this.checkRedletRingCapture();
+      this.checkRedletStarletEats();
+      this.checkObstacleCollisions();
     }
-    this.checkHomeArrivals();        // старлет долетел до дома (−10)
+
+    this.checkHomeArrivals();
 
     // --- Спавн препятствий и нарастание сложности (боевая фаза) ---
     if (liveGameplay) {
@@ -3488,6 +3973,49 @@ checkComboEats() {
     }
   }
 }
+
+checkRedletRingCapture() {
+  if (!this.redRing || !this.redlets?.length) return;
+  if (this.redRing.state === "gone") return;
+
+  for (const redlet of this.redlets) {
+    if (!redlet || redlet.markedForRemoval || redlet.hasCapturedRing) continue;
+
+    if (redlet.collidesWithRing(this.redRing)) {
+      redlet.captureRing();
+
+      this.forceDestroyRedRingForRedlet();
+
+      break;
+    }
+  }
+}
+
+checkRedletStarletEats() {
+  if (!this.redlets?.length || !this.starlets?.length) return;
+
+  for (const redlet of this.redlets) {
+    if (!redlet || redlet.markedForRemoval || !redlet.canEatStarlets()) continue;
+
+    for (let i = this.starlets.length - 1; i >= 0; i--) {
+      const starlet = this.starlets[i];
+      if (!starlet) continue;
+
+      if (redlet.eatsStarlet(starlet)) {
+        this.score = Math.max(0, this.score - 5);
+        this.lostCount += 1;
+
+        this.audio.playHitSound?.();
+        this.emitEatBurst?.(starlet.x, starlet.y);
+        this.spawnScatterEffect(starlet.x, starlet.y, "7e3c48", true);
+
+        this.starlets.splice(i, 1);
+      }
+    }
+  }
+}
+
+
 
 checkRedRingAudioState() {
   if (!this.redRing) {
@@ -3594,6 +4122,7 @@ checkObstacleCollisions() {
 
     // Свободные старлеты.
     this.starlets.forEach((s) => s.draw(this.ctx));
+    this.redlets.forEach((r) => r.draw(this.ctx));
 
     // Красное кольцо под чёрной звездой (чтобы звезда читалась поверх).
     if (this.redRing) {
