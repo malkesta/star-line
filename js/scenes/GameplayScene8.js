@@ -3686,46 +3686,63 @@ emitRedletTrails(delta) {
 
   // Анимация всасывания/вспышки, когда комбо съедает старлет.
   emitEatBurst(x, y) {
-    const center = { x: this.blacklet.x, y: this.blacklet.y };
+  const center = { x: this.blacklet.x, y: this.blacklet.y };
 
-    // Частицы старлета, втягиваемые в центр комбо.
-    for (let i = 0; i < 14; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 0.6 + Math.random() * 1.4;
+  // Мягкий золотистый ореол вокруг точки поедания — без направленного выстрела.
+  for (let i = 0; i < 16; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.35 + Math.random() * 0.9;
 
-      this.particles.push(
-        new Particle(x, y, "rgba(255, 236, 176, 0.95)", false, {
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          life: 0.7 + Math.random() * 0.3,
-          decay: 0.05 + Math.random() * 0.03,
-          size: 1.2 + Math.random() * 2.2,
-          shrink: 0.02,
-          alphaBoost: 0.85,
-          attractTo: center,
-          attractPull: 0.08 + Math.random() * 0.06,
-        })
-      );
-    }
-
-    // Короткая красная вспышка захвата.
-    for (let i = 0; i < 8; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 1.0 + Math.random() * 1.6;
-
-      this.particles.push(
-        new Particle(center.x, center.y, "rgba(255, 110, 126, 0.95)", false, {
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          life: 0.5 + Math.random() * 0.25,
-          decay: 0.06 + Math.random() * 0.03,
-          size: 1.4 + Math.random() * 2.0,
-          shrink: 0.02,
-          alphaBoost: 0.8,
-        })
-      );
-    }
+    this.particles.push(
+      new Particle(x, y, "rgba(255, 236, 176, 0.95)", false, {
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.8 + Math.random() * 0.28,
+        decay: 0.03 + Math.random() * 0.018,
+        size: 1.4 + Math.random() * 2.0,
+        shrink: 0.012,
+        alphaBoost: 0.88,
+        gravity: -0.002 + Math.random() * 0.004,
+      })
+    );
   }
+
+  // Небольшой внутренний тёплый пшик — тоже вокруг точки поедания.
+  for (let i = 0; i < 8; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.18 + Math.random() * 0.45;
+
+    this.particles.push(
+      new Particle(x, y, "rgba(255, 248, 220, 0.75)", false, {
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.45 + Math.random() * 0.18,
+        decay: 0.04 + Math.random() * 0.02,
+        size: 0.8 + Math.random() * 1.2,
+        shrink: 0.01,
+        alphaBoost: 0.7,
+      })
+    );
+  }
+
+  // Короткая красная вспышка захвата — у самого центра комбо.
+  for (let i = 0; i < 7; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.7 + Math.random() * 1.1;
+
+    this.particles.push(
+      new Particle(center.x, center.y, "rgba(255, 110, 126, 0.92)", false, {
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.34 + Math.random() * 0.16,
+        decay: 0.07 + Math.random() * 0.03,
+        size: 1.1 + Math.random() * 1.6,
+        shrink: 0.024,
+        alphaBoost: 0.78,
+      })
+    );
+  }
+}
 
   setupInput() {
     if (this.inputBound) return;
@@ -3801,10 +3818,12 @@ emitRedletTrails(delta) {
 
     if (this.spawnPhase === "intro_starlets_home") {
       if (!this.starletsSpawned) {
-        this.homeStar.activateFromLeft();
-        this.spawnStarlets(12);
-        this.starletsSpawned = true;
-      }
+  this.homeStar.activateFromLeft();
+  this.spawnStarlets(12);
+  this.spawnRedlet();
+  this.redletSpawnTimer = 0;
+  this.starletsSpawned = true;
+}
       // Препятствия — в последнюю очередь.
       if (this.spawnTimer >= 0.8) {
         this.spawnPhase = "gameplay_live";
