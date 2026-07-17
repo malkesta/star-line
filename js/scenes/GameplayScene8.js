@@ -928,13 +928,13 @@ class Redlet {
     this.rotationSpeed = 0.014;
 
     this.transformProgress = 0;
-    this.formationDuration = 1.1;
+    this.formationDuration = 3.1;
 
     this.redness = 0;
     this.coreDarkness = 0;
 
-    this.homingSpeed = 4.2;
-    this.carryingSpeed = 4.0;
+    this.homingSpeed = 5.2;
+    this.carryingSpeed = 5.0;
     this.steer = 0.075;
     this.wander = 0.16;
 
@@ -960,7 +960,7 @@ class Redlet {
     const width = sceneMetrics?.width ?? 1366;
     const height = sceneMetrics?.height ?? 768;
 
-    this.radius = baseStarletRadius * 1.92;
+    this.radius = baseStarletRadius * 2.92;
     this.innerRadius = this.radius * 0.48;
     this.catchRadius = this.radius * 1.9;
     this.eatRadius = this.radius * 2.4;
@@ -994,38 +994,59 @@ class Redlet {
   }
 
   spawnFromEdge() {
-    const width = this.sceneMetrics?.width ?? 1366;
-    const height = this.sceneMetrics?.height ?? 768;
-    const d = this.offscreenOffset;
+  const width = this.sceneMetrics?.width ?? 1366;
+  const height = this.sceneMetrics?.height ?? 768;
+  const d = this.offscreenOffset;
 
-    const edge = Math.random() < 0.5 ? "top" : "bottom";
-    this.formingEdge = edge;
+  const edgeRoll = Math.random();
+  let edge = "top";
 
-    this.x =
-      this.spawnInsetX +
-      Math.random() * Math.max(1, width - this.spawnInsetX * 2);
+  if (edgeRoll < 0.25) edge = "top";
+  else if (edgeRoll < 0.5) edge = "bottom";
+  else if (edgeRoll < 0.75) edge = "left";
+  else edge = "right";
 
-    if (edge === "top") {
-      this.y = -d;
-    } else {
-      this.y = height + d;
-    }
+  this.formingEdge = edge;
 
-    this.formingDriftX =
-      (Math.random() < 0.5 ? -1 : 1) * (0.18 + Math.random() * 0.22);
-    this.formingRiseSpeed = 0.45 + Math.random() * 0.28;
-
-    this.formingTargetY =
-      edge === "top"
-        ? height * (0.18 + Math.random() * 0.18)
-        : height * (0.64 + Math.random() * 0.18);
-
-    this.vx = this.formingDriftX;
-    this.vy = edge === "top" ? this.formingRiseSpeed : -this.formingRiseSpeed;
-
-    this.followTargetX = this.x;
-    this.followTargetY = this.y;
+  if (edge === "top") {
+    this.x = Math.random() * width;
+    this.y = -d;
+  } else if (edge === "bottom") {
+    this.x = Math.random() * width;
+    this.y = height + d;
+  } else if (edge === "left") {
+    this.x = -d;
+    this.y = Math.random() * height;
+  } else {
+    this.x = width + d;
+    this.y = Math.random() * height;
   }
+
+  this.formingDriftX =
+    (Math.random() < 0.5 ? -1 : 1) * (0.18 + Math.random() * 0.22);
+  this.formingRiseSpeed = 0.45 + Math.random() * 0.28;
+
+  if (edge === "top") {
+    this.formingTargetY = height * (0.18 + Math.random() * 0.18);
+    this.vx = this.formingDriftX;
+    this.vy = this.formingRiseSpeed;
+  } else if (edge === "bottom") {
+    this.formingTargetY = height * (0.64 + Math.random() * 0.18);
+    this.vx = this.formingDriftX;
+    this.vy = -this.formingRiseSpeed;
+  } else if (edge === "left") {
+    this.formingTargetY = this.y;
+    this.vx = 0.55 + Math.random() * 0.25;
+    this.vy = (Math.random() - 0.5) * 0.18;
+  } else {
+    this.formingTargetY = this.y;
+    this.vx = -(0.55 + Math.random() * 0.25);
+    this.vy = (Math.random() - 0.5) * 0.18;
+  }
+
+  this.followTargetX = this.x;
+  this.followTargetY = this.y;
+}
 
   isActive() {
     return !this.markedForRemoval;
@@ -2906,7 +2927,7 @@ this.ringGoneAudio =
 
     // Туториал (красная подсказка).
     this.tutor = new TutorGuide2();
-    this.tutorialEnabledForRun = true;
+    this.tutorialEnabledForRun = false;
 
     this.inputBound = false;
     this.handlePointerMoveCore = null;
@@ -3533,10 +3554,13 @@ this.ringGoneAudio =
   }
 
   spawnRedlet() {
-    const redlet = new Redlet(this.sceneMetrics);
-    this.redlets.push(redlet);
-    return redlet;
-  }
+  const activeRedlets = this.redlets.filter(r => r && !r.markedForRemoval).length;
+  if (activeRedlets >= 4) return null;
+
+  const redlet = new Redlet(this.sceneMetrics);
+  this.redlets.push(redlet);
+  return redlet;
+}
 
   forceDestroyRedRingForRedlet() {
     if (!this.redRing) return;
@@ -3968,7 +3992,7 @@ this.emitRedletTrails(delta);
     }
 
     // --- Туториал ---
-    this.tutor.update(delta, this);
+    //this.tutor.update(delta, this);
 
     this.updateHeartProgress(delta);
     this.updateUI();
@@ -4157,9 +4181,9 @@ checkObstacleCollisions() {
     this.particles.forEach((p) => p.draw(this.ctx));
 
     // Обучающая подсказка — поверх всего.
-    if (this.tutor) {
-      this.tutor.draw(this.ctx);
-    }
+    //if (this.tutor) {
+    //  this.tutor.draw(this.ctx);
+    //}
 
     // Кольцо-курсор (как в исходной сцене).
     if (this.isDragging && this.isRunning && !this.gameOver) {
