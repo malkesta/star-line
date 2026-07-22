@@ -1764,9 +1764,9 @@ class MotherStar {
     this.baseRingRadius = sceneMetrics.homeRingRadius;
     this.baseGlowRadius = sceneMetrics.homeGlowRadius;
 
-    this.radius = this.baseRadius;
-    this.ringRadius = this.baseRingRadius;
-    this.glowRadius = this.baseGlowRadius;
+    this.radius = 0;
+    this.ringRadius = 0;
+    this.glowRadius = 0;
 
     this.flicker = Math.random() * Math.PI * 2;
     this.rotation = 0;
@@ -1776,6 +1776,15 @@ class MotherStar {
     this.vx = 0;
     this.vy = 0;
     this.phase = Math.random() * Math.PI * 2;
+
+    this.state = 'entering'; // entering -> growing -> open -> shrinking
+    this.scaleProgress = 0;
+    this.openTimer = 0;
+
+    this.growDuration = 1.1;
+    this.openDuration = 2.4;
+    this.shrinkDuration = 0.9;
+    this.minRenderableScale = 0.02;
 
     this.setBounds(sceneMetrics);
     this.resetCyclePosition();
@@ -1788,108 +1797,122 @@ class MotherStar {
     this.baseRingRadius = sceneMetrics.homeRingRadius;
     this.baseGlowRadius = sceneMetrics.homeGlowRadius;
 
-    this.radius = this.baseRadius;
-    this.ringRadius = this.baseRingRadius;
-    this.glowRadius = this.baseGlowRadius;
-
     const { width, height } = sceneMetrics;
 
     this.entryX = -this.baseRingRadius - width * 0.08;
-    this.roamMinX = width * 0.06;
-    this.roamMaxX = width * 0.33;
-    this.roamMinY = height * 0.22;
-    this.roamMaxY = height * 0.78;
-
     this.targetEntryX = width * 0.18;
     this.baseY = height * 0.5;
+
+    this.applyScale(this.scaleProgress);
   }
 
   resetCyclePosition() {
     this.entered = false;
+    this.state = 'entering';
+    this.scaleProgress = 0;
+    this.openTimer = 0;
+
     this.x = this.entryX;
     this.y = this.baseY;
     this.vx = 0;
     this.vy = 0;
+
+    this.applyScale(0);
   }
 
   activateFromLeft() {
     this.active = true;
-    this.entered = false;
-    this.x = this.entryX;
-    this.y = this.baseY;
-    this.vx = 0;
-    this.vy = 0;
+    this.resetCyclePosition();
   }
 
   deactivate() {
     this.active = false;
   }
 
+  easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  easeInCubic(t) {
+    return t * t * t;
+  }
+
+  applyScale(scale) {
+    const s = Math.max(0, Math.min(1, scale));
+    this.radius = this.baseRadius * s;
+    this.ringRadius = this.baseRingRadius * s;
+    this.glowRadius = this.baseGlowRadius * s;
+  }
+
+  isSpawnReady() {
+    return this.active && this.state === 'open' && this.scaleProgress >= 0.999;
+  }
+
   update(delta = 0.016) {
     if (!this.active) return;
 
-    this.flicker += 0.008;
-    this.rotation += 0.006;
+    this.flicker += delta * 2.2;
+    this.rotation += delta * 0.9;
 
-    const scale = 1 + Math.sin(this.flicker) * 0.018;
-    this.radius = this.baseRadius * scale;
-    this.ringRadius = this.baseRingRadius * scale;
-    this.glowRadius = this.baseGlowRadius * scale;
-
-    if (!this.entered) {
+    if (this.state === 'entering') {
       const speed = this.sceneMetrics.width * 0.18;
       this.x += speed * delta;
-      this.y = this.baseY + Math.sin(this.flicker * 0.5) * this.sceneMetrics.height * 0.03;
+      this.y = this.baseY + Math.sin(this.flicker * 0.7) * this.sceneMetrics.height * 0.02;
+      this.applyScale(0);
 
       if (this.x >= this.targetEntryX) {
         this.x = this.targetEntryX;
         this.entered = true;
-        this.vx = (Math.random() - 0.5) * 0.6;
-        this.vy = (Math.random() - 0.5) * 0.6;
+        this.state = 'growing';
+        this.scaleProgress = 0;
       }
       return;
     }
 
-    this.phase += delta;
-    this.x += this.vx;
-    this.y += this.vy;
+    if (this.state === 'growing') {
+      this.scaleProgress = Math.min(1, this.scaleProgress + delta / this.growDuration);
+      this.applyScale(this.easeOutCubic(this.scaleProgress));
 
-    const centerX = (this.roamMinX + this.roamMaxX) * 0.5;
-    const centerY = (this.roamMinY + this.roamMaxY) * 0.5;
-
-    this.vx += (centerX - this.x) * 0.0006;
-    this.vy += (centerY - this.y) * 0.0006;
-
-    this.vx += (Math.random() - 0.5) * 0.05;
-    this.vy += (Math.random() - 0.5) * 0.05;
-
-    const maxSpeed = 0.85;
-    const sp = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-    if (sp > maxSpeed) {
-      this.vx = (this.vx / sp) * maxSpeed;
-      this.vy = (this.vy / sp) * maxSpeed;
+      if (this.scaleProgress >= 1) {
+        this.scaleProgress = 1;
+        this.applyScale(1);
+        this.state = 'open';
+        this.openTimer = 0;
+      }
+      return;
     }
 
-    if (this.x < this.roamMinX) {
-      this.x = this.roamMinX;
-      this.vx = Math.abs(this.vx);
+    if (this.state === 'open') {
+      this.openTimer += delta;
+
+      const pulse = 1 + Math.sin(this.flicker) * 0.018;
+      this.radius = this.baseRadius * pulse;
+      this.ringRadius = this.baseRingRadius * pulse;
+      this.glowRadius = this.baseGlowRadius * pulse;
+
+      if (this.openTimer >= this.openDuration) {
+        this.state = 'shrinking';
+        this.scaleProgress = 1;
+      }
+      return;
     }
-    if (this.x > this.roamMaxX) {
-      this.x = this.roamMaxX;
-      this.vx = -Math.abs(this.vx);
-    }
-    if (this.y < this.roamMinY) {
-      this.y = this.roamMinY;
-      this.vy = Math.abs(this.vy);
-    }
-    if (this.y > this.roamMaxY) {
-      this.y = this.roamMaxY;
-      this.vy = -Math.abs(this.vy);
+
+    if (this.state === 'shrinking') {
+      this.scaleProgress = Math.max(0, this.scaleProgress - delta / this.shrinkDuration);
+      const scaled = 1 - this.easeInCubic(1 - this.scaleProgress);
+      this.applyScale(scaled);
+
+      if (this.scaleProgress <= 0) {
+        this.scaleProgress = 0;
+        this.applyScale(0);
+        this.resetCyclePosition();
+      }
     }
   }
 
   draw(ctx) {
     if (!this.active) return;
+    if (this.radius <= this.baseRadius * this.minRenderableScale) return;
 
     const glowPulse = 0.92 + Math.sin(this.flicker) * 0.05;
 
@@ -1913,7 +1936,7 @@ class MotherStar {
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.ringRadius - 6, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, Math.max(0, this.ringRadius - 6), 0, Math.PI * 2);
     ctx.lineWidth = 0.85;
     ctx.strokeStyle = `rgba(222, 161, 94, 0.70)`;
     ctx.stroke();
@@ -1952,14 +1975,14 @@ class MotherStar {
   }
 
   isHit(starlet) {
-    if (!this.active) return false;
+    if (!this.active || this.radius <= 0.001) return false;
     const dx = starlet.x - this.x;
     const dy = starlet.y - this.y;
     return Math.sqrt(dx * dx + dy * dy) < this.radius + starlet.radius;
   }
 
   blocksObstacle(obstacle) {
-    if (!this.active) return false;
+    if (!this.active || this.ringRadius <= 0.001) return false;
     const dx = obstacle.x - this.x;
     const dy = obstacle.y - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -1967,7 +1990,7 @@ class MotherStar {
   }
 
   repelObstacle(obstacle) {
-    if (!this.active) return;
+    if (!this.active || this.ringRadius <= 0.001) return;
 
     const dx = obstacle.x - this.x;
     const dy = obstacle.y - this.y;
