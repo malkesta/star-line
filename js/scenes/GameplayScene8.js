@@ -1755,265 +1755,397 @@ class RedRing {
 }
 
 class MotherStar {
-  constructor(sceneMetrics) {
-    this.sceneMetrics = sceneMetrics;
-    this.x = 0;
-    this.y = 0;
+constructor(sceneMetrics) {
+this.sceneMetrics = sceneMetrics;
 
-    this.baseRadius = sceneMetrics.homeRadius;
-    this.baseRingRadius = sceneMetrics.homeRingRadius;
-    this.baseGlowRadius = sceneMetrics.homeGlowRadius;
+this.x = 0;
+this.y = 0;
 
-    this.radius = 0;
-    this.ringRadius = 0;
-    this.glowRadius = 0;
+this.baseRadius = sceneMetrics.homeRadius;
+this.baseRingRadius = sceneMetrics.homeRingRadius;
+this.baseGlowRadius = sceneMetrics.homeGlowRadius;
 
-    this.flicker = Math.random() * Math.PI * 2;
-    this.rotation = 0;
-    this.active = false;
-    this.entered = false;
+this.radius = 0;
+this.ringRadius = 0;
+this.glowRadius = 0;
 
-    this.vx = 0;
-    this.vy = 0;
-    this.phase = Math.random() * Math.PI * 2;
+this.flicker = Math.random() * Math.PI * 2;
+this.rotation = Math.random() * Math.PI * 2;
+this.phase = Math.random() * Math.PI * 2;
 
-    this.state = 'entering'; // entering -> growing -> open -> shrinking
-    this.scaleProgress = 0;
-    this.openTimer = 0;
+this.active = false;
 
-    this.growDuration = 1.1;
-    this.openDuration = 2.4;
-    this.shrinkDuration = 0.9;
-    this.minRenderableScale = 0.02;
+// Стадии полностью отвязаны от движения.
+this.state = "growing"; // growing -> open -> shrinking
+this.scaleProgress = 0;
+this.openTimer = 0;
+this.spawnPulseReady = false;
 
-    this.setBounds(sceneMetrics);
-    this.resetCyclePosition();
-  }
+this.growDuration = 1.1;
+this.openDuration = 2.4;
+this.shrinkDuration = 0.9;
+this.minRenderableScale = 0.02;
 
-  setBounds(sceneMetrics) {
-    this.sceneMetrics = sceneMetrics;
+// Постоянный wandering внутри допустимой зоны.
+this.vx = 0;
+this.vy = 0;
+this.targetX = 0;
+this.targetY = 0;
+this.driftSpeed = 2.65;
+this.driftSteer = 0.022;
+this.arriveDistance = 26;
 
-    this.baseRadius = sceneMetrics.homeRadius;
-    this.baseRingRadius = sceneMetrics.homeRingRadius;
-    this.baseGlowRadius = sceneMetrics.homeGlowRadius;
+this.setBounds(sceneMetrics);
+this.reset();
+}
 
-    const { width, height } = sceneMetrics;
+setBounds(sceneMetrics) {
+this.sceneMetrics = sceneMetrics;
 
-    this.entryX = -this.baseRingRadius - width * 0.08;
-    this.targetEntryX = width * 0.18;
-    this.baseY = height * 0.5;
+this.baseRadius = sceneMetrics.homeRadius;
+this.baseRingRadius = sceneMetrics.homeRingRadius;
+this.baseGlowRadius = sceneMetrics.homeGlowRadius;
 
-    this.applyScale(this.scaleProgress);
-  }
+const { width, height } = sceneMetrics;
 
-  resetCyclePosition() {
-    this.entered = false;
-    this.state = 'entering';
-    this.scaleProgress = 0;
-    this.openTimer = 0;
+// Рабочая зона — внутри экрана, ближе к центру/правой половине.
+this.driftMinX = width * 0.18;
+this.driftMaxX = width * 0.82;
+this.driftMinY = height * 0.22;
+this.driftMaxY = height * 0.78;
 
-    this.x = this.entryX;
-    this.y = this.baseY;
-    this.vx = 0;
-    this.vy = 0;
+if (this.x === 0 && this.y === 0) {
+this.x = width * 0.32;
+this.y = height * 0.5;
+}
 
-    this.applyScale(0);
-  }
+this.x = Math.max(this.driftMinX, Math.min(this.driftMaxX, this.x));
+this.y = Math.max(this.driftMinY, Math.min(this.driftMaxY, this.y));
 
-  activateFromLeft() {
-    this.active = true;
-    this.resetCyclePosition();
-  }
+this.targetX = Math.max(
+this.driftMinX,
+Math.min(this.driftMaxX, this.targetX || this.x)
+);
+this.targetY = Math.max(
+this.driftMinY,
+Math.min(this.driftMaxY, this.targetY || this.y)
+);
 
-  deactivate() {
-    this.active = false;
-  }
+this.applyScale(this.scaleProgress);
+}
 
-  easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
-  }
+reset() {
+this.active = true;
 
-  easeInCubic(t) {
-    return t * t * t;
-  }
+this.flicker = Math.random() * Math.PI * 2;
+this.rotation = Math.random() * Math.PI * 2;
+this.phase = Math.random() * Math.PI * 2;
 
-  applyScale(scale) {
-    const s = Math.max(0, Math.min(1, scale));
-    this.radius = this.baseRadius * s;
-    this.ringRadius = this.baseRingRadius * s;
-    this.glowRadius = this.baseGlowRadius * s;
-  }
+// Новый цикл стадий, но без нового маршрута "входа".
+this.state = "growing";
+this.scaleProgress = 0;
+this.openTimer = 0;
+this.spawnPulseReady = false;
 
-  isSpawnReady() {
-    return this.active && this.state === 'open' && this.scaleProgress >= 0.999;
-  }
+// Первый запуск — сразу внутри рабочей зоны.
+if (this.x === 0 && this.y === 0) {
+this.x =
+this.driftMinX + (this.driftMaxX - this.driftMinX) * (0.18 + Math.random() * 0.2);
+this.y =
+this.driftMinY + Math.random() * (this.driftMaxY - this.driftMinY);
+} else {
+this.x = Math.max(this.driftMinX, Math.min(this.driftMaxX, this.x));
+this.y = Math.max(this.driftMinY, Math.min(this.driftMaxY, this.y));
+}
 
-  update(delta = 0.016) {
-    if (!this.active) return;
+this.pickNewDriftTarget(true);
 
-    this.flicker += delta * 2.2;
-    this.rotation += delta * 0.9;
+const dx = this.targetX - this.x;
+const dy = this.targetY - this.y;
+const dist = Math.hypot(dx, dy) || 0.001;
 
-    if (this.state === 'entering') {
-      const speed = this.sceneMetrics.width * 0.18;
-      this.x += speed * delta;
-      this.y = this.baseY + Math.sin(this.flicker * 0.7) * this.sceneMetrics.height * 0.02;
-      this.applyScale(0);
+const startSpeed = this.driftSpeed * (0.72 + Math.random() * 0.18);
+this.vx = (dx / dist) * startSpeed;
+this.vy = (dy / dist) * startSpeed;
 
-      if (this.x >= this.targetEntryX) {
-        this.x = this.targetEntryX;
-        this.entered = true;
-        this.state = 'growing';
-        this.scaleProgress = 0;
-      }
-      return;
-    }
+this.applyScale(0);
+}
 
-    if (this.state === 'growing') {
-      this.scaleProgress = Math.min(1, this.scaleProgress + delta / this.growDuration);
-      this.applyScale(this.easeOutCubic(this.scaleProgress));
+activate() {
+this.reset();
+}
 
-      if (this.scaleProgress >= 1) {
-        this.scaleProgress = 1;
-        this.applyScale(1);
-        this.state = 'open';
-        this.openTimer = 0;
-      }
-      return;
-    }
+deactivate() {
+this.active = false;
+this.spawnPulseReady = false;
+}
 
-    if (this.state === 'open') {
-      this.openTimer += delta;
+easeOutCubic(t) {
+return 1 - Math.pow(1 - t, 3);
+}
 
-      const pulse = 1 + Math.sin(this.flicker) * 0.018;
-      this.radius = this.baseRadius * pulse;
-      this.ringRadius = this.baseRingRadius * pulse;
-      this.glowRadius = this.baseGlowRadius * pulse;
+easeInCubic(t) {
+return t * t * t;
+}
 
-      if (this.openTimer >= this.openDuration) {
-        this.state = 'shrinking';
-        this.scaleProgress = 1;
-      }
-      return;
-    }
+applyScale(scale) {
+const s = Math.max(0, Math.min(1, scale));
+this.radius = this.baseRadius * s;
+this.ringRadius = this.baseRingRadius * s;
+this.glowRadius = this.baseGlowRadius * s;
+}
 
-    if (this.state === 'shrinking') {
-      this.scaleProgress = Math.max(0, this.scaleProgress - delta / this.shrinkDuration);
-      const scaled = 1 - this.easeInCubic(1 - this.scaleProgress);
-      this.applyScale(scaled);
+isSpawnReady() {
+return this.active && this.state === "open" && this.scaleProgress >= 0.999;
+}
 
-      if (this.scaleProgress <= 0) {
-        this.scaleProgress = 0;
-        this.applyScale(0);
-        this.resetCyclePosition();
-      }
-    }
-  }
+consumeSpawnPulse() {
+if (!this.spawnPulseReady) return false;
+this.spawnPulseReady = false;
+return true;
+}
 
-  draw(ctx) {
-    if (!this.active) return;
-    if (this.radius <= this.baseRadius * this.minRenderableScale) return;
+pickNewDriftTarget(forceFar = false) {
+let nextX = this.x;
+let nextY = this.y;
+let attempts = 0;
+const minDist = forceFar ? 140 : 90;
 
-    const glowPulse = 0.92 + Math.sin(this.flicker) * 0.05;
+do {
+nextX = this.driftMinX + Math.random() * (this.driftMaxX - this.driftMinX);
+nextY = this.driftMinY + Math.random() * (this.driftMaxY - this.driftMinY);
+attempts++;
+} while (
+attempts < 12 &&
+Math.hypot(nextX - this.x, nextY - this.y) < minDist
+);
 
-    const outerGlow = ctx.createRadialGradient(
-      this.x, this.y, 10,
-      this.x, this.y, this.glowRadius
-    );
-    outerGlow.addColorStop(0, `rgba(245, 182, 112, ${0.28 * glowPulse})`);
-    outerGlow.addColorStop(0.5, `rgba(222, 161, 94, ${0.16 * glowPulse})`);
-    outerGlow.addColorStop(1, `rgba(222, 161, 94, 0)`);
+this.targetX = nextX;
+this.targetY = nextY;
+}
 
-    ctx.fillStyle = outerGlow;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.glowRadius, 0, Math.PI * 2);
-    ctx.fill();
+updateDrift(delta = 0.016) {
+const dx = this.targetX - this.x;
+const dy = this.targetY - this.y;
+const dist = Math.hypot(dx, dy);
 
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.ringRadius, 0, Math.PI * 2);
-    ctx.lineWidth = 1.25;
-    ctx.strokeStyle = `rgba(245, 182, 112, 0.92)`;
-    ctx.stroke();
+if (dist < this.arriveDistance) {
+this.pickNewDriftTarget();
+}
 
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, Math.max(0, this.ringRadius - 6), 0, Math.PI * 2);
-    ctx.lineWidth = 0.85;
-    ctx.strokeStyle = `rgba(222, 161, 94, 0.70)`;
-    ctx.stroke();
+const nextDx = this.targetX - this.x;
+const nextDy = this.targetY - this.y;
+const nextDist = Math.hypot(nextDx, nextDy) || 0.001;
 
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.rotation);
-    ctx.translate(-this.x, -this.y);
+const desiredVx = (nextDx / nextDist) * this.driftSpeed;
+const desiredVy = (nextDy / nextDist) * this.driftSpeed;
 
-    drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
+this.vx += (desiredVx - this.vx) * this.driftSteer;
+this.vy += (desiredVy - this.vy) * this.driftSteer;
 
-    const core = ctx.createRadialGradient(
-      this.x - 8, this.y - 10, 4,
-      this.x, this.y, this.radius
-    );
-    core.addColorStop(0, '#FFF2D4');
-    core.addColorStop(0.48, '#F5B670');
-    core.addColorStop(1, '#DEA15E');
+// Живой шум поверх наведения — чтобы не было ощущения рельсы.
+this.phase += delta * 1.65;
+const noiseX = Math.sin(this.phase) * 0.18;
+const noiseY = Math.cos(this.phase * 0.87) * 0.14;
 
-    ctx.shadowBlur = 24;
-    ctx.shadowColor = 'rgba(222, 161, 94, 0.72)';
-    ctx.fillStyle = core;
-    ctx.fill();
-    ctx.shadowBlur = 0;
+this.x += this.vx + noiseX;
+this.y += this.vy + noiseY;
 
-    drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
-    ctx.lineWidth = 1.1;
-    ctx.strokeStyle = '#FFF4DA';
-    ctx.stroke();
+// Мягкий разворот от границ.
+if (this.x < this.driftMinX) {
+this.x = this.driftMinX;
+this.vx = Math.abs(this.vx) * 0.84;
+this.pickNewDriftTarget();
+} else if (this.x > this.driftMaxX) {
+this.x = this.driftMaxX;
+this.vx = -Math.abs(this.vx) * 0.84;
+this.pickNewDriftTarget();
+}
 
-    drawStarPath(ctx, this.x - 4, this.y - 6, this.radius * 0.35, this.radius * 0.15, 5);
-    ctx.fillStyle = 'rgba(255,255,255,0.20)';
-    ctx.fill();
+if (this.y < this.driftMinY) {
+this.y = this.driftMinY;
+this.vy = Math.abs(this.vy) * 0.84;
+this.pickNewDriftTarget();
+} else if (this.y > this.driftMaxY) {
+this.y = this.driftMaxY;
+this.vy = -Math.abs(this.vy) * 0.84;
+this.pickNewDriftTarget();
+}
+}
 
-    ctx.restore();
-  }
+update(delta = 0.016) {
+if (!this.active) return;
 
-  isHit(starlet) {
-    if (!this.active || this.radius <= 0.001) return false;
-    const dx = starlet.x - this.x;
-    const dy = starlet.y - this.y;
-    return Math.sqrt(dx * dx + dy * dy) < this.radius + starlet.radius;
-  }
+this.flicker += delta * 2.2;
+this.rotation += delta * 0.9;
 
-  blocksObstacle(obstacle) {
-    if (!this.active || this.ringRadius <= 0.001) return false;
-    const dx = obstacle.x - this.x;
-    const dy = obstacle.y - this.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    return dist < this.ringRadius + obstacle.ringRadius;
-  }
+// Движение всегда идёт независимо от стадии.
+this.updateDrift(delta);
 
-  repelObstacle(obstacle) {
-    if (!this.active || this.ringRadius <= 0.001) return;
+if (this.state === "growing") {
+this.scaleProgress = Math.min(
+1,
+this.scaleProgress + delta / this.growDuration
+);
+this.applyScale(this.easeOutCubic(this.scaleProgress));
 
-    const dx = obstacle.x - this.x;
-    const dy = obstacle.y - this.y;
-    const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
-    const overlap = this.ringRadius + obstacle.ringRadius - dist;
+if (this.scaleProgress >= 1) {
+this.scaleProgress = 1;
+this.applyScale(1);
+this.state = "open";
+this.openTimer = 0;
+this.spawnPulseReady = true;
+}
+return;
+}
 
-    if (overlap > 0) {
-      const nx = dx / dist;
-      const ny = dy / dist;
+if (this.state === "open") {
+this.openTimer += delta;
 
-      obstacle.x += nx * overlap;
-      obstacle.y += ny * overlap;
+const pulse = 1 + Math.sin(this.flicker) * 0.018;
+this.radius = this.baseRadius * pulse;
+this.ringRadius = this.baseRingRadius * pulse;
+this.glowRadius = this.baseGlowRadius * pulse;
 
-      const dot = obstacle.vx * nx + obstacle.vy * ny;
-      if (dot < 0) {
-        obstacle.vx -= 2 * dot * nx;
-        obstacle.vy -= 2 * dot * ny;
-      }
+if (this.openTimer >= this.openDuration) {
+this.state = "shrinking";
+this.scaleProgress = 1;
+}
+return;
+}
 
-      obstacle.vx += nx * 0.03;
-      obstacle.vy += ny * 0.03;
-    }
-  }
+if (this.state === "shrinking") {
+this.scaleProgress = Math.max(
+0,
+this.scaleProgress - delta / this.shrinkDuration
+);
+
+const scaled = 1 - this.easeInCubic(1 - this.scaleProgress);
+this.applyScale(scaled);
+
+if (this.scaleProgress <= 0) {
+this.scaleProgress = 0;
+this.applyScale(0);
+
+// Начинаем новый цикл стадий, но позицию не сбрасываем.
+this.state = "growing";
+this.openTimer = 0;
+this.spawnPulseReady = false;
+}
+}
+}
+
+draw(ctx) {
+if (!this.active) return;
+if (this.radius <= this.baseRadius * this.minRenderableScale) return;
+
+const glowPulse = 0.92 + Math.sin(this.flicker) * 0.05;
+
+const outerGlow = ctx.createRadialGradient(
+this.x, this.y, 10,
+this.x, this.y, this.glowRadius
+);
+outerGlow.addColorStop(0, `rgba(245, 182, 112, ${0.28 * glowPulse})`);
+outerGlow.addColorStop(0.5, `rgba(222, 161, 94, ${0.16 * glowPulse})`);
+outerGlow.addColorStop(1, `rgba(222, 161, 94, 0)`);
+
+ctx.fillStyle = outerGlow;
+ctx.beginPath();
+ctx.arc(this.x, this.y, this.glowRadius, 0, Math.PI * 2);
+ctx.fill();
+
+ctx.beginPath();
+ctx.arc(this.x, this.y, this.ringRadius, 0, Math.PI * 2);
+ctx.lineWidth = 1.25;
+ctx.strokeStyle = `rgba(245, 182, 112, 0.92)`;
+ctx.stroke();
+
+ctx.beginPath();
+ctx.arc(this.x, this.y, Math.max(0, this.ringRadius - 6), 0, Math.PI * 2);
+ctx.lineWidth = 0.85;
+ctx.strokeStyle = `rgba(222, 161, 94, 0.70)`;
+ctx.stroke();
+
+ctx.save();
+ctx.translate(this.x, this.y);
+ctx.rotate(this.rotation);
+ctx.translate(-this.x, -this.y);
+
+drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
+
+const core = ctx.createRadialGradient(
+this.x - 8, this.y - 10, 4,
+this.x, this.y, this.radius
+);
+core.addColorStop(0, "#FFF2D4");
+core.addColorStop(0.48, "#F5B670");
+core.addColorStop(1, "#DEA15E");
+
+ctx.shadowBlur = 24;
+ctx.shadowColor = "rgba(222, 161, 94, 0.72)";
+ctx.fillStyle = core;
+ctx.fill();
+ctx.shadowBlur = 0;
+
+drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
+ctx.lineWidth = 1.1;
+ctx.strokeStyle = "#FFF4DA";
+ctx.stroke();
+
+drawStarPath(
+ctx,
+this.x - 4,
+this.y - 6,
+this.radius * 0.35,
+this.radius * 0.15,
+5
+);
+ctx.fillStyle = "rgba(255,255,255,0.20)";
+ctx.fill();
+
+ctx.restore();
+}
+
+isHit(starlet) {
+if (!this.active || this.radius <= 0.001) return false;
+const dx = starlet.x - this.x;
+const dy = starlet.y - this.y;
+return Math.sqrt(dx * dx + dy * dy) < this.radius + starlet.radius;
+}
+
+blocksObstacle(obstacle) {
+if (!this.active || this.ringRadius <= 0.001) return false;
+const dx = obstacle.x - this.x;
+const dy = obstacle.y - this.y;
+const dist = Math.sqrt(dx * dx + dy * dy);
+return dist < this.ringRadius + obstacle.ringRadius;
+}
+
+repelObstacle(obstacle) {
+if (!this.active || this.ringRadius <= 0.001) return;
+
+const dx = obstacle.x - this.x;
+const dy = obstacle.y - this.y;
+const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
+const overlap = this.ringRadius + obstacle.ringRadius - dist;
+
+if (overlap > 0) {
+const nx = dx / dist;
+const ny = dy / dist;
+
+obstacle.x += nx * overlap;
+obstacle.y += ny * overlap;
+
+const dot = obstacle.vx * nx + obstacle.vy * ny;
+if (dot < 0) {
+obstacle.vx -= 2 * dot * nx;
+obstacle.vy -= 2 * dot * ny;
+}
+
+obstacle.vx += nx * 0.03;
+obstacle.vy += ny * 0.03;
+}
+}
 }
 
 class FreeStarlet {
@@ -3572,6 +3704,36 @@ this.ringGoneAudio =
     }
   }
 
+  spawnStarletsFromMotherStar() {
+  if (!this.motherStar?.isSpawnReady()) return;
+
+  const maxStarlets = 12;
+  const missing = Math.max(0, maxStarlets - this.starlets.length);
+  if (missing <= 0) return;
+
+  const originX = this.motherStar.x;
+  const originY = this.motherStar.y;
+
+  for (let i = 0; i < missing; i++) {
+    const starlet = new FreeStarlet(originX, originY, 'right', this.sceneMetrics);
+
+    const angle = (Math.PI * 2 * i) / missing + Math.random() * 0.35;
+    const speed = 0.9 + Math.random() * 0.45;
+    const push = this.motherStar.radius * (0.18 + Math.random() * 0.18);
+
+    starlet.x = originX + Math.cos(angle) * push;
+    starlet.y = originY + Math.sin(angle) * push;
+
+    starlet.vx = Math.cos(angle) * speed;
+    starlet.vy = Math.sin(angle) * speed;
+
+    starlet.targetX = starlet.x + Math.cos(angle) * (50 + Math.random() * 90);
+    starlet.targetY = starlet.y + Math.sin(angle) * (50 + Math.random() * 90);
+
+    this.starlets.push(starlet);
+  }
+}
+
   removeOffscreenStarlets() {
     for (let i = this.starlets.length - 1; i >= 0; i--) {
       if (this.starlets[i].isOffscreen()) {
@@ -3608,8 +3770,17 @@ this.ringGoneAudio =
   }
 
   spawnObstacle() {
-    this.obstacles.push(new Obstacle(this.sceneMetrics));
-  }
+  const maxObstacles = 10;
+  const activeObstacles = this.obstacles.filter(
+    (o) => o && !o.isOffscreen()
+  ).length;
+
+  if (activeObstacles >= maxObstacles) return null;
+
+  const obstacle = new Obstacle(this.sceneMetrics);
+  this.obstacles.push(obstacle);
+  return obstacle;
+}
 
   spawnScatterEffect(x, y, color, cool = false) {
     for (let i = 0; i < 12; i++) {
@@ -3835,57 +4006,50 @@ emitRedletTrails(delta) {
 
   // --- Спавн-директор: продвигает фазы появления объектов ---
   updateSpawnDirector(delta) {
-    this.spawnTimer += delta;
+  this.spawnTimer += delta;
 
-    if (this.spawnPhase === "intro_blacklet") {
-      // Чёрная звезда уже на сцене и формируется. Как только начнётся
-      // покраснение (середина трансформации) — выпускаем кольцо.
-      if (this.blacklet && this.blacklet.redness > 0.25) {
-        this.spawnPhase = "intro_ring";
-        this.spawnTimer = 0;
-        // Выпускаем кольцо сразу в видимую правую зону, чтобы оно не «ползло»
-        // из-за кадра десятки секунд.
-        if (this.redRing) {
-          this.redRing.activateIntro();
-        }
+  if (this.spawnPhase === "intro_blacklet") {
+    // Чёрная звезда уже на сцене и формируется. Как только начнётся
+    // покраснение — выпускаем кольцо.
+    if (this.blacklet && this.blacklet.redness > 0.25) {
+      this.spawnPhase = "intro_ring";
+      this.spawnTimer = 0;
+
+      if (this.redRing) {
+        this.redRing.activateIntro();
       }
-      return;
     }
-
-    if (this.spawnPhase === "intro_ring") {
-      // Кольцо дрейфует и может пристыковаться. Даём ему подрейфовать
-      // фиксированное время и выпускаем старлеты + домашнюю звезду.
-      //
-      // ВАЖНО: нельзя зависеть от blacklet.isTransformed(), потому что при
-      // ранней стыковке кольца чёрная звезда переходит в "linked" и её
-      // трансформация замораживается (transformProgress навсегда < 1) —
-      // тогда директор зависает навечно и старлеты/дом/препятствия не появляются.
-      if (this.spawnTimer >= 1.6) {
-        this.spawnPhase = "intro_starlets_home";
-        this.spawnTimer = 0;
-      }
-      return;
-    }
-
-    if (this.spawnPhase === "intro_starlets_home") {
-      if (!this.starletsSpawned) {
-  this.motherStar?.activateFromLeft()
-  this.spawnStarlets(12);
-  this.spawnRedlet();
-  this.redletSpawnTimer = 0;
-  this.starletsSpawned = true;
-}
-      // Препятствия — в последнюю очередь.
-      if (this.spawnTimer >= 0.8) {
-        this.spawnPhase = "gameplay_live";
-        this.spawnTimer = 0;
-        this.obstacleTimer = 0;
-      }
-      return;
-    }
-
-    // gameplay_live — полноценный игровой процесс (препятствия идут).
+    return;
   }
+
+  if (this.spawnPhase === "intro_ring") {
+    // Кольцо уже в игре, даём ему немного подрейфовать.
+    if (this.spawnTimer >= 1.6) {
+      this.spawnPhase = "intro_starlets_home";
+      this.spawnTimer = 0;
+    }
+    return;
+  }
+
+  if (this.spawnPhase === "intro_starlets_home") {
+    if (!this.starletsSpawned) {
+      this.motherStar?.activate();
+      this.spawnRedlet();
+      this.redletSpawnTimer = 0;
+      this.starletsSpawned = true;
+    }
+
+    // После короткой паузы включаем полноценный gameplay.
+    if (this.spawnTimer >= 0.8) {
+      this.spawnPhase = "gameplay_live";
+      this.spawnTimer = 0;
+      this.obstacleTimer = 0;
+    }
+    return;
+  }
+
+  // gameplay_live — дальше директор уже ничего не спавнит.
+}
 
   update(currentTime) {
     if (!this.isRunning || this.gameOver) return;
@@ -3953,10 +4117,16 @@ if (this.redlets?.length) {
 }
 this.emitRedletTrails(delta)
 
-this.starlets.forEach((s) => s.update(delta))
-this.removeOffscreenStarlets()
+this.starlets.forEach(s => s.update(delta));
+this.removeOffscreenStarlets();
 
-if (this.motherStar) this.motherStar.update(delta)
+if (this.motherStar) {
+  this.motherStar.update(delta);
+
+  if (this.motherStar.consumeSpawnPulse()) {
+    this.spawnStarletsFromMotherStar();
+  }
+}
 
     
     // --- Препятствия (только в боевой фазе) ---
@@ -4003,11 +4173,7 @@ if (this.motherStar) this.motherStar.update(delta)
       if (this.score >= 140) this.obstacleInterval = 1800;
       if (this.score >= 260) this.obstacleInterval = 1600;
 
-      // Респавн старлетов: при <8 добиваем до 12 (как в других сценах).
-      if (this.starlets.length < 8) {
-        this.spawnStarlets(12 - this.starlets.length);
       }
-    }
 
     // --- Туториал ---
     //this.tutor.update(delta, this);
