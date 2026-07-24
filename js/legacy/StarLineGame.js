@@ -27,6 +27,7 @@ export class GameAudio {
     this.lastHitTime = 0;
     this.lastEatTime = 0;
     this.lastRingGoneTime = 0;
+    this.lastStarletSpawnTime = 0;
   }
 
   setMusic(url) {
@@ -582,6 +583,157 @@ export class GameAudio {
 
   shadow.start(now + 0.06);
   shadow.stop(now + 4.0);
+}
+
+playStarletSpawnSound() {
+  if (!this.ctx) return;
+
+  const now = this.now();
+  if (now - this.lastStarletSpawnTime < 0.22) return;
+  this.lastStarletSpawnTime = now;
+
+  const masterGain = this.ctx.createGain();
+  masterGain.gain.value = 0.58;
+  masterGain.connect(this.master);
+
+  const reverb = this.createReverb(2.8, 2.9);
+  const wet = this.ctx.createGain();
+  wet.gain.value = 0.30;
+  reverb.connect(wet);
+  wet.connect(this.master);
+
+  const highpass = this.ctx.createBiquadFilter();
+  highpass.type = "highpass";
+  highpass.frequency.value = 1650;
+
+  const lowpass = this.ctx.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 7600;
+
+  highpass.connect(lowpass);
+  lowpass.connect(masterGain);
+  lowpass.connect(reverb);
+
+  const chimes = [
+    {
+      time: 0.000,
+      notes: [
+        { freq: 2093, peak: 0.020, dur: 0.30, type: "sine" },
+        { freq: 3136, peak: 0.014, dur: 0.38, type: "triangle" },
+        { freq: 4186, peak: 0.010, dur: 0.48, type: "sine" },
+      ],
+    },
+    {
+      time: 0.140,
+      notes: [
+        { freq: 1760, peak: 0.017, dur: 0.26, type: "sine" },
+        { freq: 2794, peak: 0.012, dur: 0.34, type: "triangle" },
+        { freq: 3729, peak: 0.008, dur: 0.42, type: "sine" },
+      ],
+    },
+    {
+      time: 0.310,
+      notes: [
+        { freq: 1976, peak: 0.015, dur: 0.24, type: "sine" },
+        { freq: 2960, peak: 0.010, dur: 0.32, type: "triangle" },
+        { freq: 3951, peak: 0.007, dur: 0.46, type: "sine" },
+      ],
+    },
+  ];
+
+  chimes.forEach(({ time, notes }, phraseIndex) => {
+    notes.forEach(({ freq, peak, dur, type }, i) => {
+      const start = now + time + i * 0.010;
+
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const band = this.ctx.createBiquadFilter();
+      const lfo = this.ctx.createOscillator();
+      const lfoGain = this.ctx.createGain();
+
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, start);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.965, start + dur);
+
+      band.type = "bandpass";
+      band.frequency.value = freq;
+      band.Q.value = 7.5 + i * 1.4 + phraseIndex * 0.4;
+
+      lfo.type = "sine";
+      lfo.frequency.setValueAtTime(5.4 + i * 0.45, start);
+      lfoGain.gain.setValueAtTime(3.8 + i * 0.7, start);
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.linearRampToValueAtTime(peak, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+
+      osc.connect(band);
+      band.connect(gain);
+      gain.connect(highpass);
+
+      osc.start(start);
+      lfo.start(start);
+      osc.stop(start + dur + 0.06);
+      lfo.stop(start + dur + 0.06);
+    });
+  });
+
+  const dust = this.ctx.createBufferSource();
+  const dustBuffer = this.ctx.createBuffer(
+    1,
+    Math.floor(this.ctx.sampleRate * 0.12),
+    this.ctx.sampleRate
+  );
+  const dustData = dustBuffer.getChannelData(0);
+
+  for (let i = 0; i < dustData.length; i++) {
+    const t = i / dustData.length;
+    dustData[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3.8) * 0.07;
+  }
+
+  dust.buffer = dustBuffer;
+
+  const dustFilter = this.ctx.createBiquadFilter();
+  dustFilter.type = "bandpass";
+  dustFilter.frequency.value = 4200;
+  dustFilter.Q.value = 1.1;
+
+  const dustGain = this.ctx.createGain();
+  dustGain.gain.setValueAtTime(0.0001, now);
+  dustGain.gain.linearRampToValueAtTime(0.008, now + 0.016);
+  dustGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+  dust.connect(dustFilter);
+  dustFilter.connect(dustGain);
+  dustGain.connect(masterGain);
+  dustGain.connect(reverb);
+  dust.start(now);
+
+  const shimmer = this.ctx.createOscillator();
+  const shimmerGain = this.ctx.createGain();
+  const shimmerFilter = this.ctx.createBiquadFilter();
+
+  shimmer.type = "sine";
+  shimmer.frequency.setValueAtTime(6100, now + 0.12);
+  shimmer.frequency.exponentialRampToValueAtTime(4700, now + 0.88);
+
+  shimmerFilter.type = "bandpass";
+  shimmerFilter.frequency.value = 5200;
+  shimmerFilter.Q.value = 2.6;
+
+  shimmerGain.gain.setValueAtTime(0.0001, now + 0.12);
+  shimmerGain.gain.linearRampToValueAtTime(0.007, now + 0.18);
+  shimmerGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.92);
+
+  shimmer.connect(shimmerFilter);
+  shimmerFilter.connect(shimmerGain);
+  shimmerGain.connect(masterGain);
+  shimmerGain.connect(reverb);
+
+  shimmer.start(now + 0.12);
+  shimmer.stop(now + 0.96);
 }
 
   playGameOverSound() {

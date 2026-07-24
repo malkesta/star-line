@@ -26,9 +26,9 @@ export class GameAudio {
     this.lastCatchTime = 0;
     this.lastScoreTime = 0;
     this.lastHitTime = 0;
-    this.lastEatTime = 0; // РќРћР’РћР•: Р°РЅС‚РёСЃРїР°Рј РґР»СЏ Р·РІСѓРєР° РїРѕРµРґР°РЅРёСЏ
-    this.lastRingGoneTime = 0; // РќРћР’РћР•: Р°РЅС‚РёСЃРїР°Рј РґР»СЏ Р·РІСѓРєР° РёСЃС‡РµР·РЅРѕРІРµРЅРёСЏ РєРѕР»СЊС†Р°
-
+    this.lastEatTime = 0; 
+    this.lastRingGoneTime = 0;
+    this.lastStarletSpawnTime = 0;
   }
 
   setMusic(url) {
@@ -375,8 +375,7 @@ export class GameAudio {
     spark.stop(now + 0.16);
   }
 
-  // РќРћР’РћР•: Р·РІСѓРє РёСЃС‡РµР·РЅРѕРІРµРЅРёСЏ РєСЂР°СЃРЅРѕРіРѕ РєРѕР»СЊС†Р° РїРѕСЃР»Рµ РїРѕР»РЅРѕРіРѕ СЂР°СЃРїР°РґР°.
-// РњСЏРіРєРёР№ РЅРёСЃС…РѕРґСЏС‰РёР№ "РІС‹РґРѕС…": С‚С‘РїР»С‹Р№ РЅРёР·РєРёР№ С‚РѕРЅ + РєРѕСЂРѕС‚РєРёР№ РІРѕР·РґСѓС€РЅС‹Р№ СЃР»РѕР№ СЃРІРµСЂС…Сѓ.
+  
 playRingGoneSound() {
   if (!this.ctx) return;
   const now = this.now();
@@ -543,6 +542,36 @@ playRingGoneSound() {
 
   shadow.start(now + 0.06);
   shadow.stop(now + 4.0);
+}
+
+playStarletSpawnSound() {
+  if (!this.ctx) return;
+
+  const now = this.now();
+  if (now - this.lastStarletSpawnTime < 0.12) return;
+  this.lastStarletSpawnTime = now;
+
+  const osc = this.ctx.createOscillator();
+  const gain = this.ctx.createGain();
+  const filter = this.ctx.createBiquadFilter();
+
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(740, now);
+  osc.frequency.exponentialRampToValueAtTime(980, now + 0.08);
+
+  filter.type = 'highpass';
+  filter.frequency.value = 900;
+
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.linearRampToValueAtTime(0.02, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(this.master);
+
+  osc.start(now);
+  osc.stop(now + 0.16);
 }
 
   playGameOverSound() {
@@ -944,6 +973,10 @@ class Redlet {
     this.speedVariance = 0.18;
     this.speedFactor = 1;
 
+    this.sizeFactor = 1;
+    this.minSizeFactor = 1.33;
+    this.maxSizeFactor = 2.92;
+
     this.radius = 0;
     this.innerRadius = 0;
     this.catchRadius = 0;
@@ -966,15 +999,7 @@ class Redlet {
     const width = sceneMetrics?.width ?? 1366;
     const height = sceneMetrics?.height ?? 768;
 
-    this.radius = baseStarletRadius * 2.92;
-    this.innerRadius = this.radius * 0.48;
-    this.catchRadius = this.radius * 1.9;
-    this.eatRadius = this.radius * 2.4;
-
-    this.separationRadius = this.radius * 3.4;
-    this.separationForce = 0.11;
-    this.carryingSeparationRadius = this.radius * 4.2;
-    this.carryingSeparationForce = 0.15;
+    this.applySize();
 
     this.spawnInsetX = width * 0.06;
     this.spawnInsetY = height * 0.08;
@@ -986,6 +1011,20 @@ class Redlet {
 
     this.offscreenOffset = offscreenOffset * 1.3;
   }
+
+  applySize() {
+  const baseStarletRadius = this.sceneMetrics?.starletBaseRadius ?? 8;
+
+  this.radius = baseStarletRadius * this.sizeFactor;
+  this.innerRadius = this.radius * 0.48;
+  this.catchRadius = this.radius * 1.9;
+  this.eatRadius = this.radius * 2.4;
+
+  this.separationRadius = this.radius * 3.4;
+  this.separationForce = 0.11;
+  this.carryingSeparationRadius = this.radius * 4.2;
+  this.carryingSeparationForce = 0.15;
+}
 
   reset() {
   this.state = "forming";
@@ -1004,6 +1043,12 @@ class Redlet {
   this.speedFactor = 1 + (Math.random() * 2 - 1) * this.speedVariance;
   this.homingSpeed = this.baseHomingSpeed * this.speedFactor;
   this.carryingSpeed = this.baseCarryingSpeed * this.speedFactor;
+
+  this.sizeFactor =
+    this.minSizeFactor +
+    Math.random() * (this.maxSizeFactor - this.minSizeFactor);
+
+  this.applySize();
 
   this.spawnFromEdge();
 }
@@ -1825,9 +1870,11 @@ class MotherStar {
     this.x = 0;
     this.y = 0;
 
-    this.baseRadius = sceneMetrics.homeRadius;
-    this.baseRingRadius = sceneMetrics.homeRingRadius;
-    this.baseGlowRadius = sceneMetrics.homeGlowRadius;
+    this.sizeMultiplier = 1.5;
+
+    this.baseRadius = sceneMetrics.homeRadius * this.sizeMultiplier;
+    this.baseRingRadius = sceneMetrics.homeRingRadius * this.sizeMultiplier;
+    this.baseGlowRadius = sceneMetrics.homeGlowRadius * this.sizeMultiplier;
 
     this.radius = 0;
     this.ringRadius = 0;
@@ -1839,7 +1886,7 @@ class MotherStar {
 
     this.active = false;
 
-    // РЎС‚Р°РґРёРё РїРѕР»РЅРѕСЃС‚СЊСЋ РѕС‚РІСЏР·Р°РЅС‹ РѕС‚ РґРІРёР¶РµРЅРёСЏ.
+    
     // growing -> open -> shrinking -> zero_wait
     this.state = "growing";
     this.scaleProgress = 0;
@@ -1847,13 +1894,13 @@ class MotherStar {
     this.zeroWaitTimer = 0;
     this.spawnPulseReady = false;
 
-    this.growDuration = 1.1;
-    this.openDuration = 1.4;
+    this.growDuration = 2.1;
+    this.openDuration = 1.2;
     this.shrinkDuration = 2.0;
-    this.zeroWaitDuration = 3.0;
+    this.zeroWaitDuration = 1.5;
     this.minRenderableScale = 0.02;
 
-    // РџРѕСЃС‚РѕСЏРЅРЅС‹Р№ wandering РІРЅСѓС‚СЂРё РґРѕРїСѓСЃС‚РёРјРѕР№ Р·РѕРЅС‹.
+   
     this.vx = 0;
     this.vy = 0;
     this.targetX = 0;
@@ -1869,13 +1916,13 @@ class MotherStar {
   setBounds(sceneMetrics) {
     this.sceneMetrics = sceneMetrics;
 
-    this.baseRadius = sceneMetrics.homeRadius;
-    this.baseRingRadius = sceneMetrics.homeRingRadius;
-    this.baseGlowRadius = sceneMetrics.homeGlowRadius;
+    this.baseRadius = sceneMetrics.homeRadius * this.sizeMultiplier;
+    this.baseRingRadius = sceneMetrics.homeRingRadius * this.sizeMultiplier;
+    this.baseGlowRadius = sceneMetrics.homeGlowRadius * this.sizeMultiplier;
 
     const { width, height } = sceneMetrics;
 
-    // Р Р°Р±РѕС‡Р°СЏ Р·РѕРЅР° вЂ” РІРЅСѓС‚СЂРё СЌРєСЂР°РЅР°, Р±Р»РёР¶Рµ Рє С†РµРЅС‚СЂСѓ/РїСЂР°РІРѕР№ РїРѕР»РѕРІРёРЅРµ.
+    
     this.driftMinX = width * 0.18;
     this.driftMaxX = width * 0.82;
     this.driftMinY = height * 0.22;
@@ -2121,75 +2168,175 @@ class MotherStar {
   }
 
   draw(ctx) {
-    if (!this.active) return;
-    if (this.radius <= this.baseRadius * this.minRenderableScale) return;
+  if (!this.active) return;
+  if (this.scaleProgress <= this.minRenderableScale) return;
 
-    const glowPulse = 0.92 + Math.sin(this.flicker) * 0.05;
+  const flicker = Math.sin(this.flicker) * 0.5 + 0.5;
+  const ringPulse = 1 + Math.sin(this.phase * 1.8) * 0.04;
+  const currentRingRadius = this.ringRadius * ringPulse;
+  const currentGlowRadius = this.glowRadius * (0.92 + flicker * 0.08);
 
-    const outerGlow = ctx.createRadialGradient(
-      this.x, this.y, 10,
-      this.x, this.y, this.glowRadius
-    );
-    outerGlow.addColorStop(0, `rgba(245, 182, 112, ${0.28 * glowPulse})`);
-    outerGlow.addColorStop(0.5, `rgba(222, 161, 94, ${0.16 * glowPulse})`);
-    outerGlow.addColorStop(1, `rgba(222, 161, 94, 0)`);
+  const scale =
+    this.baseRadius > 0 ? this.radius / this.baseRadius : this.scaleProgress;
 
-    ctx.fillStyle = outerGlow;
+  const maxStarletRadius = (this.sceneMetrics?.starletBaseRadius ?? 8) * 1.33;
+
+  // Спиралька примерно вдвое больше прежней.
+  const spiralSize = maxStarletRadius * 1.44 * scale;
+
+  const orbitA = currentRingRadius * 0.42;
+  const orbitB = currentRingRadius * 0.56;
+  const orbitC = currentRingRadius * 0.67;
+
+  ctx.save();
+  ctx.translate(this.x, this.y);
+
+  const glow = ctx.createRadialGradient(
+    0,
+    0,
+    Math.max(2, spiralSize * 0.3),
+    0,
+    0,
+    currentGlowRadius
+  );
+  glow.addColorStop(0, "rgba(145, 92, 1, 0.16)");
+  glow.addColorStop(0.42, "rgba(255, 175, 96, 0.10)");
+  glow.addColorStop(0.74, "rgba(255, 124, 72, 0.06)");
+  glow.addColorStop(1, "rgba(255, 124, 72, 0)");
+
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, currentGlowRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (currentRingRadius > 0.01) {
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.glowRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.ringRadius, 0, Math.PI * 2);
-    ctx.lineWidth = 1.25;
-    ctx.strokeStyle = `rgba(245, 182, 112, 0.92)`;
+    ctx.arc(0, 0, currentRingRadius, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(0.8, this.radius * 0.06);
+    ctx.strokeStyle = "rgba(255, 170, 92, 0.92)";
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = "rgba(255, 166, 82, 0.30)";
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(this.x, this.y, Math.max(0, this.ringRadius - 6), 0, Math.PI * 2);
-    ctx.lineWidth = 0.85;
-    ctx.strokeStyle = `rgba(222, 161, 94, 0.70)`;
+    ctx.arc(0, 0, currentRingRadius, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(0.6, this.radius * 0.025);
+    ctx.strokeStyle = "rgba(255, 236, 198, 0.9)";
+    ctx.shadowBlur = 7;
+    ctx.shadowColor = "rgba(255, 236, 198, 0.18)";
     ctx.stroke();
+  }
+
+  ctx.shadowBlur = 0;
+
+  const drawOrbit = (radius, angle, squash, width, color, alpha) => {
+    if (radius <= 0.01) return;
 
     ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.rotation);
-    ctx.translate(-this.x, -this.y);
-
-    drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
-
-    const core = ctx.createRadialGradient(
-      this.x - 8, this.y - 10, 4,
-      this.x, this.y, this.radius
-    );
-    core.addColorStop(0, "#FFF2D4");
-    core.addColorStop(0.48, "#F5B670");
-    core.addColorStop(1, "#DEA15E");
-
-    ctx.shadowBlur = 24;
-    ctx.shadowColor = "rgba(222, 161, 94, 0.72)";
-    ctx.fillStyle = core;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
-    ctx.lineWidth = 1.1;
-    ctx.strokeStyle = "#FFF4DA";
+    ctx.rotate(angle);
+    ctx.scale(1, squash);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.lineWidth = width;
+    ctx.strokeStyle = color;
+    ctx.globalAlpha *= alpha;
     ctx.stroke();
+    ctx.restore();
+  };
 
-    drawStarPath(
-      ctx,
-      this.x - 4,
-      this.y - 6,
-      this.radius * 0.35,
-      this.radius * 0.15,
-      5
-    );
-    ctx.fillStyle = "rgba(255,255,255,0.20)";
+  const orbitWidthA = Math.max(1.1, currentRingRadius * 0.05);
+  const orbitWidthB = Math.max(1.0, currentRingRadius * 0.043);
+  const orbitWidthC = Math.max(0.9, currentRingRadius * 0.036);
+
+  drawOrbit(
+    orbitA,
+    this.rotation * 0.72,
+    0.72,
+    orbitWidthA,
+    "rgba(255, 220, 170, 0.95)",
+    0.48
+  );
+
+  drawOrbit(
+    orbitB,
+    -this.rotation * 0.93 + 1.1,
+    0.58,
+    orbitWidthB,
+    "rgba(255, 196, 128, 0.92)",
+    0.34
+  );
+
+  drawOrbit(
+    orbitC,
+    this.rotation * 1.75 + 1.15,
+    0.82,
+    orbitWidthC,
+    "rgba(255, 209, 130, 0.9)",
+    0.24
+  );
+
+  // Центральная двойная спираль.
+  if (spiralSize > 0.01) {
+    const turns = 1.9;
+    const steps = 60;
+
+    const drawSpiralArm = (phaseShift) => {
+      for (let i = 0; i < steps; i++) {
+        const t0 = i / steps;
+        const t1 = (i + 1) / steps;
+
+        const a0 = t0 * Math.PI * 2 * turns + phaseShift;
+        const a1 = t1 * Math.PI * 2 * turns + phaseShift;
+
+        const r0 = spiralSize * (0.08 + t0 * 0.92);
+        const r1 = spiralSize * (0.08 + t1 * 0.92);
+
+        const x0 = Math.cos(a0) * r0;
+        const y0 = Math.sin(a0) * r0 * 0.82;
+        const x1 = Math.cos(a1) * r1;
+        const y1 = Math.sin(a1) * r1 * 0.82;
+
+        const centerWeight = 1 - t0;
+        const taperedWidth =
+          Math.max(0.8, spiralSize * (0.28 * Math.pow(centerWeight, 1.12) + 0.04));
+
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.lineWidth = taperedWidth;
+        ctx.strokeStyle = "rgba(255, 224, 170, 0.95)";
+        ctx.stroke();
+      }
+    };
+
+    ctx.save();
+    ctx.rotate(this.rotation * 0.92 - 0.35);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = "rgba(255, 214, 150, 0.22)";
+
+    drawSpiralArm(0);
+    drawSpiralArm(Math.PI);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, spiralSize * 0.14, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(248, 198, 118, 0.98)";
+    ctx.fill();
+
+    const coreGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, spiralSize * 0.4);
+    coreGlow.addColorStop(0, "rgba(255, 232, 190, 0.32)");
+    coreGlow.addColorStop(1, "rgba(255, 232, 190, 0)");
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath();
+    ctx.arc(0, 0, spiralSize * 0.4, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
   }
+
+  ctx.restore();
+}
 
   isHit(starlet) {
     if (!this.active || this.radius <= 0.001) return false;
@@ -3789,6 +3936,8 @@ this.ringGoneAudio =
   const missing = Math.max(0, maxStarlets - this.starlets.length);
   if (missing <= 0) return;
 
+  this.audio?.playStarletSpawnSound?.();
+
   const originX = this.motherStar.x;
   const originY = this.motherStar.y;
 
@@ -3809,6 +3958,7 @@ this.ringGoneAudio =
     starlet.targetY = starlet.y + Math.sin(angle) * (50 + Math.random() * 90);
 
     this.starlets.push(starlet);
+    this.emitStarletSpawnBurst(starlet.x, starlet.y);
   }
 }
 
@@ -3929,41 +4079,108 @@ emitRedletTrails(delta) {
   if (!this.redlets?.length) return;
 
   this.redletTrailTimer = (this.redletTrailTimer ?? 0) + delta;
-  const interval = 0.05;
+  const interval = 0.022;
 
   while (this.redletTrailTimer >= interval) {
     this.redletTrailTimer -= interval;
 
     for (const redlet of this.redlets) {
-      if (!redlet?.hasCapturedRing || redlet.markedForRemoval) continue;
+      if (!redlet || redlet.markedForRemoval) continue;
 
+      const hasRing = !!redlet.hasCapturedRing;
       const angle = Math.random() * Math.PI * 2;
-      const r = redlet.radius * (0.2 + Math.random() * 0.55);
+
+            if (!hasRing) {
+        const r = redlet.radius * (0.08 + Math.random() * 0.42);
+        const px = redlet.x + Math.cos(angle) * r;
+        const py = redlet.y + Math.sin(angle) * r;
+
+        this.particles.push(
+          new Particle(px, py, "rgba(255, 55, 78, 0.92)", false, {
+            vx: (Math.random() - 0.5) * 0.42,
+            vy: (Math.random() - 0.5) * 0.42,
+            life: 0.52 + Math.random() * 0.16,
+            decay: 0.028 + Math.random() * 0.014,
+            size: 1.02 + Math.random() * 1.08,
+            gravity: -0.0012,
+            shrink: 0.0085,
+            alphaBoost: 0.9,
+          })
+        );
+
+        this.particles.push(
+          new Particle(px, py, "rgba(176, 40, 60, 0.52)", false, {
+            vx: (Math.random() - 0.5) * 0.26,
+            vy: (Math.random() - 0.5) * 0.26,
+            life: 0.3 + Math.random() * 0.11,
+            decay: 0.032 + Math.random() * 0.015,
+            size: 0.76 + Math.random() * 0.72,
+            gravity: -0.0007,
+            shrink: 0.0075,
+            alphaBoost: 0.64,
+          })
+        );
+
+        if (Math.random() < 0.55) {
+          this.particles.push(
+            new Particle(px, py, "rgba(255, 170, 180, 0.24)", false, {
+              vx: (Math.random() - 0.5) * 0.18,
+              vy: (Math.random() - 0.5) * 0.18,
+              life: 0.18 + Math.random() * 0.07,
+              decay: 0.042 + Math.random() * 0.015,
+              size: 0.44 + Math.random() * 0.38,
+              shrink: 0.0065,
+              alphaBoost: 0.43,
+            })
+          );
+        }
+
+        continue;
+      }
+      const readyPulse = 1 + Math.sin(redlet.pulsePhase) * 0.06;
+      const ringRadius = redlet.radius * readyPulse * 1.55;
+      const ringBand = Math.max(1.2, redlet.radius * 0.18);
+      const r = ringRadius + (Math.random() - 0.5) * ringBand;
+
       const px = redlet.x + Math.cos(angle) * r;
       const py = redlet.y + Math.sin(angle) * r;
 
       this.particles.push(
-        new Particle(px, py, "rgba(8, 14, 24, 0.92)", false, {
-          vx: (Math.random() - 0.5) * 0.7,
-          vy: (Math.random() - 0.5) * 0.7,
-          life: 0.44 + Math.random() * 0.16,
-          decay: 0.03 + Math.random() * 0.015,
-          size: 1.4 + Math.random() * 1.8,
-          shrink: 0.018,
-          alphaBoost: 0.9,
+        new Particle(px, py, "rgba(18, 24, 36, 0.96)", false, {
+          vx: (Math.random() - 0.5) * 0.42,
+          vy: (Math.random() - 0.5) * 0.42,
+          life: 0.58 + Math.random() * 0.18,
+          decay: 0.026 + Math.random() * 0.014,
+          size: 1.15 + Math.random() * 1.25,
+          gravity: -0.0012,
+          shrink: 0.008,
+          alphaBoost: 0.96,
         })
       );
 
-      if (Math.random() < 0.45) {
+      this.particles.push(
+        new Particle(px, py, "rgba(126, 60, 72, 0.52)", false, {
+          vx: (Math.random() - 0.5) * 0.26,
+          vy: (Math.random() - 0.5) * 0.26,
+          life: 0.34 + Math.random() * 0.12,
+          decay: 0.03 + Math.random() * 0.015,
+          size: 0.85 + Math.random() * 0.85,
+          gravity: -0.0007,
+          shrink: 0.007,
+          alphaBoost: 0.7,
+        })
+      );
+
+      if (Math.random() < 0.55) {
         this.particles.push(
-          new Particle(px, py, "rgba(126, 60, 72, 0.32)", false, {
-            vx: (Math.random() - 0.5) * 0.35,
-            vy: (Math.random() - 0.5) * 0.35,
-            life: 0.28 + Math.random() * 0.14,
-            decay: 0.035 + Math.random() * 0.015,
-            size: 0.8 + Math.random() * 1.2,
-            shrink: 0.016,
-            alphaBoost: 0.75,
+          new Particle(px, py, "rgba(220, 72, 88, 0.24)", false, {
+            vx: (Math.random() - 0.5) * 0.18,
+            vy: (Math.random() - 0.5) * 0.18,
+            life: 0.2 + Math.random() * 0.08,
+            decay: 0.04 + Math.random() * 0.015,
+            size: 0.5 + Math.random() * 0.45,
+            shrink: 0.006,
+            alphaBoost: 0.48,
           })
         );
       }
@@ -4026,6 +4243,60 @@ emitRedletTrails(delta) {
         size: 1.1 + Math.random() * 1.6,
         shrink: 0.024,
         alphaBoost: 0.78,
+      })
+    );
+  }
+}
+
+emitStarletSpawnBurst(x, y) {
+  for (let i = 0; i < 18; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.8 + Math.random() * 1.6;
+
+    this.particles.push(
+      new Particle(x, y, "rgba(255, 210, 120, 0.98)", false, {
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.9 + Math.random() * 0.3,
+        decay: 0.022 + Math.random() * 0.012,
+        size: 1.8 + Math.random() * 2.4,
+        shrink: 0.01,
+        alphaBoost: 1.0,
+        gravity: -0.001 + Math.random() * 0.002,
+      })
+    );
+  }
+
+  for (let i = 0; i < 10; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.35 + Math.random() * 0.9;
+
+    this.particles.push(
+      new Particle(x, y, "rgba(255, 245, 210, 0.95)", false, {
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.55 + Math.random() * 0.22,
+        decay: 0.03 + Math.random() * 0.015,
+        size: 1.1 + Math.random() * 1.5,
+        shrink: 0.012,
+        alphaBoost: 0.92,
+      })
+    );
+  }
+
+  for (let i = 0; i < 6; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.18 + Math.random() * 0.45;
+
+    this.particles.push(
+      new Particle(x, y, "rgba(255, 120, 120, 0.55)", false, {
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.35 + Math.random() * 0.16,
+        decay: 0.04 + Math.random() * 0.018,
+        size: 0.8 + Math.random() * 1.1,
+        shrink: 0.014,
+        alphaBoost: 0.72,
       })
     );
   }
