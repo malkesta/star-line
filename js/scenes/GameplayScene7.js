@@ -3043,14 +3043,14 @@ this.ringGoneAudio =
 
     if (this.resultTitleElement) {
       this.resultTitleElement.textContent = this.levelPassed
-        ? "Ночь закончилась"
-        : "Почти получилось";
+       ? "Ночь закончилась"
+        : "Еще не все";
     }
 
     if (this.resultMessageElement) {
       this.resultMessageElement.textContent = this.levelPassed
-        ? "Девочка счастлива — она спасла так много звёзд!"
-        : "Девочка надеялась спасти больше звёзд.";
+        ? "Голодная звезда сыта и продолжает свой путь в пустоте!"
+        : "Черная звезда еще голодна.";
     }
 
     this.updateRankUI();
