@@ -3702,26 +3702,26 @@ this.ringGoneAudio =
   getSceneRankLabel(rank = this.getSceneRank()) {
     switch (rank) {
       case 3:
-        return "Космический друг";
+        return "Космический враг";
       case 2:
-        return "Звездочет";
+        return "Пожиратель";
       case 1:
-        return "Проводник звезд";
+        return "Ведущий к тьме";
       default:
-        return "Юный проводник";
+        return "Равнодушный наблюдатель";
     }
   }
 
   getSceneRankTitle(rank = this.getSceneRank()) {
     switch (rank) {
       case 3:
-        return "Космический друг";
+        return "Космический враг";
       case 2:
-        return "Звездочет";
+        return "Пожиратель";
       case 1:
-        return "Проводник звезд";
+        return "Ведущий к тьме";
       default:
-        return "Юный проводник";
+        return "Равнодушный наблюдатель";
     }
   }
 
