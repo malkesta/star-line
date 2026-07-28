@@ -1412,13 +1412,13 @@ class FreeStarlet {
     this.state = "free";
     this.following = false;
     this.releaseCooldown = 0;
-    this.lagFactor = 0.14;
-    this.dragRadius = 28;
+    this.lagFactor = 0.22;
+    this.dragRadius = 30;
     this.trailTimer = 0;
 
     this.homeTarget = null;
-    this.homeHomingStrength = 0.2;
-    this.homeArrivalBoost = 2.0;
+    this.homeHomingStrength = 0.38;
+    this.homeArrivalBoost = 6.2;
 
     this.pickNewTarget();
   }
@@ -2077,7 +2077,7 @@ class Redlet {
     this.rotationSpeed = 0.014;
 
     this.transformProgress = 0;
-    this.formationDuration = 3.1;
+    this.formationDuration = 1.45;
 
     this.redness = 0;
     this.coreDarkness = 0;
@@ -2263,9 +2263,14 @@ class Redlet {
   // Совместимо со старым именем метода RedRing (canCarryRedRing) — редлет,
   // уже несущий золотое кольцо, не может параллельно взять красное.
   canCarryRedRing() {
-    return this.canCaptureRing();
-  }
-
+  return (
+    this.state !== "forming" &&
+    this.state !== "carryingGoldRing" &&
+    !this.markedForRemoval &&
+    !this.carryingGoldRing &&
+    !this.hasCapturedRing
+  );
+}
   canEatStarlets() {
     return this.state === "carryingRedRing" && this.hasCapturedRing;
   }
@@ -2325,6 +2330,9 @@ class Redlet {
   // быть в подходящих состояниях, и victim должен реально что-то нести.
   canStealFrom(victimRedlet) {
     if (!victimRedlet || victimRedlet === this) return false;
+    if (this.state === "carryingGoldRing") return false;
+    if (victimRedlet.state === "carryingGoldRing") return false;
+
     if (!this.canCaptureRing()) return false;
     if (!victimRedlet.hasCapturedRing || !victimRedlet.carryingRedRing) {
       return false;
@@ -2369,6 +2377,7 @@ class Redlet {
 
       for (const other of redlets ?? []) {
         if (!other || other === this || other.markedForRemoval) continue;
+        if (other.state === "carryingGoldRing") continue;
         if (!other.isFree()) continue;
 
         const dx = this.x - other.x;
@@ -2416,7 +2425,8 @@ class Redlet {
     let closestVictim = null;
     let closestVictimDist = Infinity;
     for (const victim of activeCombos ?? []) {
-      if (!victim || victim === this || !victim.hasCapturedRing) continue;
+  if (!victim || victim === this || !victim.hasCapturedRing) continue;
+  if (victim.state === "carryingGoldRing") continue;
       const dx = victim.x - this.x;
       const dy = victim.y - this.y;
       const distSq = dx * dx + dy * dy;
@@ -2462,13 +2472,13 @@ class Redlet {
   }
 
     if (this.transformProgress < 1) {
-      this.transformProgress = Math.min(
-        1,
-        this.transformProgress + delta / this.formationDuration
-      );
+    this.transformProgress = Math.min(
+      1,
+      this.transformProgress + delta / this.formationDuration
+    );
 
-      const redStart = 0.28;
-      const blackStart = 0.68;
+    const redStart = 0.12;
+    const blackStart = 0.42;
 
       this.redness =
         this.transformProgress < redStart
@@ -2712,13 +2722,15 @@ class GoldRing {
     this.vx = 0;
     this.vy = 0;
 
-    this.state = "spawning"; // spawning -> idle -> followingCursor -> attachedToRedlet -> delivered/expired
+    this.state = "spawning"; // spawning - idle - followingCursor - magnetizingToRedlet - attachedToRedlet - delivered/expired
     this.hidden = true;
-
     this.anchorRedlet = null;
-
+    this.targetRedlet = null;
     this.alpha = 0;
     this.spawnProgress = 0;
+
+    this.magnetPull = 0.22;
+    this.magnetSnapDistance = 6;
     this.spawnDuration = 0.6;
 
     this.phase = Math.random() * Math.PI * 2;
@@ -2785,6 +2797,7 @@ class GoldRing {
     this.state = "spawning";
     this.hidden = false;
     this.anchorRedlet = null;
+    this.targetRedlet = null;
     this.alpha = 0;
     this.spawnProgress = 0;
     this.comboLifeTimer = 0;
@@ -2847,37 +2860,102 @@ class GoldRing {
   // Столкновение движущегося за курсором золотого кольца со свободным
   // Редлетом -> образуется золотое комбо (ТЗ п.6).
   collidesWithRedlet(redlet) {
-    if (this.state !== "followingCursor") return false;
-    if (!redlet || !redlet.canCarryRedRing()) return false;
+  if (this.state !== "followingCursor") return false;
+  if (!redlet || redlet.markedForRemoval) return false;
+  if (redlet.carryingGoldRing) return false;
+  if (redlet.state === "forming") return false;
 
-    const dx = redlet.x - this.x;
-    const dy = redlet.y - this.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    return dist < redlet.radius * 0.72 + this.collisionRadius;
-  }
+  const dx = redlet.x - this.x;
+  const dy = redlet.y - this.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  return dist < redlet.radius * 1.0 + this.collisionRadius;
+}
+
+  beginMagnetToRedlet(redlet) {
+  if (!redlet) return;
+  if (this.state !== "followingCursor") return;
+  if (redlet.markedForRemoval) return;
+  if (redlet.carryingGoldRing) return;
+  if (redlet.state === "forming") return;
+
+  this.targetRedlet = redlet;
+  this.state = "magnetizingToRedlet";
+}
 
   attachToRedlet(redlet) {
-    if (!redlet) return;
+  if (!redlet) return;
 
-    this.anchorRedlet = redlet;
-    this.state = "attachedToRedlet";
-    this.comboLifeTimer = 0;
+  const stolenRedRing = redlet.carryingRedRing || null;
 
-    redlet.carryingGoldRing = this;
-    redlet.state = "carryingGoldRing";
+  if (stolenRedRing) {
+    const oldRingX = stolenRedRing.x;
+    const oldRingY = stolenRedRing.y;
 
-    this.x = redlet.x;
-    this.y = redlet.y;
+    redlet.clearCarriedRedRing();
+
+    stolenRedRing.anchorRedlet = null;
+    stolenRedRing.isAttached = false;
+    stolenRedRing.state = "idle";
+    stolenRedRing.decayProgress = 0;
+    stolenRedRing.alpha = 1;
+    stolenRedRing.hidden = false;
+    stolenRedRing.entering = false;
+
+    let dx = oldRingX - this.x;
+    let dy = oldRingY - this.y;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < 0.001) {
+      const angle = Math.random() * Math.PI * 2;
+      dx = Math.cos(angle);
+      dy = Math.sin(angle);
+      dist = 1;
+    }
+
+    const nx = dx / dist;
+    const ny = dy / dist;
+
+    const separation = stolenRedRing.collisionRadius + redlet.radius + 10;
+    stolenRedRing.x = redlet.x + nx * separation;
+    stolenRedRing.y = redlet.y + ny * separation;
+
+    const push = 4.8;
+    stolenRedRing.vx = nx * push + (Math.random() - 0.5) * 0.25;
+    stolenRedRing.vy = ny * push + (Math.random() - 0.5) * 0.25;
+
+    const minX = stolenRedRing.driftMinX + stolenRedRing.collisionRadius;
+    const maxX = stolenRedRing.driftMaxX - stolenRedRing.collisionRadius;
+    const minY = stolenRedRing.driftMinY + stolenRedRing.collisionRadius;
+    const maxY = stolenRedRing.driftMaxY - stolenRedRing.collisionRadius;
+
+    stolenRedRing.x = Math.max(minX, Math.min(maxX, stolenRedRing.x));
+    stolenRedRing.y = Math.max(minY, Math.min(maxY, stolenRedRing.y));
   }
+
+  this.targetRedlet = null;
+  this.anchorRedlet = redlet;
+  this.state = "attachedToRedlet";
+  this.comboLifeTimer = 0;
+
+  redlet.hasCapturedRing = false;
+  redlet.carryingRedRing = null;
+  redlet.carryingGoldRing = this;
+  redlet.state = "carryingGoldRing";
+
+  this.x = redlet.x;
+  this.y = redlet.y;
+}
 
   // Курсор бросает пойманное кольцо (отпустили кнопку/палец) — кольцо
   // возвращается в состояние idle и продолжает свободно дрейфовать.
   releaseFromCursor() {
-    if (this.state !== "followingCursor") return;
-    this.state = "idle";
-    this.vx = (Math.random() - 0.5) * 0.8;
-    this.vy = (Math.random() - 0.5) * 0.8;
-  }
+  if (this.state !== "followingCursor" && this.state !== "magnetizingToRedlet") return;
+  this.state = "idle";
+  this.targetRedlet = null;
+  this.vx = (Math.random() - 0.5) * 0.8;
+  this.vy = (Math.random() - 0.5) * 0.8;
+}
 
   deliver() {
     this.state = "delivered";
@@ -2954,6 +3032,47 @@ class GoldRing {
       }
       return;
     }
+
+    if (this.state === "magnetizingToRedlet") {
+  this.alpha = 1;
+
+  if (
+    !this.targetRedlet ||
+    this.targetRedlet.markedForRemoval ||
+    this.targetRedlet.carryingGoldRing ||
+    this.targetRedlet.state === "forming"
+  ) {
+    this.targetRedlet = null;
+    this.state = "idle";
+    return;
+  }
+
+  const redlet = this.targetRedlet;
+
+  if (mousePos) {
+    this.x += (mousePos.x - this.x) * this.lagFactor;
+    this.y += (mousePos.y - this.y) * this.lagFactor;
+  }
+
+  redlet.x += (this.x - redlet.x) * this.magnetPull;
+  redlet.y += (this.y - redlet.y) * this.magnetPull;
+  redlet.vx *= 0.82;
+  redlet.vy *= 0.82;
+
+  const dx = redlet.x - this.x;
+  const dy = redlet.y - this.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist < this.magnetSnapDistance) {
+    redlet.x = this.x;
+    redlet.y = this.y;
+    this.attachToRedlet(redlet);
+  }
+
+  return;
+}
+
+  
 
     if (this.state === "attachedToRedlet") {
       this.alpha = 1;
@@ -3296,11 +3415,12 @@ class HomeStar {
   // Отдельно проверяем каждого "пришвартованного" (following) старлета —
   // они доставляются вместе с комбо и тоже засчитываются в очки.
   isHit(starlet) {
-    if (!this.active || !starlet) return false;
-    const dx = starlet.x - this.x;
-    const dy = starlet.y - this.y;
-    return Math.sqrt(dx * dx + dy * dy) < this.radius + starlet.radius;
-  }
+  if (!this.active || this.radius <= 0.001) return false;
+  const dx = starlet.x - this.x;
+  const dy = starlet.y - this.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  return dist < this.radius * 0.72;
+}
 
   blocksObstacle(obstacle) {
     if (!this.active) return false;
@@ -5095,7 +5215,17 @@ export class GameplayScene9 {
 
     // 4) GoldRing — ловля курсором / переноска редлетом.
     if (this.activeGoldRing) {
+      const prevState = this.activeGoldRing.state;
       this.activeGoldRing.update(delta, this.mousePos, this.isDragging);
+
+      if (
+        prevState !== "attachedToRedlet" &&
+        this.activeGoldRing.state === "attachedToRedlet"
+      ) {
+        this.activeGoldCombo = true;
+        this.goldComboExpireTimer = this.activeGoldRing.comboLifeDuration;
+        this.emitDeliveryBurst(this.activeGoldRing.x, this.activeGoldRing.y);
+      }
     }
 
     if (liveGameplay && (!this.activeGoldRing || this.activeGoldRing.isGone())) {
@@ -5124,7 +5254,12 @@ export class GameplayScene9 {
       // без этой фильтрации getTargetPoint() ломает приоритеты из ТЗ п.11.
       const freeRedRingsForTargeting = this.redRings.filter((r) => r && r.canAttach());
       const activeCombosForTargeting = this.redlets.filter(
-        (r) => r && !r.markedForRemoval && r.hasCapturedRing
+        (r) =>
+          r &&
+          !r.markedForRemoval &&
+          r.hasCapturedRing &&
+          r.carryingRedRing &&
+          r.state !== "carryingGoldRing"
       );
 
       this.redlets.forEach((redlet) =>
@@ -5247,31 +5382,22 @@ export class GameplayScene9 {
   // GoldRing пойман курсором и столкнулся со свободным Redlet-ом ->
   // формируется золотое комбо (пункт ТЗ №6).
   checkGoldRingRedletAttach() {
-    const ring = this.activeGoldRing;
-    if (!ring || ring.state !== "followingCursor") return;
-    if (!this.redlets?.length) return;
+  const ring = this.activeGoldRing;
+  if (!ring || ring.state !== "followingCursor") return;
+  if (!this.redlets?.length) return;
 
-    for (const redlet of this.redlets) {
-      if (!redlet || redlet.markedForRemoval) continue;
-      // Нельзя цеплять GoldRing на Redlet-а, который уже несёт RedRing —
-      // если явно не указано иное (граничный случай из ТЗ).
-      if (redlet.carryingRedRing || redlet.carryingGoldRing) continue;
+  for (const redlet of this.redlets) {
+    if (!redlet || redlet.markedForRemoval) continue;
+    if (redlet.carryingGoldRing) continue;
+    if (redlet.state === "forming") continue;
 
-      if (ring.collidesWithRedlet(redlet)) {
-        // GoldRing.attachToRedlet() уже сам выставляет redlet.carryingGoldRing
-        // (ссылка на кольцо) и redlet.state = "carryingGoldRing" — здесь мы
-        // только обновляем флаги сцены и звук/эффекты.
-        ring.attachToRedlet(redlet);
-
-        this.activeGoldCombo = true;
-        this.goldComboExpireTimer = ring.comboLifeDuration;
-
-        this.audio?.playRingGoneSound?.();
-        this.emitDeliveryBurst(redlet.x, redlet.y);
-        break;
-      }
+    if (ring.collidesWithRedlet(redlet)) {
+      ring.beginMagnetToRedlet(redlet);
+      this.audio?.playRingGoneSound?.();
+      break;
     }
   }
+}
 
   // Redlet захватывает свободное RedRing (обычное конкурентное кольцо,
   // не золотое) — не даём захватывать редлету, уже несущему золотое кольцо.
