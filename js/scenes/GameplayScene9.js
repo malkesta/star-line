@@ -2581,121 +2581,147 @@ class Redlet {
   }
 
   draw(ctx) {
-    if (!ctx || this.markedForRemoval) return;
+  if (!ctx || this.markedForRemoval) return;
 
-    const jitterStrength =
-      this.state === "forming"
-        ? 0.4 * (1 - this.transformProgress * 0.75)
-        : 0.14;
-    const jitterX = Math.sin(this.jitterPhase) * jitterStrength;
-    const jitterY = Math.cos(this.jitterPhase * 0.87) * jitterStrength;
+  const jitterStrength =
+    this.state === "forming"
+      ? 0.55 + (1 - this.transformProgress) * 0.8
+      : 0.14;
 
-    const readyPulse =
-      1 + Math.sin(this.pulsePhase) * (this.hasCapturedRing ? 0.06 : 0.04);
-    const drawRadius = this.radius * readyPulse;
-    const drawInner = this.innerRadius * readyPulse;
-    const glowBoost = this.hasCapturedRing ? 1.35 : 1.0 + this.redness * 0.18;
+  const jitterX = Math.sin(this.jitterPhase) * jitterStrength;
+  const jitterY = Math.cos(this.jitterPhase * 0.87) * jitterStrength;
 
-    const yellow = { r: 245, g: 182, b: 112 };
-    const amber = { r: 255, g: 240, b: 184 };
-    const red = { r: 224, g: 58, b: 74 };
-    const deepRed = { r: 126, g: 60, b: 72 };
-    const brightEdge = { r: 255, g: 86, b: 104 };
-    const gold = { r: 255, g: 205, b: 90 };
+  const readyPulse =
+    this.state === "forming"
+      ? 1
+      : 1 + Math.sin(this.pulsePhase) * (this.hasCapturedRing ? 0.06 : 0.05);
 
-    const mix = (a, b, t) => ({
-      r: a.r + (b.r - a.r) * t,
-      g: a.g + (b.g - a.g) * t,
-      b: a.b + (b.b - a.b) * t,
-    });
+  const isGolden = this.state === "carryingGoldRing";
 
-    const toRgb = (c, alpha = 1) =>
-      `rgba(${c.r | 0}, ${c.g | 0}, ${c.b | 0}, ${alpha})`;
+  const glowBoost = isGolden
+    ? 1.38
+    : this.hasCapturedRing
+    ? 1.25
+    : this.state === "free" || this.state === "seekingRedRing"
+    ? 1.05
+    : 0.72 + this.redness * 0.2;
 
-    const isGolden = this.state === "carryingGoldRing";
+  const yellow = { r: 245, g: 182, b: 112 };
+  const amber = { r: 255, g: 240, b: 184 };
+  const red = { r: 224, g: 58, b: 74 };
+  const deepRed = { r: 126, g: 60, b: 72 };
+  const brightEdge = { r: 255, g: 86, b: 104 };
+  const gold = { r: 255, g: 205, b: 90 };
+  const goldDeep = { r: 200, g: 150, b: 40 };
+  const blackCore = { r: 10, g: 14, b: 28 };
 
-    const outerWarm = isGolden ? gold : mix(yellow, red, this.redness * 0.92);
-    const edgeColor = isGolden ? mix(amber, gold, 0.6) : mix(amber, brightEdge, this.redness);
-    const shadowColor = mix(red, deepRed, this.coreDarkness * 0.42);
-    const coreFill = isGolden
-      ? mix(gold, { r: 200, g: 150, b: 40 }, 0.35)
-      : mix(
-          outerWarm,
-          { r: 160, g: 32, b: 48 },
-          Math.min(1, this.redness * 0.9 + this.coreDarkness * 0.35)
-        );
-    const coreHighlight = isGolden
-      ? mix(amber, { r: 255, g: 244, b: 200 }, 0.5)
-      : mix(amber, { r: 255, g: 210, b: 210 }, this.redness * 0.5);
+  const mix = (a, b, t) => ({
+    r: a.r + (b.r - a.r) * t,
+    g: a.g + (b.g - a.g) * t,
+    b: a.b + (b.b - a.b) * t,
+  });
 
-    ctx.save();
-    ctx.translate(this.x + jitterX, this.y + jitterY);
-    ctx.rotate(this.rotation);
+  const toRgb = (c, alpha = 1) =>
+    `rgba(${c.r | 0}, ${c.g | 0}, ${c.b | 0}, ${alpha})`;
 
-    const glowRadius = drawRadius * (3.0 + 0.3 * glowBoost);
-    const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, glowRadius);
-    glow.addColorStop(0, toRgb(edgeColor, 0.24 * glowBoost));
-    glow.addColorStop(0.45, toRgb(shadowColor, 0.14 * glowBoost));
-    glow.addColorStop(1, toRgb(deepRed, 0));
+  const outerWarm = isGolden
+    ? mix(gold, amber, 0.18)
+    : mix(yellow, red, this.redness * 0.85);
 
-    ctx.fillStyle = glow;
+  const edgeColor = isGolden
+    ? mix(amber, gold, 0.62)
+    : mix(amber, brightEdge, this.redness);
+
+  const shadowColor = isGolden
+    ? mix(gold, goldDeep, 0.42)
+    : mix(red, deepRed, this.coreDarkness * 0.35);
+
+  const coreFill = isGolden
+    ? mix(outerWarm, goldDeep, 0.35)
+    : this.coreDarkness <= 0
+    ? outerWarm
+    : mix(outerWarm, blackCore, this.coreDarkness);
+
+  const coreHighlight = isGolden
+    ? mix(amber, { r: 255, g: 244, b: 200 }, 0.5)
+    : mix(amber, { r: 255, g: 210, b: 210 }, this.redness * 0.45);
+
+  const drawRadius = this.radius * readyPulse;
+  const drawInner = this.innerRadius * readyPulse;
+  const glowRadius = drawRadius * (3.0 + 0.35 * glowBoost);
+
+  ctx.save();
+  ctx.translate(this.x + jitterX, this.y + jitterY);
+  ctx.rotate(this.rotation);
+
+  const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, glowRadius);
+  glow.addColorStop(0, toRgb(edgeColor, 0.22 * glowBoost));
+  glow.addColorStop(0.45, toRgb(shadowColor, 0.13 * glowBoost));
+  glow.addColorStop(1, isGolden ? toRgb(goldDeep, 0) : toRgb(deepRed, 0));
+
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawStarPath(ctx, 0, 0, drawRadius, drawInner, 5);
+  ctx.shadowBlur = 20 * glowBoost;
+  ctx.shadowColor = toRgb(edgeColor, 0.58);
+  ctx.fillStyle = toRgb(coreFill, 1);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  drawStarPath(ctx, 0, 0, drawRadius, drawInner, 5);
+  ctx.lineWidth =
+    this.state === "forming"
+      ? 1.1 + this.redness * 1.4
+      : isGolden
+      ? 2.5
+      : 2.4;
+  ctx.strokeStyle = toRgb(edgeColor, 0.98);
+  ctx.stroke();
+
+  drawStarPath(
+    ctx,
+    -drawRadius * 0.16,
+    -drawRadius * 0.18,
+    drawRadius * 0.36,
+    drawRadius * 0.15,
+    5
+  );
+  ctx.fillStyle = toRgb(
+    coreHighlight,
+    Math.max(0.16, 0.4 - this.coreDarkness * 0.24)
+  );
+  ctx.fill();
+
+  if (this.hasCapturedRing && !isGolden) {
     ctx.beginPath();
-    ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    drawStarPath(ctx, 0, 0, drawRadius, drawInner, 5);
-    ctx.shadowBlur = 20 * glowBoost;
-    ctx.shadowColor = toRgb(edgeColor, 0.58);
-    ctx.fillStyle = toRgb(coreFill, 1);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    drawStarPath(ctx, 0, 0, drawRadius, drawInner, 5);
-    ctx.lineWidth = this.state === "forming" ? 1.1 + this.redness * 1.3 : 2.2;
-    ctx.strokeStyle = toRgb(edgeColor, 0.98);
+    ctx.arc(0, 0, drawRadius * 1.55, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(1.25, this.radius * 0.22);
+    ctx.strokeStyle = "rgba(176, 40, 60, 0.84)";
     ctx.stroke();
 
-    drawStarPath(
-      ctx,
-      -drawRadius * 0.16,
-      -drawRadius * 0.18,
-      drawRadius * 0.36,
-      drawRadius * 0.15,
-      5
-    );
-    ctx.fillStyle = toRgb(
-      coreHighlight,
-      Math.max(0.16, 0.4 - this.coreDarkness * 0.24)
-    );
-    ctx.fill();
-
-    if (this.hasCapturedRing) {
-      ctx.beginPath();
-      ctx.arc(0, 0, drawRadius * 1.55, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(1.25, this.radius * 0.22);
-      ctx.strokeStyle = "rgba(176, 40, 60, 0.84)";
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(0, 0, drawRadius * 1.55, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(1, this.radius * 0.11);
-      ctx.strokeStyle = "rgba(230, 90, 90, 0.24)";
-      ctx.stroke();
-    }
-
-    if (isGolden) {
-      ctx.beginPath();
-      ctx.arc(0, 0, drawRadius * 1.7, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(1.4, this.radius * 0.24);
-      ctx.strokeStyle = "rgba(255, 205, 90, 0.9)";
-      ctx.shadowBlur = 16;
-      ctx.shadowColor = "rgba(255, 205, 90, 0.5)";
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(0, 0, drawRadius * 1.55, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(1, this.radius * 0.11);
+    ctx.strokeStyle = "rgba(230, 90, 90, 0.24)";
+    ctx.stroke();
   }
+
+  if (isGolden) {
+    ctx.beginPath();
+    ctx.arc(0, 0, drawRadius * 1.7, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(1.4, this.radius * 0.24);
+    ctx.strokeStyle = "rgba(255, 205, 90, 0.9)";
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = "rgba(255, 205, 90, 0.5)";
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.restore();
+}
 }
 
 // ============================================================================
@@ -3100,77 +3126,165 @@ class GoldRing {
   }
 
   draw(ctx) {
-    if (this.hidden) return;
-    if (this.alpha <= 0.001) return;
+  if (this.hidden || this.alpha <= 0.001) return;
 
-    const heartBeat = Math.max(0, Math.sin(this.pulsePhase)) ** 6;
-    // Пульс золотого кольца заметно ярче обычного, когда оно в комбо —
-    // визуальный сигнал "спешить, таймер идёт" (ТЗ п.6).
-    const urgency = this.state === "attachedToRedlet"
-      ? Math.min(1, this.comboLifeTimer / this.comboLifeDuration)
-      : 0;
-    const ringPulse = 1 + heartBeat * (0.2 + urgency * 0.25);
+  const heartBeat = Math.max(0, Math.sin(this.pulsePhase)) * 0.6;
+  const ringPulse = 1 + heartBeat * 0.14;
+  const dotPulse = 1 + Math.sin(this.pulsePhase) * 0.04;
 
-    const dotRadius = this.dotRadius * (1 + Math.sin(this.pulsePhase) * 0.035);
-    const ringRadius = this.ringRadius * ringPulse;
-    const glowRadius =
-      this.outerGlowRadius * (0.92 + Math.sin(this.glowPhase) * 0.04 + heartBeat * 0.08);
+  const dotRadius = this.dotRadius * dotPulse;
+  const ringRadius = this.ringRadius * ringPulse;
+  const glowRadius =
+    this.outerGlowRadius *
+    (0.92 + Math.sin(this.glowPhase) * 0.04 + heartBeat * 0.08);
 
-    const ringAlpha = this.alpha * 0.94;
-    const glowAlpha = this.alpha * (this.state === "attachedToRedlet" ? 0.34 : 0.22);
+  const ringAlpha = this.alpha * 0.94;
+  const glowAlpha =
+    this.alpha * (this.state === "attachedToRedlet" ? 0.34 : 0.22);
 
-    ctx.save();
+  ctx.save();
 
-    const glow = ctx.createRadialGradient(
-      this.x, this.y, dotRadius * 0.8,
-      this.x, this.y, glowRadius
-    );
-    glow.addColorStop(0, `rgba(255, 205, 90, ${0.0 * glowAlpha})`);
-    glow.addColorStop(0.72, `rgba(255, 205, 90, ${0.08 * glowAlpha})`);
-    glow.addColorStop(0.9, `rgba(255, 205, 90, ${0.28 * glowAlpha})`);
-    glow.addColorStop(1, "rgba(255, 205, 90, 0)");
+  const glow = ctx.createRadialGradient(
+    this.x,
+    this.y,
+    dotRadius * 0.8,
+    this.x,
+    this.y,
+    glowRadius
+  );
+  glow.addColorStop(0, `rgba(145, 92, 1, ${0.12 * glowAlpha})`);
+  glow.addColorStop(0.42, `rgba(255, 175, 96, ${0.14 * glowAlpha})`);
+  glow.addColorStop(0.74, `rgba(255, 124, 72, ${0.18 * glowAlpha})`);
+  glow.addColorStop(1, "rgba(255, 124, 72, 0)");
 
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
-    ctx.fill();
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
+  ctx.fill();
 
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
-    ctx.lineWidth = this.ringThickness;
-    ctx.strokeStyle = `rgba(214, 160, 40, ${Math.min(1, ringAlpha * 0.9)})`;
-    ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
+  ctx.lineWidth = this.ringThickness;
+  ctx.strokeStyle = `rgba(245, 182, 112, ${Math.min(1, ringAlpha * 0.96)})`;
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = "rgba(222, 161, 94, 0.34)";
+  ctx.stroke();
 
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
-    ctx.lineWidth = Math.max(1.2, this.ringThickness * 0.58);
-    ctx.strokeStyle = `rgba(255, 224, 140, ${Math.min(1, 0.3 + ringAlpha * 0.22)})`;
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = "rgba(255, 205, 90, 0.32)";
-    ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
+  ctx.lineWidth = Math.max(1.2, this.ringThickness * 0.58);
+  ctx.strokeStyle = `rgba(255, 242, 212, ${Math.min(1, 0.42 * ringAlpha + 0.18)})`;
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = "rgba(255, 236, 198, 0.18)";
+  ctx.stroke();
 
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.innerRingRadius, 0, Math.PI * 2);
-    ctx.lineWidth = Math.max(1, this.ringThickness * 0.16);
-    ctx.strokeStyle = `rgba(255, 205, 90, ${Math.min(1, 0.76 + ringAlpha * 0.2)})`;
-    ctx.shadowBlur = 16;
-    ctx.shadowColor = "rgba(255, 205, 90, 0.3)";
-    ctx.stroke();
+  ctx.shadowBlur = 0;
 
-    ctx.shadowBlur = 0;
+  const highlightAngle = this.phase * 0.75 - Math.PI * 0.5;
 
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, dotRadius, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 205, 90, ${Math.min(1, 0.9 * this.alpha + 0.1)})`;
-    ctx.fill();
+  const highlightRadius = Math.max(1.8, this.ringThickness * 0.72);
+  const highlightOrbitRadius = ringRadius - this.ringThickness * 0.08;
 
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, dotRadius * 0.66, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 244, 200, ${0.4 * this.alpha + 0.2})`;
-    ctx.fill();
+  const highlightX = this.x + Math.cos(highlightAngle) * highlightOrbitRadius;
+  const highlightY = this.y + Math.sin(highlightAngle) * highlightOrbitRadius;
 
-    ctx.restore();
-  }
+  const highlightGlowRadius =
+    highlightRadius * (2.6 + Math.max(0, Math.sin(this.pulsePhase)) * 0.45);
+
+  const ringGlow = ctx.createRadialGradient(
+    highlightX,
+    highlightY,
+    highlightRadius * 0.15,
+    highlightX,
+    highlightY,
+    highlightGlowRadius
+  );
+  ringGlow.addColorStop(0, `rgba(255, 252, 242, ${0.34 * this.alpha + 0.18})`);
+  ringGlow.addColorStop(0.35, `rgba(255, 236, 198, ${0.22 * this.alpha + 0.10})`);
+  ringGlow.addColorStop(0.72, `rgba(245, 182, 112, ${0.12 * this.alpha + 0.04})`);
+  ringGlow.addColorStop(1, "rgba(245, 182, 112, 0)");
+
+  ctx.beginPath();
+  ctx.arc(highlightX, highlightY, highlightGlowRadius, 0, Math.PI * 2);
+  ctx.fillStyle = ringGlow;
+  ctx.fill();
+
+  const orbCore = ctx.createRadialGradient(
+    highlightX - highlightRadius * 0.28,
+    highlightY - highlightRadius * 0.34,
+    highlightRadius * 0.12,
+    highlightX,
+    highlightY,
+    highlightRadius
+  );
+  orbCore.addColorStop(0, "rgba(255, 255, 248, 1)");
+  orbCore.addColorStop(0.45, "rgba(255, 244, 218, 0.98)");
+  orbCore.addColorStop(1, "rgba(255, 214, 150, 0.92)");
+
+  ctx.beginPath();
+  ctx.arc(highlightX, highlightY, highlightRadius, 0, Math.PI * 2);
+  ctx.fillStyle = orbCore;
+  ctx.shadowBlur = 14;
+  ctx.shadowColor = "rgba(255, 238, 198, 0.34)";
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+
+  ctx.beginPath();
+  ctx.arc(
+    highlightX - highlightRadius * 0.18,
+    highlightY - highlightRadius * 0.22,
+    highlightRadius * 0.34,
+    0,
+    Math.PI * 2
+  );
+  ctx.fillStyle = `rgba(255, 255, 250, ${0.42 * this.alpha + 0.18})`;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(this.x, this.y, this.innerRingRadius, 0, Math.PI * 2);
+  ctx.lineWidth = Math.max(1, this.ringThickness * 0.16);
+  ctx.strokeStyle = `rgba(222, 161, 94, ${Math.min(1, 0.82 * ringAlpha + 0.12)})`;
+  ctx.shadowBlur = 14;
+  ctx.shadowColor = "rgba(245, 182, 112, 0.22)";
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+
+  const core = ctx.createRadialGradient(
+    this.x - dotRadius * 0.35,
+    this.y - dotRadius * 0.45,
+    dotRadius * 0.18,
+    this.x,
+    this.y,
+    dotRadius
+  );
+  core.addColorStop(0, "#FFF2D4");
+  core.addColorStop(0.48, "#F5B670");
+  core.addColorStop(1, "#DEA15E");
+
+  ctx.beginPath();
+  ctx.arc(this.x, this.y, dotRadius, 0, Math.PI * 2);
+  ctx.fillStyle = core;
+  ctx.shadowBlur = 16;
+  ctx.shadowColor = "rgba(222, 161, 94, 0.30)";
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+
+  ctx.beginPath();
+  ctx.arc(this.x, this.y, dotRadius * 0.64, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(255, 248, 226, ${0.34 * this.alpha + 0.12})`;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(this.x, this.y, dotRadius, 0, Math.PI * 2);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = `rgba(255, 244, 218, ${0.56 * this.alpha + 0.16})`;
+  ctx.stroke();
+
+  ctx.restore();
+}
 }
 
 // ============================================================================
@@ -4034,7 +4148,7 @@ export class GameplayScene9 {
     this.onNext = onNext;
     this.onRoundFinished = onRoundFinished;
     this.sceneMusicUrl = "../../assets/audio/game9.mp3";
-    this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg91.jpg";
+    this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg9.webp";
     this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
 
     this.canvas = document.getElementById("gameCanvas");
@@ -4076,7 +4190,7 @@ export class GameplayScene9 {
     this.instructionsElement = document.querySelector(".instructions");
     this.defaultInstructionsText =
       this.instructionsElement?.textContent?.trim() ||
-      "Поймай золотое кольцо и надень его на свободного редлета -> Веди сияющую пару к дому, пока не истекли 10 секунд!";
+      "Спаси черную звезду, поймав ее золотым кольцом-> Собирай маленькие звездочки-> Веди их к дому, избегая хищных звезд!";
 
     this.levelTargetScore = 400;
     this.levelPassed = false;
@@ -4269,9 +4383,17 @@ export class GameplayScene9 {
     this.redletSpawnInterval = 6.2;
     this.obstacles = [];
 
-    this.spawnPhase = "intro_home";
+    this.spawnPhase = "intro_opening";
     this.spawnTimer = 0;
     this.starletsSpawned = false;
+
+    this.introMainRedlet = null;
+    this.introTutorStarlet = null;
+    this.introMotherActivated = false;
+    this.introTutorialStarted = false;
+    this.introHomeSpawned = false;
+    this.introHomeLinkedToTutor = false;
+    this.introExtraWaveSpawned = false;
   }
 
   isLandscape() {
@@ -4516,30 +4638,30 @@ export class GameplayScene9 {
   }
 
   getSceneRankLabel(rank = this.getSceneRank()) {
-    switch (rank) {
-      case 3:
-        return "Спаситель звёзд";
-      case 2:
-        return "Хранитель пути";
-      case 1:
-        return "Проводник света";
-      default:
-        return "Равнодушный наблюдатель";
-    }
+  switch (rank) {
+    case 3:
+      return "Космический друг";
+    case 2:
+      return "Звездочет";
+    case 1:
+      return "Проводник звезд";
+    default:
+      return "Юный проводник";
   }
+}
 
-  getSceneRankTitle(rank = this.getSceneRank()) {
-    switch (rank) {
-      case 3:
-        return "Спаситель звёзд";
-      case 2:
-        return "Хранитель пути";
-      case 1:
-        return "Проводник света";
-      default:
-        return "Равнодушный наблюдатель";
-    }
+getSceneRankTitle(rank = this.getSceneRank()) {
+  switch (rank) {
+    case 3:
+      return "Космический друг";
+    case 2:
+      return "Звездочет";
+    case 1:
+      return "Проводник звезд";
+    default:
+      return "Юный проводник";
   }
+}
 
   updateRankUI() {
     const passedByScore = this.score >= this.levelTargetScore;
@@ -5086,58 +5208,158 @@ export class GameplayScene9 {
     this.inputBound = true;
   }
 
+  getIntroPrimaryRedlet() {
+  if (
+    this.introMainRedlet &&
+    !this.introMainRedlet.markedForRemoval
+  ) {
+    return this.introMainRedlet;
+  }
+
+  this.introMainRedlet =
+    this.redlets.find((redlet) => redlet && !redlet.markedForRemoval) ?? null;
+
+  return this.introMainRedlet;
+}
+
+getIntroTutorStarlet() {
+  if (
+    this.introTutorStarlet &&
+    this.starlets.includes(this.introTutorStarlet) &&
+    this.introTutorStarlet.state === "free"
+  ) {
+    return this.introTutorStarlet;
+  }
+
+  this.introTutorStarlet =
+    this.starlets.find((starlet) => starlet && starlet.state === "free") ?? null;
+
+  return this.introTutorStarlet;
+}
+
+isHomeStarReadyForTutor() {
+  return !!(
+    this.homeStar &&
+    this.homeStar.active &&
+    this.homeStar.radius > this.homeStar.baseRadius * 0.2
+  );
+}
+
   // --------------------------------------------------------------------
   //  Директор входа в игру: HomeStar заходит слева -> первое RedRing и
   //  первое GoldRing появляются -> MotherStar активируется и стартует
   //  обычный игровой цикл.
   // --------------------------------------------------------------------
   updateSpawnDirector(delta) {
-    this.spawnTimer += delta;
+  this.spawnTimer += delta;
 
-    if (this.spawnPhase === "intro_home") {
-      if (!this.homeStar.active) {
-        this.homeStar.activateFromLeft();
-      }
-
-      if (this.homeStar.entered) {
-        this.spawnPhase = "intro_rings";
-        this.spawnTimer = 0;
-      }
-      return;
+  if (this.spawnPhase === "intro_opening") {
+    if (!this.activeGoldRing) {
+      this.spawnGoldRingIfNeeded();
     }
 
-    if (this.spawnPhase === "intro_rings") {
-      if (this.spawnTimer >= 0.4 && this.redRings.length === 0) {
-        this.spawnRedRingIfNeeded();
-      }
+    const activeRedlets = this.redlets.filter(
+      (redlet) => redlet && !redlet.markedForRemoval
+    );
 
-      if (this.spawnTimer >= 1.0 && !this.activeGoldRing) {
-        this.spawnGoldRingIfNeeded();
-      }
-
-      if (this.spawnTimer >= 1.8) {
-        this.spawnPhase = "intro_starlets";
-        this.spawnTimer = 0;
-      }
-      return;
+    if (activeRedlets.length < 1) {
+      this.spawnRedlet();
     }
 
-    if (this.spawnPhase === "intro_starlets") {
-      if (!this.starletsSpawned) {
-        this.motherStar?.activate();
-        this.spawnRedlet();
-        this.redletSpawnTimer = 0;
-        this.starletsSpawned = true;
-      }
+    const mainRedlet = this.getIntroPrimaryRedlet();
 
-      if (this.spawnTimer >= 0.8) {
-        this.spawnPhase = "gameplay_live";
-        this.spawnTimer = 0;
-        this.obstacleTimer = 0;
-      }
-      return;
+    if (this.activeGoldRing && mainRedlet && !this.introMotherActivated) {
+      this.motherStar?.activate();
+      this.introMotherActivated = true;
+      this.spawnPhase = "intro_tutor";
+      this.spawnTimer = 0;
     }
+
+    return;
   }
+
+  if (this.spawnPhase === "intro_tutor") {
+    if (
+      this.motherStar &&
+      this.motherStar.active &&
+      this.motherStar.consumeSpawnPulse()
+    ) {
+      this.spawnStarletsFromMotherStar(2);
+    }
+
+    const mainRedlet = this.getIntroPrimaryRedlet();
+    const tutorStarlet = this.getIntroTutorStarlet();
+
+   if (
+  !this.introTutorialStarted &&
+  this.activeGoldRing &&
+  mainRedlet &&
+  mainRedlet.state !== "forming" &&
+  tutorStarlet
+) {
+      this.tutor.reset({ enabled: this.tutorialEnabledForRun });
+      this.tutor.startTimer = this.tutor.startDelay;
+      this.tutor.beginFullHint(this);
+
+      this.introTutorialStarted = true;
+      this.introTutorStarlet = tutorStarlet;
+    }
+
+    if (
+      this.introTutorialStarted &&
+      !this.introHomeSpawned &&
+      (this.tutor.phase === "toStarlet" || this.tutor.phase === "markStarlet")
+    ) {
+      this.homeStar?.activateFromLeft();
+      this.introHomeSpawned = true;
+    }
+
+    if (
+      this.introHomeSpawned &&
+      !this.introHomeLinkedToTutor &&
+      this.isHomeStarReadyForTutor()
+    ) {
+      this.tutor.homeTarget = this.homeStar;
+      this.introHomeLinkedToTutor = true;
+    }
+
+    if (
+      this.introHomeLinkedToTutor &&
+      !this.introExtraWaveSpawned &&
+      (this.tutor.phase === "toHome" || this.tutor.phase === "fading")
+    ) {
+      this.spawnRedRingIfNeeded();
+      this.spawnRedlet();
+      this.spawnRedlet();
+
+      this.introExtraWaveSpawned = true;
+      this.spawnPhase = "gameplay_live";
+      this.spawnTimer = 0;
+      this.obstacleTimer = 0;
+    }
+
+    return;
+  }
+
+  if (this.spawnPhase === "gameplay_live") {
+    if (this.motherStar && this.motherStar.active && this.motherStar.consumeSpawnPulse()) {
+      this.spawnStarletsFromMotherStar(2);
+    }
+
+    this.spawnGoldRingIfNeeded();
+
+    const livingRedlets = this.redlets.filter(
+      (redlet) => redlet && !redlet.markedForRemoval
+    );
+
+    if (livingRedlets.length < 3 && this.redletSpawnTimer >= this.redletSpawnInterval) {
+      this.spawnRedlet();
+      this.redletSpawnTimer = 0;
+    }
+
+    this.spawnRedRingIfNeeded();
+  }
+}
 
   // --------------------------------------------------------------------
   //  Основной игровой цикл. Порядок соответствует пункту ТЗ №19:
@@ -5182,6 +5404,22 @@ export class GameplayScene9 {
     this.updateSpawnDirector(delta);
 
     const liveGameplay = this.spawnPhase === "gameplay_live";
+
+    if (liveGameplay) {
+  this.obstacleTimer += delta;
+
+  if (!this.nextObstacleInterval) {
+    this.nextObstacleInterval = 1.9 + Math.random() * 0.9;
+  }
+
+  while (this.obstacleTimer >= this.nextObstacleInterval) {
+    this.obstacleTimer -= this.nextObstacleInterval;
+    this.spawnObstacle();
+    this.nextObstacleInterval = 1.9 + Math.random() * 0.9;
+  }
+}
+
+    
 
     // 1) MotherStar.
     if (this.motherStar) {

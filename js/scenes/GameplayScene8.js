@@ -3708,7 +3708,7 @@ this.ringGoneAudio =
       case 1:
         return "Ведущий к тьме";
       default:
-        return "Равнодушный наблюдатель";
+        return "Наблюдатель";
     }
   }
 
@@ -3721,7 +3721,7 @@ this.ringGoneAudio =
       case 1:
         return "Ведущий к тьме";
       default:
-        return "Равнодушный наблюдатель";
+        return "Наблюдатель";
     }
   }
 
