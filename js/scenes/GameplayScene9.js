@@ -4207,6 +4207,16 @@ export class GameplayScene9 {
     this.activeGoldCombo = false;       // true, когда есть Redlet, несущий GoldRing
     this.goldComboExpireTimer = 0;      // обратный отсчёт 10с для активного золотого комбо
 
+        // --------------------------------------------------------------------
+    // HUD: панель «спасений» — маленькая иконка золотого кольца со звездой.
+    // --------------------------------------------------------------------
+    this.rescueHudX = 0;
+    this.rescueHudY = 0;
+    this.rescueHudRadius = 0;
+    this.rescueHudPulse = 0;
+    this.rescueHudBaseOpacity = 0.85;
+    this.rescueHudOpacity = 0.0;
+
     this.redlets = [];
     this.redletSpawnTimer = 0;
     this.redletSpawnInterval = 6.2;
@@ -4366,35 +4376,90 @@ export class GameplayScene9 {
   //  resetGame() и enter()).
   // --------------------------------------------------------------------
   initSceneObjects() {
-    this.motherStar = new MotherStar(this.sceneMetrics);
+  this.motherStar = new MotherStar(this.sceneMetrics);
+  this.homeStar = new HomeStar(this.sceneMetrics);
 
-    this.homeStar = new HomeStar(this.sceneMetrics);
+  this.redRings = [];
+  this.activeGoldRing = null;
+  this.goldRescuedCount = 0;
+  this.activeGoldCombo = false;
+  this.goldComboExpireTimer = 0;
 
-    this.redRings = [];
-    this.activeGoldRing = null;
-    this.goldRescuedCount = 0;
-    this.activeGoldCombo = false;
-    this.goldComboExpireTimer = 0;
+  this.starlets = [];
+  this.redlets = [];
+  this.redletSpawnTimer = 0;
+  this.redletTrailTimer = 0;
+  this.redletSpawnInterval = 6.2;
+  this.obstacles = [];
 
-    this.starlets = [];
-    this.redlets = [];
-    this.redletSpawnTimer = 0;
-    this.redletTrailTimer = 0;
-    this.redletSpawnInterval = 6.2;
-    this.obstacles = [];
+  // Последовательный спавн вместо интро-стейт-машины.
+  // spawnPhase остаётся строкой "gameplay_live", т.к. на неё завязаны
+  // остальные геймплейные гейты (обстаклы, полный AI редлетов и т.п.) —
+  // просто устанавливаем её позже, через таймер.
+  this.spawnPhase = "warmup";
+  this.spawnTimer = 0;
 
-    this.spawnPhase = "intro_opening";
-    this.spawnTimer = 0;
-    this.starletsSpawned = false;
+  this.spawnedInitialWave = false; // t=0: GoldRing + Redlet
+  this.spawnedMother = false;      // t=1: MotherStar
+  this.spawnedHomeAndTutor = false; // t=2: HomeStar + Tutor
+  this.spawnedSecondWave = false;   // t=4: доп. RedRing + Redlet -> gameplay_live
 
-    this.introMainRedlet = null;
-    this.introTutorStarlet = null;
-    this.introMotherActivated = false;
-    this.introTutorialStarted = false;
-    this.introHomeSpawned = false;
-    this.introHomeLinkedToTutor = false;
-    this.introExtraWaveSpawned = false;
+  this.setupRescueHud();
+}
+
+  setupRescueHud() {
+  const { starletBaseRadius = 8, playScale = 1 } = this.sceneMetrics ?? {};
+
+  // Размер калибруется от той же базовой величины, что и остальные игровые
+  // иконки сцены (starletBaseRadius * playScale) — при ресайзе/другом
+  // разрешении экрана HUD-иконка будет масштабироваться синхронно со всем
+  // остальным на сцене, а не жить по своим магическим числам.
+  const hudSize = starletBaseRadius * 2.4 * playScale;
+  this.rescueHudRadius = hudSize * 0.62 * 1.5;
+
+  const anchorRect = this.getRankHudAnchorRect();
+
+  if (anchorRect) {
+    // Ставим сразу после последней медали ранга, с небольшим отступом,
+    // пропорциональным размеру самой иконки.
+    const gap = hudSize * 0.9;
+    this.rescueHudX = anchorRect.right + gap + this.rescueHudRadius;
+    this.rescueHudY = anchorRect.top + anchorRect.height / 2;
+  } else {
+    // Фолбэк на случай, если DOM HUD ещё не отрендерен (например, самый
+    // первый кадр до layout) — старое поведение в правом верхнем углу.
+    const { width = 1366 } = this.sceneMetrics ?? {};
+    this.rescueHudX = width - hudSize * 1.5;
+    this.rescueHudY = hudSize * 0.9;
   }
+
+  this.rescueHudPulse = 0;
+  this.rescueHudOpacity = this.rescueHudBaseOpacity;
+}
+
+getRankHudAnchorRect() {
+  const lastMedal = this.rankMedalElements?.[this.rankMedalElements.length - 1];
+  const anchor = lastMedal ?? this.scoreElement;
+  if (!anchor || !this.canvas) return null;
+
+  const rect = anchor.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) return null; // элемент ещё не отрендерен
+
+  const canvasRect = this.canvas.getBoundingClientRect();
+  if (canvasRect.width === 0 || canvasRect.height === 0) return null;
+
+  const scaleX = this.canvas.width / canvasRect.width;
+  const scaleY = this.canvas.height / canvasRect.height;
+
+  return {
+    top: (rect.top - canvasRect.top) * scaleY,
+    right: (rect.right - canvasRect.left) * scaleX,
+    height: rect.height * scaleY,
+  };
+}
+
+
+
 
   isLandscape() {
     return window.innerWidth >= window.innerHeight;
@@ -4428,33 +4493,25 @@ export class GameplayScene9 {
   }
 
   resize() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
+  this.canvas.width = window.innerWidth;
+  this.canvas.height = window.innerHeight;
+  this.computeSceneMetrics();
 
-    this.computeSceneMetrics();
+  if (this.motherStar) this.motherStar.setBounds(this.sceneMetrics);
+  if (this.homeStar) this.homeStar.setBounds(this.sceneMetrics);
+  if (this.redRings?.length) this.redRings.forEach((ring) => ring.setBounds(this.sceneMetrics));
+  if (this.activeGoldRing) this.activeGoldRing.setBounds(this.sceneMetrics);
+  if (this.redlets?.length) this.redlets.forEach((r) => r.setBounds(this.sceneMetrics));
 
-    if (this.motherStar) this.motherStar.setBounds(this.sceneMetrics);
-    if (this.homeStar) this.homeStar.setBounds(this.sceneMetrics);
-
-    if (this.redRings?.length) {
-      this.redRings.forEach((ring) => ring.setBounds(this.sceneMetrics));
-    }
-
-    if (this.activeGoldRing) {
-      this.activeGoldRing.setBounds(this.sceneMetrics);
-    }
-
-    if (this.redlets?.length) {
-      this.redlets.forEach((r) => r.setBounds(this.sceneMetrics));
-    }
-
-    if (this.rotateHint) {
-      this.rotateHint.classList.toggle(
-        "show",
-        !this.isLandscape() && !this.gameOver && !this.isRunning
-      );
-    }
+  if (this.rotateHint) {
+    this.rotateHint.classList.toggle("show", !this.isLandscape() && !this.gameOver && !this.isRunning);
   }
+
+  // ДОБАВЛЕНО: пересчитать размер/позицию rescueHud при каждом ресайзе —
+  // иначе иконка "залипает" на позиции первого кадра и её привязка к
+  // ранговому блоку перестаёт быть верной после смены размера окна.
+  this.setupRescueHud();
+}
 
   playButtonFadeGlow(button, duration = 0.32) {
     if (!button) return;
@@ -4749,100 +4806,100 @@ getSceneRankTitle(rank = this.getSceneRank()) {
   }
 
   resetGame = ({ restartAmbient = false } = {}) => {
-    console.log("[StarLine] resetGame()", {
-      sceneId: this.sceneId,
-      overlayShown: this.overlay?.classList.contains("show"),
-      isRunning: this.isRunning,
-      gameOver: this.gameOver,
-      isTransitioning: this.isTransitioning,
-    });
+  console.log("[StarLine] resetGame()", {
+    sceneId: this.sceneId,
+    overlayShown: this.overlay?.classList.contains("show"),
+    isRunning: this.isRunning,
+    gameOver: this.gameOver,
+    isTransitioning: this.isTransitioning,
+  });
 
-    this.starlets = [];
-    this.obstacles = [];
-    this.particles = [];
-    this.redlets = [];
-    this.redletSpawnTimer = 0;
-    this.redletTrailTimer = 0;
-    this.redletSpawnInterval = 6.2;
+  this.starlets = [];
+  this.obstacles = [];
+  this.particles = [];
+  this.redlets = [];
+  this.redletSpawnTimer = 0;
+  this.redletTrailTimer = 0;
+  this.redletSpawnInterval = 6.2;
 
-    this.score = 0;
-    this.savedCount = 0;
-    this.lostCount = 0;
-    this.eatenCount = 0;
+  this.score = 0;
+  this.savedCount = 0;
+  this.lostCount = 0;
+  this.eatenCount = 0;
+  this.goldRescuedCount = 0;
 
-    this.displayedHeartProgress = 0;
-    this.targetHeartProgress = 0;
+  this.displayedHeartProgress = 0;
+  this.targetHeartProgress = 0;
 
-    if (this.heartPulseTimeout) {
-      clearTimeout(this.heartPulseTimeout);
-      this.heartPulseTimeout = null;
-    }
+  if (this.heartPulseTimeout) {
+    clearTimeout(this.heartPulseTimeout);
+    this.heartPulseTimeout = null;
+  }
 
-    if (this.heartFillRect) {
-      this.heartFillRect.setAttribute("width", 0);
-    }
+  if (this.heartFillRect) {
+    this.heartFillRect.setAttribute("width", 0);
+  }
 
-    if (this.heartIconElement) {
-      this.heartIconElement.classList.remove(
-        "is-active",
-        "is-complete",
-        "is-pulsing"
-      );
-    }
+  if (this.heartIconElement) {
+    this.heartIconElement.classList.remove(
+      "is-active",
+      "is-complete",
+      "is-pulsing"
+    );
+  }
 
-    this.timeLeft = this.totalTime;
-    this.levelPassed = false;
+  this.timeLeft = this.totalTime;
+  this.levelPassed = false;
 
-    this.gameOver = false;
-    this.isRunning = true;
-    this.lastTime = performance.now();
+  this.gameOver = false;
+  this.isRunning = true;
+  this.lastTime = performance.now();
 
-    this.obstacleTimer = 0;
-    this.obstacleInterval = 2200;
+  this.obstacleTimer = 0;
+  this.obstacleInterval = 2200;
 
-    this.isDragging = false;
-    this.mousePos = { x: 0, y: 0 };
-    this.hasPlayerInteracted = false;
+  this.isDragging = false;
+  this.mousePos = { x: 0, y: 0 };
+  this.hasPlayerInteracted = false;
 
-    if (this.overlay) {
-      this.overlay.classList.remove("show");
-    }
+  if (this.overlay) {
+    this.overlay.classList.remove("show");
+  }
 
-    if (this.restartBtn) {
-      this.restartBtn.classList.remove(
-        "actionBtn-disabled",
-        "actionBtn-fade-glow"
-      );
-      this.restartBtn.disabled = false;
-      this.restartBtn.style.removeProperty("--fade-glow-duration");
-    }
+  if (this.restartBtn) {
+    this.restartBtn.classList.remove(
+      "actionBtn-disabled",
+      "actionBtn-fade-glow"
+    );
+    this.restartBtn.disabled = false;
+    this.restartBtn.style.removeProperty("--fade-glow-duration");
+  }
 
-    if (this.nextBtn) {
-      this.nextBtn.classList.remove("actionBtn-fade-glow");
-      this.nextBtn.classList.add("actionBtn-disabled");
-      this.nextBtn.disabled = true;
-      this.nextBtn.style.removeProperty("--fade-glow-duration");
-    }
+  if (this.nextBtn) {
+    this.nextBtn.classList.remove("actionBtn-fade-glow");
+    this.nextBtn.classList.add("actionBtn-disabled");
+    this.nextBtn.disabled = true;
+    this.nextBtn.style.removeProperty("--fade-glow-duration");
+  }
 
-    // Пересоздаём объекты перевёрнутого режима и спавн-директор.
-    this.initSceneObjects();
+  // Пересоздаём объекты перевёрнутого режима и спавн-директор.
+  // initSceneObjects() теперь сам настраивает HUD (setupRescueHud()).
+  this.initSceneObjects();
 
-    // Туториал НЕ показываем при «Играть снова» (перезапуск уровня) —
-    // он играет только при первом входе в сцену (в start()).
-    this.tutorialEnabledForRun = false;
-    this.tutor.reset({ enabled: false });
+  // Туториал НЕ показываем при «Играть снова» (перезапуск уровня) —
+  // он играет только при первом входе в сцену (в start()).
+  this.tutorialEnabledForRun = false;
+  this.tutor.reset({ enabled: false });
 
-    this.updateUI();
-    this.draw();
+  this.updateUI();
+  this.draw();
 
-    // Музыку НЕ перезапускаем при рестарте — она продолжает играть непрерывно.
-    // Только поднимаем громкость обратно (если она была приглушена оверлеем).
-    if (restartAmbient) {
-      this.audio.startAmbient({ restart: false });
-    }
+  if (restartAmbient) {
+    this.audio.startAmbient({ restart: false });
+  }
 
-    this.startGameLoop();
-  };
+  this.startGameLoop();
+};
 
   // --------------------------------------------------------------------
   //  Спавн: Starlet-ы, RedRing-и, GoldRing, Redlet-ы, Obstacle-ы.
@@ -5253,113 +5310,41 @@ isHomeStarReadyForTutor() {
   updateSpawnDirector(delta) {
   this.spawnTimer += delta;
 
-  if (this.spawnPhase === "intro_opening") {
-    if (!this.activeGoldRing) {
-      this.spawnGoldRingIfNeeded();
-    }
-
-    const activeRedlets = this.redlets.filter(
-      (redlet) => redlet && !redlet.markedForRemoval
-    );
-
-    if (activeRedlets.length < 1) {
-      this.spawnRedlet();
-    }
-
-    const mainRedlet = this.getIntroPrimaryRedlet();
-
-    if (this.activeGoldRing && mainRedlet && !this.introMotherActivated) {
-      this.motherStar?.activate();
-      this.introMotherActivated = true;
-      this.spawnPhase = "intro_tutor";
-      this.spawnTimer = 0;
-    }
-
-    return;
-  }
-
-  if (this.spawnPhase === "intro_tutor") {
-    if (
-      this.motherStar &&
-      this.motherStar.active &&
-      this.motherStar.consumeSpawnPulse()
-    ) {
-      this.spawnStarletsFromMotherStar(2);
-    }
-
-    const mainRedlet = this.getIntroPrimaryRedlet();
-    const tutorStarlet = this.getIntroTutorStarlet();
-
-   if (
-  !this.introTutorialStarted &&
-  this.activeGoldRing &&
-  mainRedlet &&
-  mainRedlet.state !== "forming" &&
-  tutorStarlet
-) {
-      this.tutor.reset({ enabled: this.tutorialEnabledForRun });
-      this.tutor.startTimer = this.tutor.startDelay;
-      this.tutor.beginFullHint(this);
-
-      this.introTutorialStarted = true;
-      this.introTutorStarlet = tutorStarlet;
-    }
-
-    if (
-      this.introTutorialStarted &&
-      !this.introHomeSpawned &&
-      (this.tutor.phase === "toStarlet" || this.tutor.phase === "markStarlet")
-    ) {
-      this.homeStar?.activateFromLeft();
-      this.introHomeSpawned = true;
-    }
-
-    if (
-      this.introHomeSpawned &&
-      !this.introHomeLinkedToTutor &&
-      this.isHomeStarReadyForTutor()
-    ) {
-      this.tutor.homeTarget = this.homeStar;
-      this.introHomeLinkedToTutor = true;
-    }
-
-    if (
-      this.introHomeLinkedToTutor &&
-      !this.introExtraWaveSpawned &&
-      (this.tutor.phase === "toHome" || this.tutor.phase === "fading")
-    ) {
-      this.spawnRedRingIfNeeded();
-      this.spawnRedlet();
-      this.spawnRedlet();
-
-      this.introExtraWaveSpawned = true;
-      this.spawnPhase = "gameplay_live";
-      this.spawnTimer = 0;
-      this.obstacleTimer = 0;
-    }
-
-    return;
-  }
-
-  if (this.spawnPhase === "gameplay_live") {
-    if (this.motherStar && this.motherStar.active && this.motherStar.consumeSpawnPulse()) {
-      this.spawnStarletsFromMotherStar(2);
-    }
-
+  // t=0 — сразу при входе: золотое кольцо и первый редлет.
+  if (!this.spawnedInitialWave) {
     this.spawnGoldRingIfNeeded();
+    this.spawnRedlet();
+    this.spawnedInitialWave = true;
+  }
 
-    const livingRedlets = this.redlets.filter(
-      (redlet) => redlet && !redlet.markedForRemoval
-    );
+  // t=1с — материнская звезда начинает цикл (появятся старлеты).
+  if (!this.spawnedMother && this.spawnTimer >= 1) {
+    this.motherStar?.activate();
+    this.spawnedMother = true;
+  }
 
-    if (livingRedlets.length < 3 && this.redletSpawnTimer >= this.redletSpawnInterval) {
-      this.spawnRedlet();
-      this.redletSpawnTimer = 0;
-    }
+  // t=2с — хоумстар выходит на сцену, тьютор стартует (если включён).
+  // TutorGuide3 сам ждёт свой startDelay и сам находит цели — здесь
+  // достаточно его сбросить и включить/выключить по флагу забега.
+  if (!this.spawnedHomeAndTutor && this.spawnTimer >= 2) {
+    this.homeStar?.activateFromLeft();
+    this.tutor.reset({ enabled: this.tutorialEnabledForRun });
+    this.spawnedHomeAndTutor = true;
+  }
 
+  // t=4с — вторая волна: ещё одно RedRing и ещё один Redlet,
+  // и только теперь включаем полноценный "живой" геймплей
+  // (обстаклы, воровство колец редлетами и т.п. завязаны на эту строку).
+  if (!this.spawnedSecondWave && this.spawnTimer >= 4) {
     this.spawnRedRingIfNeeded();
+    this.spawnRedlet();
+
+    this.spawnedSecondWave = true;
+    this.spawnPhase = "gameplay_live";
+    this.obstacleTimer = 0;
   }
 }
+
 
   // --------------------------------------------------------------------
   //  Основной игровой цикл. Порядок соответствует пункту ТЗ №19:
@@ -5596,6 +5581,23 @@ isHomeStarReadyForTutor() {
     // ещё не было доставлено в этом кадре.
     this.checkGoldComboExpiry(delta);
 
+        // HUD спасений: затухание вспышки и лёгкий пульс.
+    if (this.rescueHudPulse > 0 || this.rescueHudOpacity > 0) {
+      // Пульс радиуса.
+      this.rescueHudPulse = Math.max(0, this.rescueHudPulse - delta * 2.8);
+
+      // Плавное возвращение непрозрачности к базовой.
+      const targetOpacity = this.rescueHudBaseOpacity;
+      const blend = 1 - Math.exp(-3.2 * delta);
+      this.rescueHudOpacity += (targetOpacity - this.rescueHudOpacity) * blend;
+
+      if (this.rescueHudOpacity < 0.02 && this.rescueHudPulse <= 0.001) {
+        this.rescueHudOpacity = 0;
+        this.rescueHudPulse = 0;
+      }
+    }
+
+
     this.updateHeartProgress(delta);
     this.updateGoldProgressUI();
     this.updateUI();
@@ -5754,6 +5756,10 @@ isHomeStarReadyForTutor() {
   this.goldRescuedCount += 1;
   this.savedCount += 1;
 
+   // Триггерим вспышку HUD-иконки спасений.
+  this.rescueHudPulse = 1.0;
+  this.rescueHudOpacity = 1.0;
+
   // Старлеты не засчитываются мгновенно.
   // Они отцепляются от хвоста и летят в HomeStar.
   for (const starlet of this.starlets) {
@@ -5895,6 +5901,166 @@ this.starlets.splice(i, 1);
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
+    // --------------------------------------------------------------------
+  // Иконка HUD спасений: золотое кольцо с звездой, разделённой пополам.
+  // Левая половина — чёрно-красная, правая — золотая.
+  // При спасении комбо (GoldRing+Redlet в HomeStar) звезда на миг становится
+  // полностью золотой за счёт rescueHudPulse.
+  // --------------------------------------------------------------------
+  drawRescueHud(ctx) {
+  if (this.rescueHudOpacity <= 0.001) return;
+
+  const playScale = this.sceneMetrics?.playScale ?? 1;
+  const cx = this.rescueHudX;
+  const cy = this.rescueHudY;
+  const pulseScale = 1 + this.rescueHudPulse * 0.18;
+
+  // Иконка (кольцо + звезда) — размер берём от rescueHudRadius, как раньше.
+  const iconR = this.rescueHudRadius * pulseScale;
+  const starOuter = iconR * 0.62;
+  const starInner = starOuter * 0.42;
+
+  // Текст — тот же стиль, что у scoreValue (.hud-value), шрифт наследуется от body (Georgia, serif).
+  const fontSize = Math.max(16, Math.min(28, 24 * playScale));
+  const rescueTarget = this.goldRescueTarget ?? 4;
+  const text = `${this.goldRescuedCount ?? 0}/${rescueTarget}`;
+
+  ctx.save();
+  ctx.globalAlpha = this.rescueHudOpacity;
+  ctx.font = `${fontSize}px Georgia, "Times New Roman", serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  const textWidth = ctx.measureText(text).width;
+
+  // --- Геометрия капсулы: икона слева, число справа, как в .rank-strip ---
+  const gapIconText = iconR * 0.55;
+  const padLeft = iconR * 0.5;
+  const padRight = iconR * 0.6;
+  const pillHeight = iconR * 2.5;
+  const pillWidth = padLeft + iconR * 2 + gapIconText + textWidth + padRight;
+
+  const pillLeft = cx - iconR - padLeft;
+  const pillTop = cy - pillHeight / 2;
+  const ry = pillHeight / 2;
+
+  // --- Фон панели — как .rank-strip (linear-gradient 135deg + тонкая рамка) ---
+  ctx.beginPath();
+  ctx.moveTo(pillLeft + ry, pillTop);
+  ctx.arc(pillLeft + ry, pillTop + ry, ry, -Math.PI / 2, Math.PI / 2, true);
+  ctx.arc(pillLeft + pillWidth - ry, pillTop + ry, ry, Math.PI / 2, -Math.PI / 2, true);
+  ctx.closePath();
+
+  const bgGrad = ctx.createLinearGradient(
+    pillLeft, pillTop,
+    pillLeft + pillWidth, pillTop + pillHeight
+  );
+  bgGrad.addColorStop(0, "rgba(149, 93, 112, 0.18)");
+  bgGrad.addColorStop(1, "rgba(96, 55, 82, 0.14)");
+  ctx.fillStyle = bgGrad;
+  ctx.shadowBlur = 14;
+  ctx.shadowColor = "rgba(245, 182, 112, 0.05)";
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(255, 215, 188, 0.18)";
+  ctx.stroke();
+
+  // Внутренний лёгкий блик, как inset-свет из .rank-strip.
+  ctx.save();
+  ctx.clip();
+  ctx.globalAlpha = this.rescueHudOpacity * 0.5;
+  ctx.beginPath();
+  ctx.arc(pillLeft + ry, pillTop + ry * 0.35, pillWidth * 0.6, 0, Math.PI * 2);
+  const innerGlow = ctx.createRadialGradient(
+    pillLeft + ry, pillTop + ry * 0.35, 0,
+    pillLeft + ry, pillTop + ry * 0.35, pillWidth * 0.6
+  );
+  innerGlow.addColorStop(0, "rgba(255, 239, 220, 0.04)");
+  innerGlow.addColorStop(1, "rgba(255, 239, 220, 0)");
+  ctx.fillStyle = innerGlow;
+  ctx.fill();
+  ctx.restore();
+
+  // --- Иконка: кольцо в цветах GoldRing.draw() (внешнее / блик / внутреннее тонкое) ---
+  ctx.beginPath();
+  ctx.arc(cx, cy, iconR, 0, Math.PI * 2);
+  ctx.lineWidth = Math.max(1.2, iconR * 0.16);
+  ctx.strokeStyle = "rgba(255, 230, 171, 0.98)";
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = "rgba(255, 236, 198, 0.34)";
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, iconR * 0.62, 0, Math.PI * 2);
+  ctx.lineWidth = Math.max(0.8, iconR * 0.06);
+  ctx.strokeStyle = "rgba(255, 230, 171, 0.82)";
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = "rgba(245, 182, 112, 0.22)";
+  ctx.stroke();
+
+  // --- Двуцветная звезда внутри кольца — цвета Redlet.draw() (золото/красный) ---
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  const starPath = () => {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+      const radius = i % 2 === 0 ? starOuter : starInner;
+      const px = Math.cos(angle) * radius;
+      const py = Math.sin(angle) * radius;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+  };
+
+  starPath();
+  ctx.save();
+  ctx.clip();
+
+  // Правая половина — золотая (GoldRing / carryingGoldRing).
+ctx.fillStyle = "rgba(255, 230, 171, 0.98)";
+ctx.shadowBlur = 12;
+ctx.shadowColor = "rgba(255, 218, 126, 0.58)";
+ctx.beginPath();
+ctx.rect(0, -starOuter * 2, starOuter * 2, starOuter * 4);
+ctx.fill();
+ctx.shadowBlur = 0;
+
+  // Левая половина — красная (Redlet / carryingRedRing).
+  ctx.fillStyle = "rgba(82, 0, 0, 0.25)";
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = "rgba(255, 86, 104, 0.58)";
+  ctx.beginPath();
+  ctx.rect(-starOuter * 2, -starOuter * 2, starOuter * 2, starOuter * 4);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // Общий контур звезды.
+  starPath();
+  ctx.lineWidth = 1.3;
+  ctx.strokeStyle = "rgba(255, 218, 126, 0.9)";
+  ctx.stroke();
+
+  ctx.restore(); // конец translate(cx, cy)
+
+  // --- Число спасённых комбо — стиль .hud-value ---
+  ctx.font = `${fontSize}px Georgia, "Times New Roman", serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(245, 241, 231, 0.96)";
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = "rgba(255, 214, 158, 0.18)";
+  ctx.fillText(text, cx + iconR + gapIconText, cy);
+  ctx.shadowBlur = 0;
+
+  ctx.restore();
+}
+
+
   draw() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.drawBackgroundDust();
@@ -5914,6 +6080,7 @@ this.starlets.splice(i, 1);
     }
 
     this.particles.forEach((p) => p.draw(this.ctx));
+    this.drawRescueHud(this.ctx);
 
     this.tutor.draw(this.ctx);
 
