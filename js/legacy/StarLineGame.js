@@ -585,6 +585,154 @@ export class GameAudio {
   shadow.stop(now + 4.0);
 }
 
+// Новый звук: образование золотого комбо (GoldRing + Redlet).
+// Архитектура и уровни громкости скопированы с playRingGoneSound (тот же
+// masterGain/wet, тот же ревербератор), но набор партиалов — светлый мажорный
+// аккорд с восходящим дрейфом (drift > 1) вместо падающего минорного —
+// чтобы звук ощущался тёплым и радостным, а не тревожным/угасающим.
+// "Снэп" (жёсткий шумовой щелчок) убран — вместо него мягкий "шиммер",
+// чтобы звук оставался нежным.
+playGoldComboSound() {
+  if (!this.ctx) return;
+  const now = this.now();
+  if (now - (this.lastGoldComboTime ?? 0) < 0.18) return;
+  this.lastGoldComboTime = now;
+
+  const masterGain = this.ctx.createGain();
+  masterGain.gain.value = 1.08;
+  masterGain.connect(this.master);
+
+  const reverb = this.createReverb(6.8, 3.8);
+  const wet = this.ctx.createGain();
+  wet.gain.value = 0.52;
+  reverb.connect(wet);
+  wet.connect(this.master);
+
+  const highpass = this.ctx.createBiquadFilter();
+  highpass.type = "highpass";
+  highpass.frequency.value = 70;
+
+  const lowpass = this.ctx.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 2200;
+
+  const presence = this.ctx.createBiquadFilter();
+  presence.type = "peaking";
+  presence.frequency.value = 820;
+  presence.Q.value = 1.1;
+  presence.gain.value = 2.8;
+
+  highpass.connect(presence);
+  presence.connect(lowpass);
+  lowpass.connect(masterGain);
+  lowpass.connect(reverb);
+
+  // Светлый мажорный аккорд (C5-E5-G5-C6-E6) с лёгким восходящим дрейфом.
+  const partials = [
+    { type: "sine", freq: 523.25, gain: 0.24, attack: 0.010, decay: 4.8, drift: 1.011, vibrato: 4.0, vibDepth: 6 },
+    { type: "triangle", freq: 659.25, gain: 0.19, attack: 0.008, decay: 4.3, drift: 1.010, vibrato: 4.6, vibDepth: 7 },
+    { type: "sine", freq: 784.0, gain: 0.13, attack: 0.007, decay: 3.7, drift: 1.008, vibrato: 5.0, vibDepth: 8 },
+    { type: "triangle", freq: 1046.5, gain: 0.080, attack: 0.006, decay: 2.9, drift: 1.006, vibrato: 5.4, vibDepth: 8 },
+    { type: "sine", freq: 1318.5, gain: 0.040, attack: 0.005, decay: 2.1, drift: 1.004, vibrato: 6.0, vibDepth: 7 },
+  ];
+
+  partials.forEach(({ type, freq, gain, attack, decay, drift, vibrato, vibDepth }) => {
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    const band = this.ctx.createBiquadFilter();
+    const lfo = this.ctx.createOscillator();
+    const lfoGain = this.ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * drift, now + decay);
+
+    lfo.type = "sine";
+    lfo.frequency.setValueAtTime(vibrato, now);
+    lfoGain.gain.setValueAtTime(vibDepth, now);
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    band.type = "bandpass";
+    band.frequency.value = freq;
+    band.Q.value = freq < 700 ? 2.1 : 3.0;
+
+    oscGain.gain.setValueAtTime(0.0001, now);
+    oscGain.gain.linearRampToValueAtTime(gain, now + attack);
+    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
+    osc.connect(band);
+    band.connect(oscGain);
+    oscGain.connect(highpass);
+
+    osc.start(now);
+    lfo.start(now);
+    osc.stop(now + decay + 0.08);
+    lfo.stop(now + decay + 0.08);
+  });
+
+  // Мягкий "шиммер" вместо жёсткого снэпа — короткая искра высоких частот.
+  const shimmer = this.ctx.createOscillator();
+  const shimmerGain = this.ctx.createGain();
+  const shimmerFilter = this.ctx.createBiquadFilter();
+
+  shimmer.type = "sine";
+  shimmer.frequency.setValueAtTime(2600, now);
+  shimmer.frequency.exponentialRampToValueAtTime(3400, now + 0.14);
+
+  shimmerFilter.type = "bandpass";
+  shimmerFilter.frequency.value = 3000;
+  shimmerFilter.Q.value = 1.4;
+
+  shimmerGain.gain.setValueAtTime(0.0001, now);
+  shimmerGain.gain.linearRampToValueAtTime(0.028, now + 0.012);
+  shimmerGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+
+  shimmer.connect(shimmerFilter);
+  shimmerFilter.connect(shimmerGain);
+  shimmerGain.connect(masterGain);
+  shimmerGain.connect(reverb);
+
+  shimmer.start(now);
+  shimmer.stop(now + 0.24);
+
+  // Длинный тёплый "шлейф" — тот же приём, что и tail в playRingGoneSound,
+  // но восходящий и в мажорной тональности.
+  const tail = this.ctx.createOscillator();
+  const tailGain = this.ctx.createGain();
+  const tailFilter = this.ctx.createBiquadFilter();
+  const tailLfo = this.ctx.createOscillator();
+  const tailLfoGain = this.ctx.createGain();
+
+  tail.type = "triangle";
+  tail.frequency.setValueAtTime(392, now + 0.04);
+  tail.frequency.exponentialRampToValueAtTime(440, now + 4.8);
+
+  tailLfo.type = "sine";
+  tailLfo.frequency.setValueAtTime(3.4, now);
+  tailLfoGain.gain.setValueAtTime(10, now);
+  tailLfo.connect(tailLfoGain);
+  tailLfoGain.connect(tail.frequency);
+
+  tailFilter.type = "bandpass";
+  tailFilter.frequency.value = 420;
+  tailFilter.Q.value = 1.2;
+
+  tailGain.gain.setValueAtTime(0.0001, now + 0.04);
+  tailGain.gain.linearRampToValueAtTime(0.09, now + 0.09);
+  tailGain.gain.exponentialRampToValueAtTime(0.0001, now + 5.0);
+
+  tail.connect(tailFilter);
+  tailFilter.connect(tailGain);
+  tailGain.connect(masterGain);
+  tailGain.connect(reverb);
+
+  tail.start(now + 0.04);
+  tailLfo.start(now + 0.04);
+  tail.stop(now + 5.1);
+  tailLfo.stop(now + 5.1);
+}
+
 playStarletSpawnSound() {
   if (!this.ctx) return;
 

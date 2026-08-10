@@ -39,9 +39,10 @@ export class GameAudio {
     this.lastCatchTime = 0;
     this.lastScoreTime = 0;
     this.lastHitTime = 0;
-    this.lastEatTime = 0; 
+    this.lastEatTime = 0;
     this.lastRingGoneTime = 0;
     this.lastStarletSpawnTime = 0;
+    this.lastGoldComboTime = 0;
   }
 
   setMusic(url) {
@@ -3621,7 +3622,7 @@ class TutorGuide3 {
     this.restartDelay = 0.45;
     this.restartTimer = 0;
 
-    this.startDelay = 2.0;
+    this.startDelay = 0.01;
     this.startTimer = 0;
   }
 
@@ -4171,6 +4172,8 @@ export class GameplayScene9 {
     this.resultMessageElement = document.getElementById("resultMessage");
     this.resultTitleElement = document.getElementById("resultTitle");
     this.targetScoreElement = document.getElementById("targetScore");
+    this.finalGoldRowElement = document.getElementById("finalGoldRow");
+    this.finalGoldCountElement = document.getElementById("finalGoldCount");
 
     this.rankMedalElements = Array.from(
       document.querySelectorAll("[data-rank-medal]")
@@ -4202,8 +4205,9 @@ export class GameplayScene9 {
     // --- Новые сущности сцены 9 ---
     this.homeStar = null;               // цель доставки золотого комбо (база — HomeStar из сцены7)
     this.redRings = [];                 // до 3 одновременных свободных колец-мишеней для редлетов
-    this.activeGoldRing = null;         // ровно одно золотое кольцо в любой момент времени
-    this.goldRescuedCount = 0;          // успешные доставки GoldRing+Redlet в HomeStar (нужно 4)
+    this.activeGoldRing = null;
+    this.goldRescuedCount = 0;
+    this.goldRescueTarget = 8;
     this.activeGoldCombo = false;       // true, когда есть Redlet, несущий GoldRing
     this.goldComboExpireTimer = 0;      // обратный отсчёт 10с для активного золотого комбо
 
@@ -4382,6 +4386,7 @@ export class GameplayScene9 {
   this.redRings = [];
   this.activeGoldRing = null;
   this.goldRescuedCount = 0;
+  this.goldRescueTarget = this.goldRescueTarget ?? 4;
   this.activeGoldCombo = false;
   this.goldComboExpireTimer = 0;
 
@@ -4722,7 +4727,7 @@ getSceneRankTitle(rank = this.getSceneRank()) {
 
   updateRankUI() {
     const passedByScore = this.score >= this.levelTargetScore;
-    const passedByGold = this.goldRescuedCount >= 4;
+    const passedByGold = this.goldRescuedCount >= this.goldRescueTarget;
     const passedByScoreAndGold = passedByScore && passedByGold;
 
     const { oneMedalScore, twoMedalScore, threeMedalScore } =
@@ -4756,12 +4761,12 @@ getSceneRankTitle(rank = this.getSceneRank()) {
   showRoundResult() {
     if (this.isTransitioning) return;
 
-    if (this.finalScoreElement) {
-      this.finalScoreElement.textContent = this.score;
-    }
+    if (this.finalScoreElement) this.finalScoreElement.textContent = this.score;
+    if (this.targetScoreElement) this.targetScoreElement.textContent = this.levelTargetScore;
 
-    if (this.targetScoreElement) {
-      this.targetScoreElement.textContent = this.levelTargetScore;
+    if (this.finalGoldRowElement) this.finalGoldRowElement.style.display = "flex";
+    if (this.finalGoldCountElement) {
+      this.finalGoldCountElement.textContent = `${this.goldRescuedCount}/${this.goldRescueTarget}`;
     }
 
     if (this.resultTitleElement) {
@@ -4773,7 +4778,7 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     if (this.resultMessageElement) {
       this.resultMessageElement.textContent = this.levelPassed
         ? "Все спасённые звёзды нашли путь домой!"
-        : this.goldRescuedCount < 4
+        : this.goldRescuedCount >= this.goldRescueTarget
         ? `Домой добралось только ${this.goldRescuedCount} из 4 золотых пар.`
         : "Очков пока не хватает для победы.";
     }
@@ -5326,7 +5331,7 @@ isHomeStarReadyForTutor() {
   // t=2с — хоумстар выходит на сцену, тьютор стартует (если включён).
   // TutorGuide3 сам ждёт свой startDelay и сам находит цели — здесь
   // достаточно его сбросить и включить/выключить по флагу забега.
-  if (!this.spawnedHomeAndTutor && this.spawnTimer >= 2) {
+  if (!this.spawnedHomeAndTutor && this.spawnTimer >= 0.01) {
     this.homeStar?.activateFromLeft();
     this.tutor.reset({ enabled: this.tutorialEnabledForRun });
     this.spawnedHomeAndTutor = true;
@@ -5377,8 +5382,7 @@ isHomeStarReadyForTutor() {
       this.isRunning = false;
 
       // Победа требует ОБА условия: очки >= цели И 4/4 золотых доставки.
-      this.levelPassed =
-        this.score >= this.levelTargetScore && this.goldRescuedCount >= 4;
+      this.levelPassed = this.score >= this.levelTargetScore && this.goldRescuedCount >= this.goldRescueTarget;
 
       if (!this.isTransitioning) {
         this.showRoundResult();
@@ -5438,17 +5442,14 @@ isHomeStarReadyForTutor() {
 
     // 4) GoldRing — ловля курсором / переноска редлетом.
     if (this.activeGoldRing) {
-      const prevState = this.activeGoldRing.state;
-      this.activeGoldRing.update(delta, this.mousePos, this.isDragging);
-
-      if (
-        prevState !== "attachedToRedlet" &&
-        this.activeGoldRing.state === "attachedToRedlet"
-      ) {
-        this.activeGoldCombo = true;
-        this.goldComboExpireTimer = this.activeGoldRing.comboLifeDuration;
-        this.emitDeliveryBurst(this.activeGoldRing.x, this.activeGoldRing.y);
-      }
+    const prevState = this.activeGoldRing.state;
+    this.activeGoldRing.update(delta, this.mousePos, this.isDragging);
+    if (prevState !== "attachedToRedlet" && this.activeGoldRing.state === "attachedToRedlet") {
+      this.activeGoldCombo = true;
+      this.goldComboExpireTimer = this.activeGoldRing.comboLifeDuration;
+      this.audio.playGoldComboSound?.();
+      this.emitDeliveryBurst(this.activeGoldRing.x, this.activeGoldRing.y);
+    }
     }
 
     if (liveGameplay && (!this.activeGoldRing || this.activeGoldRing.isGone())) {
@@ -5633,7 +5634,6 @@ isHomeStarReadyForTutor() {
 
     if (ring.collidesWithRedlet(redlet)) {
       ring.beginMagnetToRedlet(redlet);
-      this.audio?.playRingGoneSound?.();
       break;
     }
   }
@@ -5656,6 +5656,7 @@ isHomeStarReadyForTutor() {
 
         if (ring.collidesWithRedlet(redlet)) {
           ring.attachToRedlet(redlet);
+          this.audio?.playRingGoneSound?.();
           break;
         }
       }
@@ -5857,7 +5858,7 @@ this.starlets.splice(i, 1);
   // защитное, сцена не ломается при его отсутствии.
   updateGoldProgressUI() {
     if (this.goldRescuedElement) {
-      this.goldRescuedElement.textContent = `${this.goldRescuedCount}/4`;
+    this.goldRescuedElement.textContent = `${this.goldRescuedCount}/${this.goldRescueTarget}`;
     }
   }
 
@@ -5923,7 +5924,7 @@ this.starlets.splice(i, 1);
   // Текст — тот же стиль, что у scoreValue (.hud-value), шрифт наследуется от body (Georgia, serif).
   const fontSize = Math.max(16, Math.min(28, 24 * playScale));
   const rescueTarget = this.goldRescueTarget ?? 4;
-  const text = `${this.goldRescuedCount ?? 0}/${rescueTarget}`;
+  const text = `${this.goldRescuedCount ?? 0}/${this.goldRescueTarget}`;
 
   ctx.save();
   ctx.globalAlpha = this.rescueHudOpacity;
