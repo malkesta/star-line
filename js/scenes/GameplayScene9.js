@@ -866,10 +866,10 @@ class MotherStar {
     this.zeroWaitTimer = 0;
     this.spawnPulseReady = false;
 
-    this.growDuration = 2.1;
-    this.openDuration = 1.2;
-    this.shrinkDuration = 2.0;
-    this.zeroWaitDuration = 1.5;
+    this.growDuration = 1.1;
+    this.openDuration = 0.5;
+    this.shrinkDuration = 1.0;
+    this.zeroWaitDuration = 2.5;
     this.minRenderableScale = 0.02;
 
     this.vx = 0;
@@ -877,6 +877,7 @@ class MotherStar {
     this.targetX = 0;
     this.targetY = 0;
     this.driftSpeed = 2.65;
+    this.zeroWaitDriftMultiplier = 1.8; // во сколько раз быстрее двигается на минимальном размере
     this.driftSteer = 0.022;
     this.arriveDistance = 26;
 
@@ -1011,23 +1012,28 @@ class MotherStar {
   }
 
   updateDrift(delta = 0.016) {
-    const dx = this.targetX - this.x;
-    const dy = this.targetY - this.y;
-    const dist = Math.hypot(dx, dy);
+  const dx = this.targetX - this.x;
+  const dy = this.targetY - this.y;
+  const dist = Math.hypot(dx, dy);
 
-    if (dist < this.arriveDistance) {
-      this.pickNewDriftTarget();
-    }
+  if (dist < this.arriveDistance) {
+    this.pickNewDriftTarget();
+  }
 
-    const nextDx = this.targetX - this.x;
-    const nextDy = this.targetY - this.y;
-    const nextDist = Math.hypot(nextDx, nextDy) || 0.001;
+  const nextDx = this.targetX - this.x;
+  const nextDy = this.targetY - this.y;
+  const nextDist = Math.hypot(nextDx, nextDy) || 0.001;
 
-    const desiredVx = (nextDx / nextDist) * this.driftSpeed;
-    const desiredVy = (nextDy / nextDist) * this.driftSpeed;
+  const effectiveSpeed =
+    this.state === "zero_wait"
+      ? this.driftSpeed * this.zeroWaitDriftMultiplier
+      : this.driftSpeed;
 
-    this.vx += (desiredVx - this.vx) * this.driftSteer;
-    this.vy += (desiredVy - this.vy) * this.driftSteer;
+  const desiredVx = (nextDx / nextDist) * effectiveSpeed;
+  const desiredVy = (nextDy / nextDist) * effectiveSpeed;
+
+  this.vx += (desiredVx - this.vx) * this.driftSteer;
+  this.vy += (desiredVy - this.vy) * this.driftSteer;
 
     // Живой шум поверх наведения — чтобы не было ощущения рельсы.
     this.phase += delta * 1.65;
@@ -3743,10 +3749,7 @@ class TutorGuide3 {
       game.activeGoldRing === this.goldTarget &&
       !this.goldTarget.isGone();
 
-    const starletAlive =
-      this.starletTarget &&
-      game.starlets.includes(this.starletTarget) &&
-      this.isInTutorZone(this.starletTarget, game);
+    const starletAlive = this.starletTarget && game.starlets.includes(this.starletTarget);
 
     if (!goldAlive || !starletAlive) {
       this.startFadeOut();
@@ -3767,9 +3770,7 @@ class TutorGuide3 {
       return false;
     }
 
-    const pool = game.starlets.filter((starlet) =>
-      this.isInTutorZone(starlet, game)
-    );
+    const pool = game.starlets.slice();
     if (pool.length < 1) {
       this.phase = "waiting";
       return false;
@@ -3808,11 +3809,7 @@ class TutorGuide3 {
       return;
     }
 
-    if (
-      !this.starletTarget ||
-      !game.starlets.includes(this.starletTarget) ||
-      !this.isInTutorZone(this.starletTarget, game)
-    ) {
+    if (!this.starletTarget || !game.starlets.includes(this.starletTarget)) {
       this.startFadeOut();
       return;
     }
@@ -4565,7 +4562,7 @@ getRankHudAnchorRect() {
 
   getSceneInstructionsText() {
     if (this.sceneId === "game9") {
-      return "Поймай золотое кольцо и надень его на свободного редлета -> Веди сияющую пару к дому за 10 секунд, собирая свободных старлетов по пути!";
+      return "Спаси черную звезду, поймав ее золотым кольцом-> Собирай маленькие звездочки-> Веди их к дому, избегая хищных звезд!";
     }
 
     return this.defaultInstructionsText;
@@ -4780,7 +4777,7 @@ getSceneRankTitle(rank = this.getSceneRank()) {
         ? "Все спасённые звёзды нашли путь домой!"
         : this.goldRescuedCount >= this.goldRescueTarget
         ? `Домой добралось только ${this.goldRescuedCount} из 4 золотых пар.`
-        : "Очков пока не хватает для победы.";
+        : "Еще не все звезды спасены.";
     }
 
     this.updateRankUI();
