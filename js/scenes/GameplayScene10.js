@@ -1375,6 +1375,8 @@ class FreeStarlet {
 
     this.x = x;
     this.y = y;
+    this.prevX = x;
+    this.prevY = y;
     this.entrySide = entrySide;
 
     this.phase = Math.random() * Math.PI * 2;
@@ -1419,13 +1421,14 @@ class FreeStarlet {
     this.state = "free";
     this.following = false;
     this.releaseCooldown = 0;
+    this.ringCooldown = 0;
     this.lagFactor = 0.22;
     this.dragRadius = 30;
     this.trailTimer = 0;
 
     this.homeTarget = null;
-    this.homeHomingStrength = 0.38;
-    this.homeArrivalBoost = 6.2;
+    this.homeHomingStrength = 1;
+    this.homeArrivalBoost = 45;
 
     this.pickNewTarget();
   }
@@ -1449,6 +1452,13 @@ this.homeTarget = homeStar;
   // canCapture — true только когда активно золотое комбо (activeGoldCombo).
   // swarmCenter — центр масс всех свободных старлетов (для лёгкого сплочения).
   update(delta = 0.016, followPos = null, canCapture = false, swarmCenter = null) {
+    this.prevX = this.x;
+    this.prevY = this.y;
+
+    if (this.ringCooldown > 0) {
+      this.ringCooldown -= 1;
+    }
+    
     let justCaught = false;
 
     if (this.releaseCooldown > 0) this.releaseCooldown -= 1;
@@ -3326,15 +3336,21 @@ class HomeStar {
 
     this.flicker = Math.random() * Math.PI * 2;
     this.rotation = 0;
+    this.phase = Math.random() * Math.PI * 2;
 
     this.active = false;
-
-    // Фаза входа слева -> блуждание.
     this.entered = false;
+
+    // entering -> cruising -> leaving -> offscreen_wait
+    this.state = "entering";
 
     this.vx = 0;
     this.vy = 0;
-    this.phase = Math.random() * Math.PI * 2;
+
+    this.cruiseTargetX = 0;
+    this.cruiseTargetY = 0;
+    this.cruiseTimer = 0;
+    this.offscreenTimer = 0;
 
     this.setBounds(sceneMetrics);
     this.resetCyclePosition();
@@ -3347,120 +3363,245 @@ class HomeStar {
     this.baseRingRadius = sceneMetrics.homeRingRadius;
     this.baseGlowRadius = sceneMetrics.homeGlowRadius;
 
+    const { width, height } = sceneMetrics;
+
+    // Звезда приходит слева и покидает экран справа.
+    this.entryX = -this.baseRingRadius - width * 0.08;
+    this.exitX = width + this.baseRingRadius + width * 0.08;
+
+    this.entryTargetX = width * 0.15;
+    this.baseY = height * 0.5;
+
+    // Рабочая зона полного курсирования по экрану.
+    this.cruiseMinX = width * 0.14;
+    this.cruiseMaxX = width * 0.86;
+    this.cruiseMinY = height * 0.18;
+    this.cruiseMaxY = height * 0.82;
+
+    // Параметры цикла.
+    this.entrySpeed = width * 0.20;
+    this.exitSpeed = width * 0.25;
+    this.cruiseSpeed = width * 0.003;
+    this.cruiseSteer = 0.028;
+    this.cruiseDuration = 8.5;
+    this.offscreenDuration = 1.15;
+    this.arriveDistance = Math.max(28, this.baseRadius * 1.15);
+
+    // Корректно пересчитать позиции при resize.
+    if (this.state === "offscreen_wait") {
+      this.x = this.exitX;
+      this.y = this.baseY;
+    } else {
+      this.x = Math.max(
+        this.entryX,
+        Math.min(this.exitX, this.x || this.entryX)
+      );
+      this.y = Math.max(
+        this.cruiseMinY,
+        Math.min(this.cruiseMaxY, this.y || this.baseY)
+      );
+    }
+
     this.radius = this.baseRadius;
     this.ringRadius = this.baseRingRadius;
     this.glowRadius = this.baseGlowRadius;
-
-    const { width, height } = sceneMetrics;
-
-    this.entryX = -this.baseRingRadius - width * 0.08;
-
-    // Зона блуждания — левая треть экрана: даёт игроку понятную,
-    // стабильную точку назначения для доставки золотого комбо.
-    this.roamMinX = width * 0.06;
-    this.roamMaxX = width * 0.33;
-    this.roamMinY = height * 0.22;
-    this.roamMaxY = height * 0.78;
-
-    this.targetEntryX = width * 0.18;
-    this.baseY = height * 0.5;
   }
 
   resetCyclePosition() {
     this.entered = false;
+    this.state = "entering";
+
     this.x = this.entryX;
     this.y = this.baseY;
     this.vx = 0;
     this.vy = 0;
+
+    this.cruiseTimer = 0;
+    this.offscreenTimer = 0;
+
+    this.pickNewCruiseTarget(true);
   }
 
   activateFromLeft() {
     this.active = true;
-    this.entered = false;
-    this.x = this.entryX;
-    this.y = this.baseY;
-    this.vx = 0;
-    this.vy = 0;
+    this.resetCyclePosition();
   }
 
   deactivate() {
     this.active = false;
   }
 
+  pickNewCruiseTarget(forceFar = false) {
+    let nextX = this.cruiseTargetX || this.x;
+    let nextY = this.cruiseTargetY || this.y;
+
+    const minDistance = forceFar ? this.sceneMetrics.width * 0.26 : this.sceneMetrics.width * 0.14;
+    let attempts = 0;
+
+    do {
+      nextX =
+        this.cruiseMinX +
+        Math.random() * (this.cruiseMaxX - this.cruiseMinX);
+
+      nextY =
+        this.cruiseMinY +
+        Math.random() * (this.cruiseMaxY - this.cruiseMinY);
+
+      attempts++;
+    } while (
+      attempts < 12 &&
+      Math.hypot(nextX - this.x, nextY - this.y) < minDistance
+    );
+
+    this.cruiseTargetX = nextX;
+    this.cruiseTargetY = nextY;
+  }
+
+  updateCruising(delta) {
+    const dx = this.cruiseTargetX - this.x;
+    const dy = this.cruiseTargetY - this.y;
+    const distance = Math.hypot(dx, dy);
+
+    if (distance < this.arriveDistance) {
+      this.pickNewCruiseTarget();
+    }
+
+    const nextDx = this.cruiseTargetX - this.x;
+    const nextDy = this.cruiseTargetY - this.y;
+    const nextDistance = Math.hypot(nextDx, nextDy) || 0.001;
+
+    const desiredVx = (nextDx / nextDistance) * this.cruiseSpeed;
+    const desiredVy = (nextDy / nextDistance) * this.cruiseSpeed;
+
+    this.vx += (desiredVx - this.vx) * this.cruiseSteer;
+    this.vy += (desiredVy - this.vy) * this.cruiseSteer;
+
+    const driftX = Math.sin(this.phase * 0.9) * 0.13;
+    const driftY = Math.cos(this.phase * 1.08) * 0.16;
+
+    this.x += this.vx + driftX;
+    this.y += this.vy + driftY;
+
+    this.x = Math.max(
+      this.cruiseMinX,
+      Math.min(this.cruiseMaxX, this.x)
+    );
+
+    this.y = Math.max(
+      this.cruiseMinY,
+      Math.min(this.cruiseMaxY, this.y)
+    );
+
+    this.cruiseTimer += delta;
+
+    // После курса по экрану звезда уходит вправо.
+    if (this.cruiseTimer >= this.cruiseDuration) {
+      this.state = "leaving";
+      this.vx = this.exitSpeed;
+      this.vy = (Math.random() - 0.5) * 0.36;
+    }
+  }
+
   update(delta = 0.016) {
     if (!this.active) return;
 
-    this.flicker += 0.008;
-    this.rotation += 0.006;
+    this.flicker += delta * 2.2;
+    this.rotation += delta * 0.9;
+    this.phase += delta * 1.15;
 
-    const scale = 1 + Math.sin(this.flicker * 0.9) * 0.5;
-    this.radius = this.baseRadius * scale;
-    this.ringRadius = this.baseRingRadius * scale;
-    this.glowRadius = this.baseGlowRadius * scale;
+    const pulse = 1 + Math.sin(this.flicker * 0.9) * 0.018;
+    this.radius = this.baseRadius * pulse;
+    this.ringRadius = this.baseRingRadius * pulse;
+    this.glowRadius = this.baseGlowRadius * pulse;
 
-    if (!this.entered) {
-      const speed = this.sceneMetrics.width * 0.18;
-      this.x += speed * delta;
-      this.y = this.baseY + Math.sin(this.flicker * 0.5) * this.sceneMetrics.height * 0.03;
+    if (this.state === "entering") {
+      this.x += this.entrySpeed * delta;
+      this.y = this.baseY + Math.sin(this.flicker * 0.5) * this.sceneMetrics.height * 0.025;
 
-      if (this.x >= this.targetEntryX) {
-        this.x = this.targetEntryX;
+      if (this.x >= this.entryTargetX) {
+        this.x = this.entryTargetX;
+        this.y = Math.max(
+          this.cruiseMinY,
+          Math.min(this.cruiseMaxY, this.y)
+        );
+
         this.entered = true;
-        this.vx = (Math.random() - 0.5) * 0.6;
-        this.vy = (Math.random() - 0.5) * 0.6;
+        this.state = "cruising";
+        this.cruiseTimer = 0;
+
+        this.vx = this.cruiseSpeed * 0.55;
+        this.vy = (Math.random() - 0.5) * this.cruiseSpeed * 0.34;
+
+        this.pickNewCruiseTarget(true);
       }
+
       return;
     }
 
-    this.phase += delta;
-
-    this.x += this.vx;
-    this.y += this.vy;
-
-    this.vx += (Math.random() - 0.5) * 0.05;
-    this.vy += (Math.random() - 0.5) * 0.05;
-
-    const centerX = (this.roamMinX + this.roamMaxX) * 0.5;
-    const centerY = (this.roamMinY + this.roamMaxY) * 0.5;
-    this.vx += (centerX - this.x) * 0.0006;
-    this.vy += (centerY - this.y) * 0.0006;
-
-    const maxSpeed = 0.85;
-    const sp = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-    if (sp > maxSpeed) {
-      this.vx = (this.vx / sp) * maxSpeed;
-      this.vy = (this.vy / sp) * maxSpeed;
+    if (this.state === "cruising") {
+      this.updateCruising(delta);
+      return;
     }
 
-    if (this.x < this.roamMinX) {
-      this.x = this.roamMinX;
-      this.vx = Math.abs(this.vx);
+    if (this.state === "leaving") {
+      this.x += this.exitSpeed * delta;
+      this.y += this.vy * delta;
+      this.y += Math.sin(this.flicker * 0.6) * 0.12;
+
+      if (this.x >= this.exitX) {
+        this.x = this.exitX;
+        this.y = this.baseY;
+        this.vx = 0;
+        this.vy = 0;
+
+        this.entered = false;
+        this.state = "offscreen_wait";
+        this.offscreenTimer = 0;
+      }
+
+      return;
     }
-    if (this.x > this.roamMaxX) {
-      this.x = this.roamMaxX;
-      this.vx = -Math.abs(this.vx);
-    }
-    if (this.y < this.roamMinY) {
-      this.y = this.roamMinY;
-      this.vy = Math.abs(this.vy);
-    }
-    if (this.y > this.roamMaxY) {
-      this.y = this.roamMaxY;
-      this.vy = -Math.abs(this.vy);
+
+    if (this.state === "offscreen_wait") {
+      this.offscreenTimer += delta;
+
+      if (this.offscreenTimer >= this.offscreenDuration) {
+        this.state = "entering";
+        this.x = this.entryX;
+        this.y =
+          this.baseY +
+          (Math.random() - 0.5) * this.sceneMetrics.height * 0.18;
+
+        this.vx = 0;
+        this.vy = 0;
+        this.cruiseTimer = 0;
+        this.offscreenTimer = 0;
+      }
     }
   }
 
   draw(ctx) {
-    if (!this.active) return;
+    if (!this.active || this.state === "offscreen_wait") return;
 
     const glowPulse = 0.92 + Math.sin(this.flicker) * 0.05;
 
     const outerGlow = ctx.createRadialGradient(
-      this.x, this.y, 10,
-      this.x, this.y, this.glowRadius
+      this.x,
+      this.y,
+      10,
+      this.x,
+      this.y,
+      this.glowRadius
     );
-    outerGlow.addColorStop(0, `rgba(245, 182, 112, ${0.28 * glowPulse})`);
-    outerGlow.addColorStop(0.5, `rgba(222, 161, 94, ${0.16 * glowPulse})`);
+
+    outerGlow.addColorStop(
+      0,
+      `rgba(245, 182, 112, ${0.28 * glowPulse})`
+    );
+    outerGlow.addColorStop(
+      0.5,
+      `rgba(222, 161, 94, ${0.16 * glowPulse})`
+    );
     outerGlow.addColorStop(1, "rgba(222, 161, 94, 0)");
 
     ctx.fillStyle = outerGlow;
@@ -3488,9 +3629,14 @@ class HomeStar {
     drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
 
     const core = ctx.createRadialGradient(
-      this.x - 8, this.y - 10, 4,
-      this.x, this.y, this.radius
+      this.x - 8,
+      this.y - 10,
+      4,
+      this.x,
+      this.y,
+      this.radius
     );
+
     core.addColorStop(0, "#FFF2D4");
     core.addColorStop(0.48, "#F5B670");
     core.addColorStop(1, "#DEA15E");
@@ -3499,7 +3645,6 @@ class HomeStar {
     ctx.shadowColor = "rgba(222, 161, 94, 0.72)";
     ctx.fillStyle = core;
     ctx.fill();
-
     ctx.shadowBlur = 0;
 
     drawStarPath(ctx, this.x, this.y, this.radius, this.radius * 0.48, 5);
@@ -3515,65 +3660,617 @@ class HomeStar {
       this.radius * 0.15,
       5
     );
-    ctx.fillStyle = "rgba(255,255,255,0.20)";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.20)";
     ctx.fill();
 
     ctx.restore();
   }
 
-  // Золотое комбо (Redlet, несущий GoldRing) касается ХоумСтар — доставка
-  // засчитывается (НАГРАДА, инверсия семантики scene7's isHit).
   isGoldComboDelivered(goldRing) {
-  if (!this.active || !goldRing) return false;
-  if (goldRing.state !== "attachedToRedlet") return false;
+    if (!this.active || this.state === "offscreen_wait" || !goldRing) {
+      return false;
+    }
 
-  const dx = goldRing.x - this.x;
-  const dy = goldRing.y - this.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
+    if (goldRing.state !== "attachedToRedlet") return false;
 
-  return dist < this.radius + goldRing.collisionRadius;
-}
-  // Отдельно проверяем каждого "пришвартованного" (following) старлета —
-  // они доставляются вместе с комбо и тоже засчитываются в очки.
+    const dx = goldRing.x - this.x;
+    const dy = goldRing.y - this.y;
+    const distance = Math.hypot(dx, dy);
+
+    return distance < this.radius + goldRing.collisionRadius;
+  }
+
   isHit(starlet) {
-  if (!this.active || this.radius <= 0.001) return false;
-  const dx = starlet.x - this.x;
-  const dy = starlet.y - this.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  return dist < this.radius * 0.72;
-}
+    if (!this.active || this.state === "offscreen_wait" || this.radius <= 0.001) {
+      return false;
+    }
+
+    const dx = starlet.x - this.x;
+    const dy = starlet.y - this.y;
+    const distance = Math.hypot(dx, dy);
+
+    return distance < this.radius + starlet.radius;
+  }
 
   blocksObstacle(obstacle) {
-    if (!this.active) return false;
+    if (!this.active || this.state === "offscreen_wait") return false;
+
     const dx = obstacle.x - this.x;
     const dy = obstacle.y - this.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    return dist < this.ringRadius + obstacle.ringRadius;
+    const distance = Math.hypot(dx, dy);
+
+    return distance < this.ringRadius + obstacle.ringRadius;
   }
 
   repelObstacle(obstacle) {
-    if (!this.active) return;
+    if (!this.active || this.state === "offscreen_wait") return;
 
     const dx = obstacle.x - this.x;
     const dy = obstacle.y - this.y;
-    const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
-    const overlap = this.ringRadius + obstacle.ringRadius - dist;
+    const distance = Math.hypot(dx, dy) || 0.001;
 
-    if (overlap > 0) {
-      const nx = dx / dist;
-      const ny = dy / dist;
+    const overlap = this.ringRadius + obstacle.ringRadius - distance;
 
-      obstacle.x += nx * overlap;
-      obstacle.y += ny * overlap;
+    if (overlap <= 0) return;
 
-      const dot = obstacle.vx * nx + obstacle.vy * ny;
-      if (dot < 0) {
-        obstacle.vx -= 2 * dot * nx;
-        obstacle.vy -= 2 * dot * ny;
+    const nx = dx / distance;
+    const ny = dy / distance;
+
+    obstacle.x += nx * overlap;
+    obstacle.y += ny * overlap;
+
+    const dot = obstacle.vx * nx + obstacle.vy * ny;
+
+    if (dot < 0) {
+      obstacle.vx -= 2 * dot * nx;
+      obstacle.vy -= 2 * dot * ny;
+    }
+
+    obstacle.vx += nx * 0.03;
+    obstacle.vy += ny * 0.03;
+  }
+}
+
+class BrokenRingObstacle {
+  constructor(sceneMetrics, radiusScale = 1) {
+    this.anchorStar = null;
+    this.radiusScale = radiusScale;
+
+    this.rotation = Math.random() * Math.PI * 2;
+
+    // Увеличили скорость вращения, чтобы кольцо явно крутилось.
+    this.rotationSpeed = 0.012;
+
+    this.pulseTime = Math.random() * Math.PI * 2;
+
+    this.sceneMetrics = null;
+    this.radius = 0;
+    this.lineWidth = 0;
+    this.innerRingInset = 0;
+    this.innerRingLineWidth = 0;
+
+    // Две цельные секции с двумя более широкими разрывами.
+    this.sectionCount = 2;
+
+    this.centerX = 0;
+    this.centerY = 0;
+    this.ringHitPadding = 2;
+    this.bounceStrength = 1.4;
+
+    this.setBounds(sceneMetrics);
+  }
+
+  setBounds(sceneMetrics) {
+    this.sceneMetrics = sceneMetrics;
+    if (!sceneMetrics) return;
+
+    const clamp = (min, value, max) =>
+      Math.max(min, Math.min(max, value));
+
+    // Радиус кольца = 7.5 радиуса HomeStar:
+    // исходные 2.5x, увеличенные втрое.
+    const homeRadius =
+      this.anchorStar?.baseRadius ??
+      sceneMetrics.homeRadius;
+
+    this.radius = homeRadius * 7.5 * this.radiusScale;
+
+    this.lineWidth = clamp(
+      3.2,
+      this.radius * (5.1 / 756),
+      5.1
+    );
+
+    this.innerRingInset = clamp(
+      6,
+      this.lineWidth * (10 / 5.1),
+      10
+    );
+
+    this.innerRingLineWidth = clamp(
+      1.4,
+      this.lineWidth * (2.2 / 5.1),
+      2.2
+    );
+
+    this.ringHitPadding = clamp(
+      2.56,
+      this.lineWidth * (3.8 / 5.1),
+      3.8
+    );
+
+    this.bounceStrength = 1.4;
+
+    this.centerX = sceneMetrics.width * 0.5;
+    this.centerY = sceneMetrics.height * 0.5;
+  }
+
+  setAnchor(star) {
+    this.anchorStar = star ?? null;
+  }
+
+  getCenter() {
+    if (this.anchorStar) {
+      return {
+        x: this.anchorStar.x,
+        y: this.anchorStar.y,
+      };
+    }
+
+    return {
+      x: this.centerX,
+      y: this.centerY,
+    };
+  }
+
+  update(delta = 0.016) {
+    this.rotation += this.rotationSpeed * delta * 60;
+    this.pulseTime += delta * 2.1;
+  }
+
+  getGeometry() {
+    const fullStep = (Math.PI * 2) / this.sectionCount;
+
+    // Два широких прохода между секциями.
+    // Ширина разрыва масштабируется вместе с радиусом кольца.
+    const targetGapWidth = Math.max(82, this.radius * 0.22);
+    const rawGapAngle = targetGapWidth / Math.max(1, this.radius);
+
+    // Сохраняем минимум 45% окружности каждой секции цельным.
+    const maxGapAngle = fullStep * 0.55;
+    const gapAngle = Math.min(rawGapAngle, maxGapAngle);
+    const arcSpan = fullStep - gapAngle;
+
+    return {
+      fullStep,
+      gapAngle,
+      arcSpan,
+    };
+  }
+
+  normalizeAngle(angle) {
+    const twoPi = Math.PI * 2;
+    let result = angle % twoPi;
+
+    if (result < 0) result += twoPi;
+
+    return result;
+  }
+
+  isAngleInsideArc(angle, start, end) {
+    const a = this.normalizeAngle(angle);
+    const s = this.normalizeAngle(start);
+    const e = this.normalizeAngle(end);
+
+    if (s <= e) {
+      return a >= s && a <= e;
+    }
+
+    return a >= s || a <= e;
+  }
+
+  isSolidAt(angleNow, angleMid) {
+    const geometry = this.getGeometry();
+
+    for (let i = 0; i < this.sectionCount; i++) {
+      const start = this.rotation + i * geometry.fullStep;
+      const end = start + geometry.arcSpan;
+
+      if (
+        this.isAngleInsideArc(angleNow, start, end) ||
+        this.isAngleInsideArc(angleMid, start, end)
+      ) {
+        return true;
       }
+    }
 
-      obstacle.vx += nx * 0.03;
-      obstacle.vy += ny * 0.03;
+    return false;
+  }
+
+  resolveStarletCollision(starlet) {
+    if (!starlet) return false;
+    if ((starlet.ringCooldown ?? 0) > 0) return false;
+
+    const center = this.getCenter();
+
+    const dx = starlet.x - center.x;
+    const dy = starlet.y - center.y;
+    const distance = Math.hypot(dx, dy) || 0.0001;
+
+    const prevDx = (starlet.prevX ?? starlet.x) - center.x;
+    const prevDy = (starlet.prevY ?? starlet.y) - center.y;
+    const previousDistance = Math.hypot(prevDx, prevDy) || 0.0001;
+
+    const ringZoneHalf =
+      starlet.radius + this.lineWidth * 0.36 + this.ringHitPadding;
+
+    const isNearRingNow =
+      Math.abs(distance - this.radius) <= ringZoneHalf;
+
+    const crossedRingBand =
+      (previousDistance > this.radius && distance <= this.radius) ||
+      (previousDistance < this.radius && distance >= this.radius);
+
+    if (!isNearRingNow && !crossedRingBand) return false;
+
+    const midX = ((starlet.prevX ?? starlet.x) + starlet.x) * 0.5;
+    const midY = ((starlet.prevY ?? starlet.y) + starlet.y) * 0.5;
+
+    const angleNow = Math.atan2(dy, dx);
+    const angleMid = Math.atan2(midY - center.y, midX - center.x);
+
+    if (!this.isSolidAt(angleNow, angleMid)) return false;
+
+    const nx = dx / distance;
+    const ny = dy / distance;
+    const tx = -ny;
+    const ty = nx;
+
+    const wasOutside = previousDistance >= this.radius;
+
+    const separationPadding = wasOutside ? 8 : 18;
+    const targetDistance = wasOutside
+      ? this.radius + ringZoneHalf + separationPadding
+      : Math.max(
+          0,
+          this.radius - ringZoneHalf - separationPadding
+        );
+
+    starlet.x = center.x + nx * targetDistance;
+    starlet.y = center.y + ny * targetDistance;
+
+    const tangentVelocity = starlet.vx * tx + starlet.vy * ty;
+
+    const fanAngle = (Math.random() - 0.5) * 0.72;
+    const fanNx = nx * Math.cos(fanAngle) - ny * Math.sin(fanAngle);
+    const fanNy = nx * Math.sin(fanAngle) + ny * Math.cos(fanAngle);
+
+    const outwardSpeed = wasOutside ? 1.8 : -2.6;
+    const tangentDamping = 0.72;
+
+    starlet.vx =
+      tx * tangentVelocity * tangentDamping +
+      fanNx * outwardSpeed * this.bounceStrength;
+
+    starlet.vy =
+      ty * tangentVelocity * tangentDamping +
+      fanNy * outwardSpeed * this.bounceStrength;
+
+    if (starlet.following) {
+      starlet.following = false;
+      starlet.state = "free";
+      starlet.releaseCooldown = 24;
+    } else {
+      starlet.releaseCooldown = Math.max(
+        starlet.releaseCooldown ?? 0,
+        16
+      );
+    }
+
+    starlet.ringCooldown = wasOutside ? 6 : 12;
+
+    return true;
+  }
+
+  resolveGoldComboCollision(goldRing, carrierRedlet) {
+  if (!goldRing || !carrierRedlet) return false;
+  if (goldRing.state !== "attachedToRedlet") return false;
+  if (carrierRedlet.markedForRemoval) return false;
+
+  // Отдельный cooldown, чтобы комбо не дрожало на краю кольца каждый кадр.
+  if ((goldRing.ringCooldown ?? 0) > 0) {
+    goldRing.ringCooldown -= 1;
+    return false;
+  }
+
+  const center = this.getCenter();
+
+  // Центром золотого комбо считаем Redlet: GoldRing уже синхронизирован с ним.
+  const dx = carrierRedlet.x - center.x;
+  const dy = carrierRedlet.y - center.y;
+  const distance = Math.hypot(dx, dy) || 0.0001;
+
+  const comboRadius = Math.max(
+    carrierRedlet.radius * 1.7,
+    goldRing.collisionRadius
+  );
+
+  const ringZoneHalf =
+    comboRadius + this.lineWidth * 0.36 + this.ringHitPadding;
+
+  if (Math.abs(distance - this.radius) > ringZoneHalf) {
+    return false;
+  }
+
+  const angleNow = Math.atan2(dy, dx);
+
+  // Для GoldCombo нет отдельного prevX/prevY: направления текущего
+  // движения достаточно, так как Redlet движется к позиции курсора плавно.
+  if (!this.isSolidAt(angleNow, angleNow)) {
+    return false;
+  }
+
+  const nx = dx / distance;
+  const ny = dy / distance;
+  const tx = -ny;
+  const ty = nx;
+
+  const wasOutside = distance >= this.radius;
+  const separationPadding = wasOutside ? 12 : 22;
+
+  const targetDistance = wasOutside
+    ? this.radius + ringZoneHalf + separationPadding
+    : Math.max(
+        0,
+        this.radius - ringZoneHalf - separationPadding
+      );
+
+  // Откат Redlet за кольцо.
+  carrierRedlet.x = center.x + nx * targetDistance;
+  carrierRedlet.y = center.y + ny * targetDistance;
+
+  // GoldRing жёстко синхронизирован с Redlet, чтобы связь не разрывалась.
+  goldRing.x = carrierRedlet.x;
+  goldRing.y = carrierRedlet.y;
+
+  const tangentVelocity =
+    carrierRedlet.vx * tx + carrierRedlet.vy * ty;
+
+  // Слабый веерный угол, чтобы отскок не выглядел как удар о плоскую стену.
+  const fanAngle = (Math.random() - 0.5) * 0.42;
+  const fanNx = nx * Math.cos(fanAngle) - ny * Math.sin(fanAngle);
+  const fanNy = nx * Math.sin(fanAngle) + ny * Math.cos(fanAngle);
+
+  const outwardSpeed = wasOutside ? 2.5 : -3.2;
+  const tangentDamping = 0.78;
+
+  carrierRedlet.vx =
+    tx * tangentVelocity * tangentDamping +
+    fanNx * outwardSpeed * this.bounceStrength;
+
+  carrierRedlet.vy =
+    ty * tangentVelocity * tangentDamping +
+    fanNy * outwardSpeed * this.bounceStrength;
+
+  // Никакого clearCarriedGoldRing(), releaseFromCursor() или изменения state:
+  // комбо остаётся активным и продолжает быть привязанным к курсору.
+  goldRing.ringCooldown = wasOutside ? 8 : 14;
+
+  return true;
+}
+
+  drawArc(
+    ctx,
+    cx,
+    cy,
+    radius,
+    start,
+    end,
+    color,
+    width,
+    alpha = 1,
+    blur = 0
+  ) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, start, end);
+
+    ctx.lineWidth = width;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = color;
+
+    if (blur > 0) {
+      ctx.shadowBlur = blur;
+      ctx.shadowColor = color;
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  drawArcGlow(ctx, cx, cy, radius, start, end, alphaBoost = 1) {
+    const innerGlowRadius = Math.max(0, radius - 80);
+    const outerGlowRadius = Math.max(
+      innerGlowRadius + 1,
+      radius + 30
+    );
+
+    const gradient = ctx.createRadialGradient(
+      cx,
+      cy,
+      innerGlowRadius,
+      cx,
+      cy,
+      outerGlowRadius
+    );
+
+    gradient.addColorStop(
+      0,
+      `rgba(206, 69, 69, ${0.0 * alphaBoost})`
+    );
+    gradient.addColorStop(
+      0.72,
+      `rgba(206, 69, 69, ${0.06 * alphaBoost})`
+    );
+    gradient.addColorStop(
+      0.9,
+      `rgba(206, 69, 69, ${0.22 * alphaBoost})`
+    );
+    gradient.addColorStop(
+      1,
+      `rgba(206, 69, 69, ${0.0 * alphaBoost})`
+    );
+
+    ctx.save();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, start, end);
+
+    ctx.lineWidth = 18;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = gradient;
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = "rgba(206, 69, 69, 0.24)";
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  drawGem(ctx, x, y, angle, pulse = 1) {
+    const glow = 0.65 + pulse * 0.35;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    ctx.shadowBlur = 18 * pulse + 10;
+    ctx.shadowColor = `rgba(206, 69, 69, ${0.45 + pulse * 0.2})`;
+
+    ctx.beginPath();
+    ctx.moveTo(0, -9);
+    ctx.lineTo(7, 0);
+    ctx.lineTo(0, 9);
+    ctx.lineTo(-7, 0);
+    ctx.closePath();
+
+    ctx.fillStyle = `rgba(206, 69, 69, ${0.88 + pulse * 0.12})`;
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    ctx.beginPath();
+    ctx.moveTo(0, -6);
+    ctx.lineTo(4.5, 0);
+    ctx.lineTo(0, 6);
+    ctx.lineTo(-4.5, 0);
+    ctx.closePath();
+
+    ctx.fillStyle = `rgba(255, 185, 185, ${0.34 + pulse * 0.18})`;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(0, -9);
+    ctx.lineTo(7, 0);
+    ctx.lineTo(0, 9);
+    ctx.lineTo(-7, 0);
+    ctx.closePath();
+
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = `rgba(255, 220, 220, ${0.58 + glow * 0.18})`;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  draw(ctx) {
+    const center = this.getCenter();
+    const cx = center.x;
+    const cy = center.y;
+    const geometry = this.getGeometry();
+
+    for (let i = 0; i < this.sectionCount; i++) {
+      const start = this.rotation + i * geometry.fullStep;
+      const end = start + geometry.arcSpan;
+
+      const pulseA =
+        Math.sin(this.pulseTime + i * 1.3) * 0.5 + 0.5;
+
+      const pulseB =
+        Math.sin(this.pulseTime + i * 1.3 + 0.9) * 0.5 + 0.5;
+
+      const sectionGlow = 0.7 + pulseA * 0.3;
+
+      this.drawArcGlow(
+        ctx,
+        cx,
+        cy,
+        this.radius,
+        start,
+        end,
+        0.75 + pulseA * 0.45
+      );
+
+      this.drawArc(
+        ctx,
+        cx,
+        cy,
+        this.radius,
+        start,
+        end,
+        "#8f1126",
+        this.lineWidth * 1.8,
+        0.98
+      );
+
+      this.drawArc(
+        ctx,
+        cx,
+        cy,
+        this.radius,
+        start,
+        end,
+        `rgba(206, 69, 69, ${0.28 + sectionGlow * 0.22})`,
+        this.lineWidth * 0.4,
+        1,
+        8
+      );
+
+      this.drawArc(
+        ctx,
+        cx,
+        cy,
+        this.radius,
+        start + 0.015,
+        end - 0.015,
+        `rgba(206, 69, 69, ${0.72 + sectionGlow * 0.2})`,
+        1.6,
+        1,
+        14
+      );
+
+      this.drawArc(
+        ctx,
+        cx,
+        cy,
+        this.radius - this.innerRingInset,
+        start + 0.02,
+        end - 0.02,
+        "#ce4545",
+        this.innerRingLineWidth,
+        0.95,
+        10
+      );
+
+      const gem1X = cx + Math.cos(start) * this.radius;
+      const gem1Y = cy + Math.sin(start) * this.radius;
+
+      const gem2X = cx + Math.cos(end) * this.radius;
+      const gem2Y = cy + Math.sin(end) * this.radius;
+
+      this.drawGem(ctx, gem1X, gem1Y, start, pulseA);
+      this.drawGem(ctx, gem2X, gem2Y, end, pulseB);
     }
   }
 }
@@ -4121,9 +4818,9 @@ class TutorGuide3 {
 //  свободного Redlet, ведёт комбо к HomeStar до истечения 10 секунд, попутно
 //  собирая по пути свободных Starlet-ов в свой "хвост").
 // ============================================================================
-export class GameplayScene9 {
+export class GameplayScene10 {
   constructor({
-    sceneId = "game9",
+    sceneId = "game10",
     sceneManager = null,
     audio = null,
     onNext = null,
@@ -4189,8 +4886,9 @@ export class GameplayScene9 {
     this.tutorialEnabledInput = document.getElementById("tutorialEnabled");
     this.instructionsElement = document.querySelector(".instructions");
     this.defaultInstructionsText =
-      this.instructionsElement?.textContent?.trim() ||
-      "Спаси черную звезду, поймав ее золотым кольцом-> Собирай маленькие звездочки-> Веди их к дому, избегая хищных звезд!";
+    "Спаси черную звезду, поймав ее золотым кольцом → " +
+    "Собирай маленькие звездочки → " +
+    "Веди их к дому, избегая хищных звезд!";
 
     this.levelTargetScore = 400;
     this.levelPassed = false;
@@ -4380,6 +5078,14 @@ export class GameplayScene9 {
   this.motherStar = new MotherStar(this.sceneMetrics);
   this.homeStar = new HomeStar(this.sceneMetrics);
 
+  this.homeObstacleRing = new BrokenRingObstacle(
+  this.sceneMetrics,
+  1.0
+);
+
+this.homeObstacleRing.setAnchor(this.homeStar);
+this.homeObstacleRing.setBounds(this.sceneMetrics);
+
   this.redRings = [];
   this.activeGoldRing = null;
   this.goldRescuedCount = 0;
@@ -4393,6 +5099,7 @@ export class GameplayScene9 {
   this.redletTrailTimer = 0;
   this.redletSpawnInterval = 6.2;
   this.obstacles = [];
+  this.tutor?.reset({ enabled: false });
 
   // Последовательный спавн вместо интро-стейт-машины.
   // spawnPhase остаётся строкой "gameplay_live", т.к. на неё завязаны
@@ -4480,9 +5187,9 @@ getRankHudAnchorRect() {
       laneInsetX: width * 0.04,
       offscreenOffset: width * 0.06,
       obstacleCullOffset: width * 0.16,
-      homeRadius: clamp(30, 34 * playScale, 42),
-      homeRingRadius: clamp(52, 60 * playScale, 74),
-      homeGlowRadius: clamp(116, 140 * playScale, 170),
+      homeRadius: clamp(15, 17 * playScale, 21),
+      homeRingRadius: clamp(26, 30 * playScale, 37),
+      homeGlowRadius: clamp(58, 70 * playScale, 85),
 
       starletBaseRadius: clamp(6.6, 7.0 * playScale, 8.9),
       starletDragRadius: clamp(24, 28 * playScale, 34),
@@ -4501,6 +5208,10 @@ getRankHudAnchorRect() {
 
   if (this.motherStar) this.motherStar.setBounds(this.sceneMetrics);
   if (this.homeStar) this.homeStar.setBounds(this.sceneMetrics);
+  if (this.homeObstacleRing) {
+  this.homeObstacleRing.setBounds(this.sceneMetrics);
+  this.homeObstacleRing.setAnchor(this.homeStar);
+}
   if (this.redRings?.length) this.redRings.forEach((ring) => ring.setBounds(this.sceneMetrics));
   if (this.activeGoldRing) this.activeGoldRing.setBounds(this.sceneMetrics);
   if (this.redlets?.length) this.redlets.forEach((r) => r.setBounds(this.sceneMetrics));
@@ -4604,8 +5315,8 @@ getRankHudAnchorRect() {
       console.log("rotate hint updated");
     }
 
-    this.tutorialEnabledForRun = this.readTutorialEnabled();
-    this.tutor.reset({ enabled: this.tutorialEnabledForRun });
+    this.tutorialEnabledForRun = false;
+    this.tutor.reset({ enabled: false });
 
     this.isRunning = true;
     this.gameOver = false;
@@ -5421,6 +6132,25 @@ isHomeStarReadyForTutor() {
       this.homeStar.update(delta);
     }
 
+    if (this.homeObstacleRing) {
+  this.homeObstacleRing.update(delta);
+
+  for (const starlet of this.starlets) {
+    this.homeObstacleRing.resolveStarletCollision(starlet);
+  }
+
+  const goldCarrier = this.getGoldCarrierRedlet();
+
+  if (this.activeGoldRing && goldCarrier) {
+    this.homeObstacleRing.resolveGoldComboCollision(
+      this.activeGoldRing,
+      goldCarrier
+    );
+  }
+}
+
+
+
     // 3) RedRing[] — свободные кольца-мишени для редлетов.
     // ВАЖНО: в состоянии "attached"/"decaying" RedRing.update() требует
     // живую ссылку на несущего redlet-а каждый кадр — если передать null,
@@ -6065,6 +6795,7 @@ ctx.shadowBlur = 0;
 
     if (this.motherStar) this.motherStar.draw(this.ctx);
     if (this.homeStar) this.homeStar.draw(this.ctx);
+    if (this.homeObstacleRing) this.homeObstacleRing.draw(this.ctx);
 
     this.obstacles.forEach((o) => o.draw(this.ctx));
 
