@@ -6,6 +6,7 @@
   <title>Star Line</title>
   <link rel="stylesheet" href="./css/base.css" />
   <link rel="stylesheet" href="./css/screens.css" />
+  <link rel="stylesheet" href="./css/visual-novel.css" />
   <link rel="stylesheet" href="./css/hud.css" />
   <link rel="stylesheet" href="./css/gameplay.css" />
 </head>
@@ -150,6 +151,116 @@
     <div class="panel-title">Поверни экран</div>
     <div class="panel-text">Для этой версии нужна горизонтальная ориентация экрана.</div>
   </div>
+
+  <div id="rotateLock" role="alert" aria-live="polite">
+  <svg class="rotate-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="5" y="2" width="14" height="20" rx="2.4" stroke="#f5d7a0" stroke-width="1.6"/>
+    <line x1="9" y1="19" x2="15" y2="19" stroke="#f5d7a0" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>
+  <div class="rotate-title">Поверните устройство</div>
+  <div class="rotate-sub">Эта история рассказывается в горизонтальном формате — поверните телефон или планшет, чтобы продолжить.</div>
+</div>
+
+<div id="vnScene">
+  <div id="vnBg"></div>
+  <div id="vnBgVeil"></div>
+  <div id="vnNoise"></div>
+  <div id="vnOverlay">
+    <div class="top-ui-title">Starline / Visual Novel</div>
+    <svg class="overlay-divider" viewBox="0 0 1200 38" aria-hidden="true">
+      <defs>
+        <linearGradient id="dividerGrad" x1="0" x2="1">
+          <stop offset="0%" stop-color="#f3d7a3" stop-opacity="0.15"/>
+          <stop offset="50%" stop-color="#f5b670" stop-opacity="0.95"/>
+          <stop offset="100%" stop-color="#f3d7a3" stop-opacity="0.15"/>
+        </linearGradient>
+      </defs>
+      <path d="M20 19H500M700 19H1180" class="orn-line"/>
+      <path d="M535 19H665" stroke="url(#dividerGrad)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M560 19c14-14 20-14 35 0c-15 14-21 14-35 0Z" fill="none" stroke="#f5d7a0" stroke-width="1.2"/>
+      <path d="M600 4l8 13 15 5-15 5-8 13-8-13-15-5 15-5Z" class="frame-star"/>
+      <circle cx="600" cy="19" r="11" class="frame-ring"/>
+      <path d="M140 19c10-12 16-12 26 0c-10 12-16 12-26 0Zm894 0c10-12 16-12 26 0c-10 12-16 12-26 0Z" fill="#f6e2b8" opacity=".75"/>
+    </svg>
+
+    <div class="floating-star" style="left:8%;top:14%"></div>
+    <div class="floating-star" style="left:16%;top:8%"></div>
+    <div class="floating-star" style="left:88%;top:10%"></div>
+    <div class="floating-star" style="left:78%;top:17%"></div>
+    <div class="floating-star" style="left:50%;top:7%"></div>
+  </div>
+
+  <img id="spriteGirl" class="vn-sprite" alt="Девочка" />
+  <img id="spriteStar" class="vn-sprite" alt="Звезда" />
+
+  <div id="vnChoiceBox">
+    <div class="choice-topper" aria-hidden="true">
+      <svg viewBox="0 0 1200 38">
+        <defs>
+          <linearGradient id="dividerGradChoice" x1="0" x2="1">
+            <stop offset="0%" stop-color="#f3d7a3" stop-opacity="0.15"/>
+            <stop offset="50%" stop-color="#f5b670" stop-opacity="0.95"/>
+            <stop offset="100%" stop-color="#f3d7a3" stop-opacity="0.15"/>
+          </linearGradient>
+        </defs>
+        <path d="M20 19H500M700 19H1180" class="orn-line"/>
+        <path d="M535 19H665" stroke="url(#dividerGradChoice)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M560 19c14-14 20-14 35 0c-15 14-21 14-35 0Z" fill="none" stroke="#f5d7a0" stroke-width="1.2"/>
+        <path d="M600 4l8 13 15 5-15 5-8 13-8-13-15-5 15-5Z" class="frame-star"/>
+        <circle cx="600" cy="19" r="11" class="frame-ring"/>
+        <path d="M140 19c10-12 16-12 26 0c-10 12-16 12-26 0Zm894 0c10-12 16-12 26 0c-10 12-16 12-26 0Z" fill="#f6e2b8" opacity=".75"/>
+      </svg>
+    </div>
+    <div id="vnChoiceLabel"></div>
+    <!-- Кнопки выбора генерируются в JS по данным сцены (см. renderChoices),
+         поэтому количество вариантов не ограничено двумя. -->
+  </div>
+
+  <div id="vnDialogTopper" aria-hidden="true">
+    <svg viewBox="0 0 1200 38">
+      <defs>
+        <linearGradient id="dividerGradDialog" x1="0" x2="1">
+          <stop offset="0%" stop-color="#f3d7a3" stop-opacity="0.15"/>
+          <stop offset="50%" stop-color="#f5b670" stop-opacity="0.95"/>
+          <stop offset="100%" stop-color="#f3d7a3" stop-opacity="0.15"/>
+        </linearGradient>
+      </defs>
+      <path d="M20 19H500M700 19H1180" class="orn-line"/>
+      <path d="M535 19H665" stroke="url(#dividerGradDialog)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M560 19c14-14 20-14 35 0c-15 14-21 14-35 0Z" fill="none" stroke="#f5d7a0" stroke-width="1.2"/>
+      <path d="M600 4l8 13 15 5-15 5-8 13-8-13-15-5 15-5Z" class="frame-star"/>
+      <circle cx="600" cy="19" r="11" class="frame-ring"/>
+      <path d="M140 19c10-12 16-12 26 0c-10 12-16 12-26 0Zm894 0c10-12 16-12 26 0c-10 12-16 12-26 0Z" fill="#f6e2b8" opacity=".75"/>
+    </svg>
+  </div>
+
+  <div id="vnDialogShell">
+    <div id="vnDialogBackdrop"></div>
+    <svg id="vnFrameSvg" viewBox="0 0 1000 260" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="frameGrad" x1="0" x2="1">
+          <stop offset="0%" stop-color="#f4d8a4" stop-opacity=".92"/>
+          <stop offset="50%" stop-color="#fff1c6" stop-opacity=".72"/>
+          <stop offset="100%" stop-color="#f4d8a4" stop-opacity=".92"/>
+        </linearGradient>
+      </defs>
+      <path d="M36 18H964c10 0 18 8 18 18v188c0 10-8 18-18 18H36c-10 0-18-8-18-18V36c0-10 8-18 18-18Z" class="frame-base"/>
+      <path d="M54 36H946c6 0 10 4 10 10v154c0 6-4 10-10 10H54c-6 0-10-4-10-10V46c0-6 4-10 10-10Z" class="frame-inner"/>
+      <path d="M80 36c14 0 24 7 30 22c6-15 16-22 30-22" class="frame-flourish"/>
+      <path d="M920 224c-14 0-24-7-30-22c-6 15-16 22-30 22" class="frame-flourish"/>
+    </svg>
+
+    <div id="vnDialogContent">
+      <div id="vnSpeakerName"></div>
+      <div id="vnDialogTextWrap">
+        <div id="vnDialogText"></div>
+      </div>
+      <div id="vnNextHint">✦ ▾</div>
+    </div>
+  </div>
+</div>
+
+
 
   <div id="overlay">
     <div class="panel-title" id="resultTitle">Ночь закончилась</div>

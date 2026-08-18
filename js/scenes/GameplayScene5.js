@@ -1288,8 +1288,8 @@ this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
   this.savedCount = 0;
   this.lostCount = 0;
 
-  this.timeLeft = 50;
-  this.totalTime = 50;
+  this.timeLeft = 90;
+  this.totalTime = 90;
 
    this.gameOver = false;
     this.isRunning = false;
