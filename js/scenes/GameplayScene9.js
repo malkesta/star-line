@@ -4146,7 +4146,7 @@ export class GameplayScene9 {
     this.onNext = onNext;
     this.onRoundFinished = onRoundFinished;
     this.sceneMusicUrl = "../../assets/audio/game9.mp3";
-    this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg9.webp";
+    this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg91.jpg";
     this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
 
     this.canvas = document.getElementById("gameCanvas");
@@ -4231,8 +4231,8 @@ export class GameplayScene9 {
     this.lostCount = 0;
     this.eatenCount = 0;
 
-    this.timeLeft = 50;
-    this.totalTime = 50;
+    this.timeLeft = 90;
+    this.totalTime = 90;
 
     this.gameOver = false;
     this.isRunning = false;
@@ -4768,8 +4768,8 @@ getSceneRankTitle(rank = this.getSceneRank()) {
 
     if (this.resultTitleElement) {
       this.resultTitleElement.textContent = this.levelPassed
-        ? "Дом озарён светом"
-        : "Дом ещё не озарён";
+        ? "Ночь закончилась"
+        : "Еще не все";
     }
 
     if (this.resultMessageElement) {

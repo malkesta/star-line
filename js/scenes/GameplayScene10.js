@@ -43,6 +43,7 @@ export class GameAudio {
     this.lastRingGoneTime = 0;
     this.lastStarletSpawnTime = 0;
     this.lastGoldComboTime = 0;
+    this.lastGoldComboBreakTime = 0;
   }
 
   setMusic(url) {
@@ -2477,16 +2478,49 @@ class Redlet {
 
     // Редлет, пойманный золотым кольцом, управляется снаружи (сценой /
     // GoldRing) — здесь просто пропускаем обычную логику охоты.
-    if (this.state === 'carryingGoldRing') {
-    if (mousePos) {
-      this.followTargetX = mousePos.x;
-      this.followTargetY = mousePos.y;
+    if (this.state === "carryingGoldRing") {
+  const goldRing = this.carryingGoldRing;
 
-      this.x += (this.followTargetX - this.x) * 0.09;
-      this.y += (this.followTargetY - this.y) * 0.09;
-    }
+  // После удара о BrokenRing комбо коротко движется по инерции:
+  // не тянется к курсору, но GoldRing продолжает быть привязан к Redlet.
+  if (goldRing?.obstacleBounceTimer > 0) {
+    goldRing.obstacleBounceTimer = Math.max(
+      0,
+      goldRing.obstacleBounceTimer - delta
+    );
+
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // Мягкое затухание отскока.
+    this.vx *= 0.92;
+    this.vy *= 0.92;
+
+    this.x = Math.max(this.minX, Math.min(this.maxX, this.x));
+    this.y = Math.max(this.minY, Math.min(this.maxY, this.y));
+
+    goldRing.x = this.x;
+    goldRing.y = this.y;
+
     return;
   }
+
+  // После короткой инерции снова следуем за курсором.
+  if (mousePos) {
+    this.followTargetX = mousePos.x;
+    this.followTargetY = mousePos.y;
+
+    this.x += (this.followTargetX - this.x) * 0.09;
+    this.y += (this.followTargetY - this.y) * 0.09;
+
+    if (goldRing) {
+      goldRing.x = this.x;
+      goldRing.y = this.y;
+    }
+  }
+
+  return;
+}
 
     if (this.transformProgress < 1) {
     this.transformProgress = Math.min(
@@ -2787,6 +2821,9 @@ class GoldRing {
     // Таймер жизни комбо (Redlet + GoldRing) — жёсткие 10 секунд (ТЗ п.9).
     this.comboLifeDuration = 10.0;
     this.comboLifeTimer = 0;
+    // Короткая инерция после удара о BrokenRing.
+    this.obstacleBounceTimer = 0;
+    this.obstacleBounceDuration = 0.42;
 
     this.baseRadius = 0;
     this.dotRadius = 0;
@@ -2844,6 +2881,7 @@ class GoldRing {
     this.alpha = 0;
     this.spawnProgress = 0;
     this.comboLifeTimer = 0;
+    this.obstacleBounceTimer = 0;
 
     const { width = 1366, height = 768 } = this.sceneMetrics ?? {};
     const entrySide = side || ["top", "bottom", "left", "right"][
@@ -3379,9 +3417,9 @@ class HomeStar {
     this.cruiseMaxY = height * 0.82;
 
     // Параметры цикла.
-    this.entrySpeed = width * 0.20;
-    this.exitSpeed = width * 0.25;
-    this.cruiseSpeed = width * 0.003;
+    this.entrySpeed = width * 0.1333;
+    this.exitSpeed = width * 0.1667;
+    this.cruiseSpeed = width * 0.00167;
     this.cruiseSteer = 0.028;
     this.cruiseDuration = 8.5;
     this.offscreenDuration = 1.15;
@@ -3733,32 +3771,29 @@ class HomeStar {
 
 class BrokenRingObstacle {
   constructor(sceneMetrics, radiusScale = 1) {
-    this.anchorStar = null;
-    this.radiusScale = radiusScale;
+  this.anchorStar = null;
+  this.radiusScale = radiusScale;
+  this.gapWidth = 0;
 
-    this.rotation = Math.random() * Math.PI * 2;
+  this.rotation = Math.random() * Math.PI * 2;
+  this.rotationSpeed = 0.003;
+  this.pulseTime = Math.random() * Math.PI * 2;
 
-    // Увеличили скорость вращения, чтобы кольцо явно крутилось.
-    this.rotationSpeed = 0.012;
+  this.sceneMetrics = null;
+  this.radius = 0;
+  this.lineWidth = 0;
+  this.innerRingInset = 0;
+  this.innerRingLineWidth = 0;
 
-    this.pulseTime = Math.random() * Math.PI * 2;
+  this.sectionCount = 1;
 
-    this.sceneMetrics = null;
-    this.radius = 0;
-    this.lineWidth = 0;
-    this.innerRingInset = 0;
-    this.innerRingLineWidth = 0;
+  this.centerX = 0;
+  this.centerY = 0;
+  this.ringHitPadding = 2;
+  this.bounceStrength = 1.4;
 
-    // Две цельные секции с двумя более широкими разрывами.
-    this.sectionCount = 2;
-
-    this.centerX = 0;
-    this.centerY = 0;
-    this.ringHitPadding = 2;
-    this.bounceStrength = 1.4;
-
-    this.setBounds(sceneMetrics);
-  }
+  this.setBounds(sceneMetrics);
+}
 
   setBounds(sceneMetrics) {
     this.sceneMetrics = sceneMetrics;
@@ -3770,10 +3805,16 @@ class BrokenRingObstacle {
     // Радиус кольца = 7.5 радиуса HomeStar:
     // исходные 2.5x, увеличенные втрое.
     const homeRadius =
-      this.anchorStar?.baseRadius ??
-      sceneMetrics.homeRadius;
+  this.anchorStar?.baseRadius ??
+  sceneMetrics.homeRadius;
 
-    this.radius = homeRadius * 7.5 * this.radiusScale;
+  this.radius = homeRadius * 7.5 * this.radiusScale;
+
+  const goldRingRadius =
+    (sceneMetrics.starletBaseRadius * 1.95) * 2.25;
+
+  this.gapWidth = goldRingRadius * 3.5;
+
 
     this.lineWidth = clamp(
       3.2,
@@ -3829,24 +3870,21 @@ class BrokenRingObstacle {
   }
 
   getGeometry() {
-    const fullStep = (Math.PI * 2) / this.sectionCount;
+  const fullStep = (Math.PI * 2) / this.sectionCount;
 
-    // Два широких прохода между секциями.
-    // Ширина разрыва масштабируется вместе с радиусом кольца.
-    const targetGapWidth = Math.max(82, this.radius * 0.22);
-    const rawGapAngle = targetGapWidth / Math.max(1, this.radius);
+  const targetGapWidth = this.gapWidth;
+  const rawGapAngle = targetGapWidth / Math.max(1, this.radius);
 
-    // Сохраняем минимум 45% окружности каждой секции цельным.
-    const maxGapAngle = fullStep * 0.55;
-    const gapAngle = Math.min(rawGapAngle, maxGapAngle);
-    const arcSpan = fullStep - gapAngle;
+  const maxGapAngle = fullStep * 0.7;
+  const gapAngle = Math.min(rawGapAngle, maxGapAngle);
+  const arcSpan = fullStep - gapAngle;
 
-    return {
-      fullStep,
-      gapAngle,
-      arcSpan,
-    };
-  }
+  return {
+    fullStep,
+    gapAngle,
+    arcSpan,
+  };
+}
 
   normalizeAngle(angle) {
     const twoPi = Math.PI * 2;
@@ -4054,7 +4092,36 @@ class BrokenRingObstacle {
 
   // Никакого clearCarriedGoldRing(), releaseFromCursor() или изменения state:
   // комбо остаётся активным и продолжает быть привязанным к курсору.
-  goldRing.ringCooldown = wasOutside ? 8 : 14;
+  goldRing.ringCooldown = wasOutside ? 4 : 7;
+
+
+  // Сбрасываем GoldCombo: Redlet и GoldRing больше не следуют за курсором.
+  this.onGoldComboBreak?.();
+  goldRing.anchorRedlet = null;
+  goldRing.targetRedlet = null;
+  goldRing.state = "idle";
+  goldRing.comboLifeTimer = 0;
+  goldRing.obstacleBounceTimer = 0;
+
+  // Redlet снова становится свободным и сохраняет импульс отскока,
+  // который мы рассчитали выше в carrierRedlet.vx / carrierRedlet.vy.
+  carrierRedlet.carryingGoldRing = null;
+  carrierRedlet.state = carrierRedlet.carryingRedRing
+    ? "carryingRedRing"
+    : "free";
+
+  // Разводим объекты чуть в стороны, чтобы GoldRing не прицепился
+  // обратно мгновенно в следующем кадре.
+  const splitDistance = Math.max(
+    goldRing.collisionRadius * 1.25,
+    carrierRedlet.radius * 1.5
+  );
+
+  goldRing.x = carrierRedlet.x + fanNx * splitDistance;
+  goldRing.y = carrierRedlet.y + fanNy * splitDistance;
+
+  goldRing.vx = carrierRedlet.vx + fanNx * 1.1;
+  goldRing.vy = carrierRedlet.vy + fanNy * 1.1;
 
   return true;
 }
@@ -4843,7 +4910,7 @@ export class GameplayScene10 {
     this.onNext = onNext;
     this.onRoundFinished = onRoundFinished;
     this.sceneMusicUrl = "../../assets/audio/game9.mp3";
-    this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg9.webp";
+    this.sceneBackgroundUrl = "../../assets/images/backgrounds/game_bg91.jpg";
     this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
 
     this.canvas = document.getElementById("gameCanvas");
@@ -4929,8 +4996,8 @@ export class GameplayScene10 {
     this.lostCount = 0;
     this.eatenCount = 0;
 
-    this.timeLeft = 50;
-    this.totalTime = 50;
+    this.timeLeft = 90;
+    this.totalTime = 90;
 
     this.gameOver = false;
     this.isRunning = false;
@@ -5082,6 +5149,10 @@ export class GameplayScene10 {
   this.sceneMetrics,
   1.0
 );
+
+this.homeObstacleRing.onGoldComboBreak = () => {
+  this.audio?.playGoldComboBreakSound?.();
+};
 
 this.homeObstacleRing.setAnchor(this.homeStar);
 this.homeObstacleRing.setBounds(this.sceneMetrics);
@@ -5479,8 +5550,8 @@ getSceneRankTitle(rank = this.getSceneRank()) {
 
     if (this.resultTitleElement) {
       this.resultTitleElement.textContent = this.levelPassed
-        ? "Дом озарён светом"
-        : "Дом ещё не озарён";
+        ? "Ночь закончилась"
+        : "Еще не все";
     }
 
     if (this.resultMessageElement) {

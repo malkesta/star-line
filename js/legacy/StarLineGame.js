@@ -733,6 +733,218 @@ playGoldComboSound() {
   tailLfo.stop(now + 5.1);
 }
 
+playGoldComboBreakSound() {
+  if (!this.ctx) return;
+
+  const now = this.now();
+
+  if (now - this.lastGoldComboBreakTime < 0.18) {
+    return;
+  }
+
+  this.lastGoldComboBreakTime = now;
+
+  // Громкость совпадает с playGoldComboSound().
+  const masterGain = this.ctx.createGain();
+  masterGain.gain.value = 1.08;
+  masterGain.connect(this.master);
+
+  const reverb = this.createReverb(6.8, 3.8);
+  const wet = this.ctx.createGain();
+  wet.gain.value = 0.52;
+  reverb.connect(wet);
+  wet.connect(this.master);
+
+  const highpass = this.ctx.createBiquadFilter();
+  highpass.type = "highpass";
+  highpass.frequency.value = 55;
+
+  // Раскрываем верх звука, сохраняя тёмный характер.
+  const lowpass = this.ctx.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 4200;
+
+  const presence = this.ctx.createBiquadFilter();
+  presence.type = "peaking";
+  presence.frequency.value = 1250;
+  presence.Q.value = 1.2;
+  presence.gain.value = 3.6;
+
+  highpass.connect(presence);
+  presence.connect(lowpass);
+  lowpass.connect(masterGain);
+  lowpass.connect(reverb);
+
+  // Низкий диссонирующий гул: малая секунда сохраняет зловещий характер.
+  const drones = [
+    { freq: 174.61, gain: 0.13, drift: 0.62, type: "sine" },
+    { freq: 184.99, gain: 0.11, drift: 0.58, type: "triangle" },
+    { freq: 261.63, gain: 0.07, drift: 0.55, type: "sine" },
+  ];
+
+  drones.forEach(({ freq, gain, drift, type }, index) => {
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    const band = this.ctx.createBiquadFilter();
+    const lfo = this.ctx.createOscillator();
+    const lfoGain = this.ctx.createGain();
+
+    const start = now + index * 0.012;
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, start);
+    osc.frequency.exponentialRampToValueAtTime(
+      Math.max(62, freq * drift),
+      start + 1.6
+    );
+
+    band.type = "bandpass";
+    band.frequency.value = freq;
+    band.Q.value = 2.4 + index * 0.8;
+
+    // Нестабильность тона: ощущение распадающейся энергии.
+    lfo.type = "sine";
+    lfo.frequency.setValueAtTime(3.1 + index * 0.5, start);
+    lfoGain.gain.setValueAtTime(13 + index * 5, start);
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    oscGain.gain.setValueAtTime(0.0001, start);
+    oscGain.gain.linearRampToValueAtTime(gain, start + 0.025);
+    oscGain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      start + 1.7
+    );
+
+    osc.connect(band);
+    band.connect(oscGain);
+    oscGain.connect(highpass);
+
+    osc.start(start);
+    lfo.start(start);
+    osc.stop(start + 1.8);
+    lfo.stop(start + 1.8);
+  });
+
+  // Основной треск: неровный шумовой разлом.
+  const fracture = this.ctx.createBufferSource();
+  const fractureDuration = 0.95;
+
+  const fractureBuffer = this.ctx.createBuffer(
+    1,
+    Math.floor(this.ctx.sampleRate * fractureDuration),
+    this.ctx.sampleRate
+  );
+
+  const fractureData = fractureBuffer.getChannelData(0);
+
+  for (let i = 0; i < fractureData.length; i++) {
+    const t = i / fractureData.length;
+    const envelope = Math.pow(1 - t, 1.7);
+
+    const gate =
+      Math.random() > 0.46 - t * 0.18
+        ? 1
+        : 0.055 + Math.random() * 0.08;
+
+    fractureData[i] =
+      (Math.random() * 2 - 1) *
+      envelope *
+      gate *
+      (0.5 + Math.random() * 0.5) *
+      0.34;
+  }
+
+  fracture.buffer = fractureBuffer;
+
+  const fractureFilter = this.ctx.createBiquadFilter();
+  fractureFilter.type = "bandpass";
+  fractureFilter.frequency.value = 1250;
+  fractureFilter.Q.value = 0.95;
+
+  const fractureGain = this.ctx.createGain();
+  fractureGain.gain.setValueAtTime(0.0001, now);
+  fractureGain.gain.linearRampToValueAtTime(0.16, now + 0.012);
+  fractureGain.gain.exponentialRampToValueAtTime(
+    0.0001,
+    now + fractureDuration
+  );
+
+  fracture.connect(fractureFilter);
+  fractureFilter.connect(fractureGain);
+  fractureGain.connect(highpass);
+
+  fracture.start(now);
+  fracture.stop(now + fractureDuration);
+
+  // Холодные, более читаемые цифровые всплески.
+  const glitches = [
+    { time: 0.015, freq: 1480, gain: 0.060, decay: 0.14 },
+    { time: 0.07, freq: 1040, gain: 0.052, decay: 0.18 },
+    { time: 0.135, freq: 1860, gain: 0.042, decay: 0.13 },
+    { time: 0.22, freq: 720, gain: 0.034, decay: 0.26 },
+  ];
+
+  glitches.forEach(({ time, freq, gain, decay }, index) => {
+    const start = now + time;
+
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+
+    osc.type = index % 2 === 0 ? "sawtooth" : "square";
+    osc.frequency.setValueAtTime(freq, start);
+    osc.frequency.exponentialRampToValueAtTime(
+      Math.max(80, freq * 0.28),
+      start + decay
+    );
+
+    filter.type = "bandpass";
+    filter.frequency.value = freq;
+    filter.Q.value = 4.5 + index;
+
+    oscGain.gain.setValueAtTime(0.0001, start);
+    oscGain.gain.linearRampToValueAtTime(gain, start + 0.003);
+    oscGain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      start + decay
+    );
+
+    osc.connect(filter);
+    filter.connect(oscGain);
+    oscGain.connect(highpass);
+
+    osc.start(start);
+    osc.stop(start + decay + 0.04);
+  });
+
+  // Низкий остаточный хвост удерживает ощущение угрозы.
+  const sub = this.ctx.createOscillator();
+  const subGain = this.ctx.createGain();
+  const subFilter = this.ctx.createBiquadFilter();
+
+  sub.type = "sine";
+  sub.frequency.setValueAtTime(92, now + 0.03);
+  sub.frequency.exponentialRampToValueAtTime(48, now + 2.2);
+
+  subFilter.type = "lowpass";
+  subFilter.frequency.value = 180;
+
+  subGain.gain.setValueAtTime(0.0001, now + 0.03);
+  subGain.gain.linearRampToValueAtTime(0.075, now + 0.09);
+  subGain.gain.exponentialRampToValueAtTime(
+    0.0001,
+    now + 2.3
+  );
+
+  sub.connect(subFilter);
+  subFilter.connect(subGain);
+  subGain.connect(highpass);
+
+  sub.start(now + 0.03);
+  sub.stop(now + 2.4);
+}
+
 playStarletSpawnSound() {
   if (!this.ctx) return;
 
