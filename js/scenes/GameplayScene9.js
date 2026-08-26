@@ -4231,8 +4231,8 @@ export class GameplayScene9 {
     this.lostCount = 0;
     this.eatenCount = 0;
 
-    this.timeLeft = 90;
-    this.totalTime = 90;
+    this.totalTime = 60;
+    this.timeLeft = this.totalTime;
 
     this.gameOver = false;
     this.isRunning = false;

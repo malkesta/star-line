@@ -1271,7 +1271,7 @@ this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
 
   this.rotateHint = document.getElementById("rotateHint");
 
-  this.levelTargetScore = 400;
+  this.levelTargetScore = 300;
   this.levelPassed = false;
   this.displayedHeartProgress = 0;
   this.targetHeartProgress = 0;
@@ -1288,8 +1288,8 @@ this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
   this.savedCount = 0;
   this.lostCount = 0;
 
-  this.timeLeft = 90;
-  this.totalTime = 90;
+  this.totalTime = 60;
+  this.timeLeft = this.totalTime;
 
    this.gameOver = false;
     this.isRunning = false;
