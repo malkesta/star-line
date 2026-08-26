@@ -11,88 +11,101 @@ import { GameplayScene7 } from "./scenes/GameplayScene7.js";
 import { GameplayScene8 } from "./scenes/GameplayScene8.js";
 import { GameplayScene9 } from "./scenes/GameplayScene9.js";
 import { GameplayScene10 } from "./scenes/GameplayScene10.js";
+import { VisualNovelSceneTest } from "./scenes/VisualNovelSceneTest.js";
 import { GameAudio } from "./legacy/StarLineGame.js";
 
-
 const DEBUG_START_SCENE = null;
-// null     -> обычный порядок
-// "intro"  -> только IntroScene
-// "start"  -> только StartScreenScene
-// "game1"  -> только GameplayScene
-// "game2"  -> только GameplayScene2
-// "game3"  -> только GameplayScene3
-// "game4"  -> только GameplayScene4
-// "game5"  -> только GameplayScene5
-// "game6"  -> только GameplayScene6
-// "game7"  -> только GameplayScene7
-// "game8"  -> только GameplayScene8
-// "game9"  -> только GameplayScene9
-// "game10" -> только GameplayScene10
-
+// null      -> обычный порядок
+// "intro"   -> только IntroScene
+// "start"   -> только StartScreenScene
+// "vnTest"  -> только тестовая VN-сцена
+// "game1"   -> только GameplayScene
+// "game2"   -> только GameplayScene2
+// "game3"   -> только GameplayScene3
+// "game4"   -> только GameplayScene4
+// "game5"   -> только GameplayScene5
+// "game6"   -> только GameplayScene6
+// "game7"   -> только GameplayScene7
+// "game8"   -> только GameplayScene8
+// "game9"   -> только GameplayScene9
+// "game10"  -> только GameplayScene10
 
 const audio = new GameAudio();
-
 
 const sceneManager = new SceneManager({
   sceneDefs: [],
 });
 
-
 const createSceneDef = (id, create) => ({ id, create });
-
 
 const allSceneDefs = {
   intro: createSceneDef("intro", () => new IntroScene({ sceneManager })),
+
   start: createSceneDef(
     "start",
     () => new StartScreenScene({ sceneManager, audio })
   ),
+
+  vnTest: createSceneDef(
+    "vnTest",
+    () => new VisualNovelSceneTest({ sceneManager, audio })
+  ),
+
   game1: createSceneDef(
     "game1",
     () => new GameplayScene({ sceneManager, audio })
   ),
+
   game2: createSceneDef(
     "game2",
     () => new GameplayScene2({ sceneManager, audio })
   ),
+
   game3: createSceneDef(
     "game3",
     () => new GameplayScene3({ sceneManager, audio })
   ),
+
   game4: createSceneDef(
     "game4",
     () => new GameplayScene4({ sceneManager, audio })
   ),
+
   game5: createSceneDef(
     "game5",
     () => new GameplayScene5({ sceneManager, audio })
   ),
+
   game6: createSceneDef(
     "game6",
     () => new GameplayScene6({ sceneManager, audio })
   ),
+
   game7: createSceneDef(
     "game7",
     () => new GameplayScene7({ sceneManager, audio })
   ),
+
   game8: createSceneDef(
     "game8",
     () => new GameplayScene8({ sceneManager, audio })
   ),
+
   game9: createSceneDef(
     "game9",
     () => new GameplayScene9({ sceneManager, audio })
   ),
+
   game10: createSceneDef(
     "game10",
     () => new GameplayScene10({ sceneManager, audio })
   ),
 };
 
-
 const defaultSceneOrder = [
   allSceneDefs.intro,
   allSceneDefs.start,
+  allSceneDefs.vnTest,
   allSceneDefs.game1,
   allSceneDefs.game2,
   allSceneDefs.game3,
@@ -105,7 +118,6 @@ const defaultSceneOrder = [
   allSceneDefs.game10,
 ];
 
-
 if (DEBUG_START_SCENE) {
   document.getElementById("introCinematic")?.classList.add("hidden");
   document.getElementById("introFrame1")?.classList.remove("show");
@@ -113,24 +125,21 @@ if (DEBUG_START_SCENE) {
   document.getElementById("startScreen")?.classList.remove("show");
 }
 
-
 sceneManager.sceneDefs =
   DEBUG_START_SCENE && allSceneDefs[DEBUG_START_SCENE]
     ? [allSceneDefs[DEBUG_START_SCENE]]
     : defaultSceneOrder;
 
-
-if (DEBUG_START_SCENE) {
+if (DEBUG_START_SCENE && DEBUG_START_SCENE !== "vnTest") {
   try {
     await audio.init();
-  } catch (e) {
-    console.warn("Audio init skipped", e);
+  } catch (error) {
+    console.warn("Audio init skipped", error);
   }
 
   if (!audio.musicStarted) {
     audio.startAmbient();
   }
 }
-
 
 await sceneManager.start();
