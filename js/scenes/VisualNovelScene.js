@@ -56,6 +56,9 @@ export class VisualNovelScene {
   }
 
   async enter() {
+  this.audio?.stopAmbient?.();
+
+
     this.resetState();
     this.applySpriteSources();
 

@@ -105,8 +105,8 @@ const allSceneDefs = {
 const defaultSceneOrder = [
   allSceneDefs.intro,
   allSceneDefs.start,
-  allSceneDefs.vnTest,
   allSceneDefs.game1,
+  allSceneDefs.vnTest,
   allSceneDefs.game2,
   allSceneDefs.game3,
   allSceneDefs.game4,
