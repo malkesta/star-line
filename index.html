@@ -162,6 +162,8 @@
 </div>
 
 <div id="vnScene">
+
+<div id="vnScene">
   <div id="vnBg"></div>
   <div id="vnBgVeil"></div>
   <div id="vnNoise"></div>
@@ -234,28 +236,113 @@
     </svg>
   </div>
 
-  <div id="vnDialogShell">
+    <div id="vnDialogShell">
     <div id="vnDialogBackdrop"></div>
-    <svg id="vnFrameSvg" viewBox="0 0 1000 260" preserveAspectRatio="none" aria-hidden="true">
+
+    <svg
+      id="vnFrameSvg"
+      viewBox="0 0 1000 260"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
       <defs>
         <linearGradient id="frameGrad" x1="0" x2="1">
-          <stop offset="0%" stop-color="#f4d8a4" stop-opacity=".92"/>
-          <stop offset="50%" stop-color="#fff1c6" stop-opacity=".72"/>
-          <stop offset="100%" stop-color="#f4d8a4" stop-opacity=".92"/>
+          <stop offset="0%" stop-color="#f4d8a4" stop-opacity=".92" />
+          <stop offset="50%" stop-color="#fff1c6" stop-opacity=".72" />
+          <stop offset="100%" stop-color="#f4d8a4" stop-opacity=".92" />
         </linearGradient>
       </defs>
-      <path d="M36 18H964c10 0 18 8 18 18v188c0 10-8 18-18 18H36c-10 0-18-8-18-18V36c0-10 8-18 18-18Z" class="frame-base"/>
-      <path d="M54 36H946c6 0 10 4 10 10v154c0 6-4 10-10 10H54c-6 0-10-4-10-10V46c0-6 4-10 10-10Z" class="frame-inner"/>
-      <path d="M80 36c14 0 24 7 30 22c6-15 16-22 30-22" class="frame-flourish"/>
-      <path d="M920 224c-14 0-24-7-30-22c-6 15-16 22-30 22" class="frame-flourish"/>
+
+      <path
+        d="M36 18H964c10 0 18 8 18 18v188c0 10-8 18-18 18H36c-10 0-18-8-18-18V36c0-10 8-18 18-18Z"
+        class="frame-base"
+      />
+      <path
+        d="M54 36H946c6 0 10 4 10 10v154c0 6-4 10-10 10H54c-6 0-10-4-10-10V46c0-6 4-10 10-10Z"
+        class="frame-inner"
+      />
+      <path
+        d="M80 36c14 0 24 7 30 22c6-15 16-22 30-22"
+        class="frame-flourish"
+      />
+      <path
+        d="M920 224c-14 0-24-7-30-22c-6 15-16 22-30 22"
+        class="frame-flourish"
+      />
     </svg>
 
     <div id="vnDialogContent">
       <div id="vnSpeakerName"></div>
+
       <div id="vnDialogTextWrap">
         <div id="vnDialogText"></div>
       </div>
+
       <div id="vnNextHint">✦ ▾</div>
+    </div>
+  </div>
+
+  <!-- Финальный экран сюжетной VN-сцены.
+       Он находится внутри #vnScene, чтобы быть выше фона,
+       спрайтов и диалогового окна, но не влиять на #overlay геймплея. -->
+  <div id="vnResultOverlay" aria-hidden="true">
+    <div class="vn-result-panel">
+      <div class="vn-result-star" aria-hidden="true">
+        <svg viewBox="0 0 108 108" fill="none">
+          <circle
+            cx="54"
+            cy="54"
+            r="42"
+            stroke="rgba(245,182,112,0.48)"
+            stroke-width="1.5"
+          />
+          <circle
+            cx="54"
+            cy="54"
+            r="35"
+            stroke="rgba(255,240,184,0.34)"
+            stroke-width="1"
+          />
+
+          <path
+            d="M54 24L61.9 40.1L79.8 42.7L66.9 55.3L69.95 73.1L54 64.7L38.05 73.1L41.1 55.3L28.2 42.7L46.1 40.1L54 24Z"
+            fill="#FFF0B8"
+            stroke="#F5B670"
+            stroke-width="1.7"
+          />
+
+          <path
+            d="M46 41.4C47.85 38.75 50.4 37.35 54 37.35C57.6 37.35 60.15 38.75 62 41.4"
+            stroke="#DEA15E"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+
+          <circle cx="47.6" cy="48.6" r="1.8" fill="#DEA15E" />
+          <circle cx="60.4" cy="48.6" r="1.8" fill="#DEA15E" />
+
+          <path
+            d="M48.7 57.4C50.85 59.9 52.7 60.9 54 60.9C55.3 60.9 57.15 59.9 59.3 57.4"
+            stroke="#DEA15E"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+        </svg>
+      </div>
+
+      <div id="vnResultTitle" class="vn-result-title">
+        История продолжается
+      </div>
+
+      <div id="vnResultMessage" class="vn-result-message">
+        Ты помогла маленькой звезде снова увидеть свет.
+      </div>
+
+      <div class="vn-result-actions">
+        <button id="vnResultNextBtn" class="actionBtn" type="button">
+          Дальше
+        </button>
+      </div>
     </div>
   </div>
 </div>

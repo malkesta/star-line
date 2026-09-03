@@ -98,16 +98,20 @@ export class VisualNovelSceneTest extends VisualNovelScene {
         },
 
         ending: {
-          speaker: "",
-          text: "Звезда стала светиться чуть ярче. Путь только начинался.",
-          bg: BACKGROUNDS.stars,
-          sprites: {
-            girl: false,
-            star: true,
-          },
-          speakingSprite: "star",
-          last: true,
+        speaker: "",
+        text: "Звезда стала светиться чуть ярче. Путь только начинался.",
+        bg: BACKGROUNDS.stars,
+        sprites: {
+          girl: false,
+          star: true,
         },
+        speakingSprite: "star",
+
+        resultTitle: "История продолжается",
+        resultMessage: "Маленькая звезда снова увидела свет.",
+
+        last: true,
+      },
       },
     });
   }

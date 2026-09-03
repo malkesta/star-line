@@ -79,6 +79,20 @@
   line-height: 1.5;
 }
 
+/* Чёрный переходный слой между игровыми сценами и VN */
+#vnTransitionBlackout {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  opacity: 0;
+  pointer-events: none;
+  background: #000;
+  transition: opacity 0.35s ease;
+}
+
+#vnTransitionBlackout.is-visible {
+  opacity: 1;
+}
 /* =========================================================================
    СЦЕНА
    ========================================================================== */
@@ -89,9 +103,9 @@
   display: none;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.7s ease;
+  transition: opacity 1.6s ease-in-out;
   overflow: hidden;
-  background: #09101f;
+  background: #000;
 }
 
 #vnBg {
@@ -107,7 +121,11 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 50% 20%, rgba(255, 246, 214, 0.09), transparent 30%),
+    radial-gradient(
+      circle at 50% 20%,
+      rgba(255, 246, 214, 0.09),
+      transparent 30%
+    ),
     linear-gradient(
       to bottom,
       rgba(7, 11, 26, 0.08) 0%,
@@ -574,6 +592,103 @@ body.is-vn-active .instructions,
 body.is-vn-active #gameCanvas {
   visibility: hidden;
   pointer-events: none;
+}
+
+/* =========================================================================
+   ФИНАЛЬНЫЙ ЭКРАН VN
+   ========================================================================== */
+#vnResultOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--vmin) * 4);
+  background:
+    radial-gradient(
+      circle at 50% 38%,
+      rgba(34, 50, 95, 0.46) 0%,
+      rgba(9, 16, 31, 0.78) 48%,
+      rgba(4, 7, 17, 0.96) 100%
+    );
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.65s ease, visibility 0s linear 0.65s;
+}
+
+#vnResultOverlay.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.65s ease;
+}
+
+.vn-result-panel {
+  width: min(86vw, 680px);
+  padding: clamp(26px, calc(var(--vmin) * 4), 54px);
+  border: 1px solid rgba(255, 230, 193, 0.22);
+  border-radius: calc(var(--vmin) * 3.6);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(16, 24, 49, 0.78) 0%,
+      rgba(7, 11, 27, 0.88) 100%
+    ),
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(255, 228, 170, 0.12),
+      transparent 52%
+    );
+  box-shadow:
+    0 2.4vmin 5vmin rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 0 48px rgba(255, 225, 168, 0.05);
+  text-align: center;
+  transform: translateY(calc(var(--vmin) * 1.4)) scale(0.985);
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#vnResultOverlay.show .vn-result-panel {
+  transform: translateY(0) scale(1);
+}
+
+.vn-result-star {
+  width: min(22vw, 118px);
+  margin: 0 auto calc(var(--vmin) * 1.5);
+  filter: drop-shadow(0 0 22px rgba(245, 182, 112, 0.26));
+}
+
+.vn-result-star svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.vn-result-title {
+  color: var(--gold2);
+  font-size: clamp(24px, calc(var(--vmin) * 4), 48px);
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 18px rgba(245, 182, 112, 0.26);
+}
+
+.vn-result-message {
+  max-width: 42ch;
+  margin: calc(var(--vmin) * 1.4) auto 0;
+  color: rgba(255, 248, 238, 0.84);
+  font-size: clamp(16px, calc(var(--vmin) * 2.35), 25px);
+  line-height: 1.55;
+}
+
+.vn-result-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: calc(var(--vmin) * 2.5);
+}
+
+#vnResultNextBtn {
+  min-width: min(52vw, 290px);
 }
 
 /* =========================================================================

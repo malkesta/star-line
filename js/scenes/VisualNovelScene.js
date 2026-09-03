@@ -18,6 +18,7 @@ export class VisualNovelScene {
     this.sprites = sprites;
 
     this.scene = document.getElementById("vnScene");
+
     this.rotateLock = document.getElementById("rotateLock");
     this.bg = document.getElementById("vnBg");
 
@@ -28,6 +29,10 @@ export class VisualNovelScene {
 
     this.choiceBox = document.getElementById("vnChoiceBox");
     this.choiceLabel = document.getElementById("vnChoiceLabel");
+    this.resultOverlay = document.getElementById("vnResultOverlay");
+    this.resultTitle = document.getElementById("vnResultTitle");
+    this.resultMessage = document.getElementById("vnResultMessage");
+    this.resultNextBtn = document.getElementById("vnResultNextBtn");
 
     this.spriteElements = {
       girl: document.getElementById("spriteGirl"),
@@ -38,29 +43,44 @@ export class VisualNovelScene {
     this.typingTimer = null;
     this.hintTimer = null;
     this.typingQueue = null;
+    this.entryTimer = null;
 
     this.typingActive = false;
     this.typingDone = false;
     this.waitingChoice = false;
     this.inputLocked = false;
     this.finished = false;
+    this.resultShown = false;
     this.orientationBlocked = false;
     this.lastAdvanceAt = 0;
 
     this.typingSpeed = 26;
     this.hintDelay = 700;
 
+    /*
+      Длительность появления/исчезновения VN. Должна совпадать
+      со значением transition для opacity в правиле #vnScene в CSS.
+    */
+    this.fadeDuration = 1600;
+
     this.handleSceneClick = this.handleSceneClick.bind(this);
     this.handleTouchStart = this.handleTouchStart.bind(this);
     this.handleViewportChange = this.handleViewportChange.bind(this);
+    this.handleResultNextClick = this.handleResultNextClick.bind(this);
   }
 
   async enter() {
-  this.audio?.stopAmbient?.();
-
+    this.audio?.stopAmbient?.();
 
     this.resetState();
     this.applySpriteSources();
+
+    this.resultOverlay?.classList.remove("show");
+    this.resultOverlay?.setAttribute("aria-hidden", "true");
+
+    if (this.resultNextBtn) {
+      this.resultNextBtn.disabled = false;
+    }
 
     document.body.classList.add("is-vn-active");
 
@@ -74,6 +94,11 @@ export class VisualNovelScene {
       passive: false,
     });
 
+    this.resultNextBtn?.addEventListener(
+      "click",
+      this.handleResultNextClick
+    );
+
     window.addEventListener("resize", this.handleViewportChange);
     window.addEventListener("orientationchange", this.handleViewportChange);
 
@@ -86,17 +111,72 @@ export class VisualNovelScene {
 
     this.handleViewportChange();
 
+    /*
+      Подготавливаем полный первый кадр VN, пока весь #vnScene ещё имеет
+      opacity: 0. Поэтому фон, рамка, декор и спрайты проявятся одновременно,
+      как единое целое, а не по частям.
+    */
+    const firstNode = this.nodes[this.startNode];
+
+    if (!firstNode) {
+      console.warn(`[VN] Не найден стартовый узел: ${this.startNode}`);
+      return;
+    }
+
+    this.currentNodeId = this.startNode;
+
+    if (firstNode.bg) {
+      this.setBackground(firstNode.bg);
+    }
+
+    this.setSprites(firstNode.sprites, firstNode.speakingSprite);
+    this.setSpeaker(firstNode.speaker);
+
+    /*
+      Текст пока не печатаем: поле остаётся пустым до завершения появления.
+      Но уже запоминаем, что это первый активный узел.
+    */
+    this.textEl.textContent = "";
+    this.textWrap.scrollTop = 0;
+    this.typingActive = false;
+    this.typingDone = false;
+    this.nextHint.classList.remove("show");
+
+    /*
+      Два последовательных requestAnimationFrame гарантируют, что браузер
+      сначала отрисует #vnScene с opacity: 0, а только затем запустит
+      CSS-переход к opacity: 1. Иначе оба состояния могут схлопнуться
+      в один кадр и переход не будет виден.
+    */
     requestAnimationFrame(() => {
-      this.scene.style.opacity = "1";
+      requestAnimationFrame(() => {
+        this.scene.style.opacity = "1";
+      });
     });
 
-    window.setTimeout(() => {
-      this.goTo(this.startNode);
-    }, 700);
+    /*
+      Печать первой реплики запускаем только после того, как CSS-переход
+      opacity полностью завершился (см. this.fadeDuration).
+    */
+    this.entryTimer = window.setTimeout(() => {
+      this.entryTimer = null;
+
+      if (!this.finished && !this.resultShown) {
+        this.typeText(firstNode.text);
+      }
+    }, this.fadeDuration);
   }
 
   async exit() {
     this.clearTimers();
+
+    this.resultNextBtn?.removeEventListener(
+      "click",
+      this.handleResultNextClick
+    );
+
+    this.resultOverlay?.classList.remove("show");
+    this.resultOverlay?.setAttribute("aria-hidden", "true");
 
     this.scene.removeEventListener("click", this.handleSceneClick);
     this.scene.removeEventListener("touchstart", this.handleTouchStart);
@@ -121,7 +201,7 @@ export class VisualNovelScene {
     document.body.classList.remove("is-vn-active");
 
     await new Promise((resolve) => {
-      window.setTimeout(resolve, 700);
+      window.setTimeout(resolve, this.fadeDuration);
     });
 
     this.scene.style.display = "none";
@@ -137,6 +217,7 @@ export class VisualNovelScene {
     this.waitingChoice = false;
     this.inputLocked = false;
     this.finished = false;
+    this.resultShown = false;
 
     this.textEl.textContent = "";
     this.speakerEl.textContent = "";
@@ -145,6 +226,13 @@ export class VisualNovelScene {
 
     this.hideChoices();
     this.setSprites({}, null);
+
+    this.resultOverlay?.classList.remove("show");
+    this.resultOverlay?.setAttribute("aria-hidden", "true");
+
+    if (this.resultNextBtn) {
+      this.resultNextBtn.disabled = false;
+    }
   }
 
   applySpriteSources() {
@@ -195,9 +283,11 @@ export class VisualNovelScene {
   clearTimers() {
     window.clearTimeout(this.typingTimer);
     window.clearTimeout(this.hintTimer);
+    window.clearTimeout(this.entryTimer);
 
     this.typingTimer = null;
     this.hintTimer = null;
+    this.entryTimer = null;
   }
 
   setBackground(src) {
@@ -449,11 +539,14 @@ export class VisualNovelScene {
     this.handleSceneClick();
   }
 
-  async finish() {
-    if (this.finished) return;
+  async handleResultNextClick(event) {
+    event?.stopPropagation();
 
-    this.finished = true;
-    this.isRunning = false;
+    if (!this.resultShown) return;
+
+    if (this.resultNextBtn) {
+      this.resultNextBtn.disabled = true;
+    }
 
     await this.exit();
 
@@ -463,5 +556,37 @@ export class VisualNovelScene {
     }
 
     await this.sceneManager?.next?.();
+  }
+
+  finish() {
+    if (this.finished || this.resultShown) return;
+
+    this.finished = true;
+    this.resultShown = true;
+    this.isRunning = false;
+
+    this.clearTimers();
+    this.hideChoices();
+
+    this.scene.removeEventListener("click", this.handleSceneClick);
+    this.scene.removeEventListener("touchstart", this.handleTouchStart);
+
+    this.nextHint.classList.remove("show");
+
+    const finalNode = this.nodes[this.currentNodeId] ?? {};
+
+    if (this.resultTitle) {
+      this.resultTitle.textContent =
+        finalNode.resultTitle ?? "История продолжается";
+    }
+
+    if (this.resultMessage) {
+      this.resultMessage.textContent =
+        finalNode.resultMessage ??
+        "Ты помогла маленькой звезде снова увидеть свет.";
+    }
+
+    this.resultOverlay?.classList.add("show");
+    this.resultOverlay?.setAttribute("aria-hidden", "false");
   }
 }
