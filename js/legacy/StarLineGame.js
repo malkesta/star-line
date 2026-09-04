@@ -2312,50 +2312,50 @@ class Obstacle {
   }
 
   async start() {
-    console.log("START STATE", {
-      isRunning: this.isRunning,
-      gameOver: this.gameOver,
-      isTransitioning: this.isTransitioning,
-      startScreenShown: this.startScreen?.classList.contains("show"),
-    });
+  console.log("START STATE", {
+    isRunning: this.isRunning,
+    gameOver: this.gameOver,
+    isTransitioning: this.isTransitioning,
+    startScreenShown: this.startScreen?.classList.contains("show"),
+  });
 
-    if (this.isTransitioning) return;
-    if (this.isRunning && !this.gameOver) return;
+  if (this.isTransitioning) return;
+  if (this.isRunning && !this.gameOver) return;
 
-    try {
-      await this.audio.init();
-      this.audio.startAmbient();
-      console.log("audio init ok");
-    } catch (e) {
-      console.warn("Audio init skipped", e);
-    }
+  this.tutorialEnabledForRun = this.tutorialEnabledInput
+    ? this.tutorialEnabledInput.checked
+    : true;
 
-    this.tutorialEnabledForRun = this.tutorialEnabledInput
-      ? this.tutorialEnabledInput.checked
-      : true;
-    console.log("tutorial set", this.tutorialEnabledForRun);
+  this.tutor.reset({ enabled: this.tutorialEnabledForRun });
 
-    this.tutor.reset({ enabled: this.tutorialEnabledForRun });
-    console.log("tutor reset");
-
-    if (this.startScreen) {
-      this.startScreen.classList.remove("show");
-      console.log("startScreen hidden");
-    }
-
-    if (this.rotateHint) {
-      this.rotateHint.classList.toggle("show", !this.isLandscape());
-      console.log("rotate hint updated");
-    }
-
-    this.isRunning = true;
-    this.gameOver = false;
-    this.lastTime = performance.now();
-    console.log("before game loop");
-
-    this.startGameLoop();
-    console.log("game loop started");
+  if (this.startScreen) {
+    this.startScreen.classList.remove("show");
   }
+
+  if (this.rotateHint) {
+    this.rotateHint.classList.toggle("show", !this.isLandscape());
+  }
+
+  /*
+    Запускаем визуальный игровой цикл СРАЗУ, не дожидаясь инициализации
+    аудио. Звук — асинхронная операция, которая раньше блокировала
+    появление homeStar/starlets на экране через await.
+  */
+  this.isRunning = true;
+  this.gameOver = false;
+  this.lastTime = performance.now();
+
+  this.startGameLoop();
+  console.log("game loop started immediately");
+
+  try {
+    await this.audio.init();
+    this.audio.startAmbient();
+    console.log("audio init ok (after visuals)");
+  } catch (e) {
+    console.warn("Audio init skipped", e);
+  }
+}
 
   createSpawnPoint() {
     const {
