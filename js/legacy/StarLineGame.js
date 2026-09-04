@@ -2179,7 +2179,18 @@ class Obstacle {
       }
     };
 
-    this.handleResize = this.resize.bind(this);
+    this.resizeRaf = null;
+
+    this.handleResize = () => {
+      if (this.resizeRaf) {
+        cancelAnimationFrame(this.resizeRaf);
+      }
+
+      this.resizeRaf = requestAnimationFrame(() => {
+        this.resizeRaf = null;
+        this.resize();
+      });
+    };
 
     this.restartBtn?.addEventListener("click", this.handleRestartClick);
     this.nextBtn?.addEventListener("click", this.handleNextClick);
@@ -2239,6 +2250,11 @@ class Obstacle {
   }
 
   resize() {
+    console.log("[StarLine] resize called", {
+      isRunning: this.isRunning,
+      hasHomeStar: !!this.homeStar,
+    });
+
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
 
@@ -2254,7 +2270,32 @@ class Obstacle {
         !this.isLandscape() && !this.gameOver && !this.isRunning
       );
     }
+
+    /*
+      Изменение canvas.width/height сбрасывает содержимое канваса.
+      Если игра уже запущена, RAF-цикл (startGameLoop) сам перерисует
+      кадр на следующем тике — вызывать this.draw() здесь не нужно,
+      это создало бы лишний "рваный" промежуточный кадр.
+      Если игра ещё не запущена (например, идёт подготовка раунда
+      через prepareRound), перерисовываем немедленно, чтобы экран
+      не остался пустым до старта.
+    */
+    if (this.homeStar && !this.isRunning) {
+      this.draw();
+    }
   }
+
+  prepareRound() {
+  this.resize();
+
+  this.homeStar = new HomeStar(this.sceneMetrics);
+  this.starlets = [];
+  this.spawnStarlets(10);
+
+  this.updateTargetScoreUI();
+  this.updateUI();
+  this.draw();
+}
 
   playButtonFadeGlow(button, duration = 0.32) {
     if (!button) return;
@@ -2963,41 +3004,39 @@ class Obstacle {
   }
 
   async enter() {
-    this.isRunning = false;
-    this.gameOver = false;
-    this.isTransitioning = false;
-    this.isDragging = false;
+  this.isRunning = false;
+  this.gameOver = false;
+  this.isTransitioning = false;
+  this.isDragging = false;
 
-    if (this.overlay) {
-      this.overlay.classList.remove("show");
-    }
-
-    if (this.restartBtn) {
-      this.restartBtn.classList.remove(
-        "actionBtn-disabled",
-        "actionBtn-fade-glow"
-      );
-      this.restartBtn.disabled = false;
-      this.restartBtn.style.removeProperty("--fade-glow-duration");
-    }
-
-    if (this.nextBtn) {
-      this.nextBtn.classList.remove("actionBtn-fade-glow");
-      this.nextBtn.classList.add("actionBtn-disabled");
-      this.nextBtn.disabled = true;
-      this.nextBtn.style.removeProperty("--fade-glow-duration");
-    }
-
-    if (this.rotateHint) {
-      this.rotateHint.classList.toggle("show", !this.isLandscape());
-    }
-
-    this.updateTargetScoreUI();
-    this.updateUI();
-    this.draw();
-
-    await this.start();
+  if (this.overlay) {
+    this.overlay.classList.remove("show");
   }
+
+  if (this.restartBtn) {
+    this.restartBtn.classList.remove(
+      "actionBtn-disabled",
+      "actionBtn-fade-glow"
+    );
+    this.restartBtn.disabled = false;
+    this.restartBtn.style.removeProperty("--fade-glow-duration");
+  }
+
+  if (this.nextBtn) {
+    this.nextBtn.classList.remove("actionBtn-fade-glow");
+    this.nextBtn.classList.add("actionBtn-disabled");
+    this.nextBtn.disabled = true;
+    this.nextBtn.style.removeProperty("--fade-glow-duration");
+  }
+
+  if (this.rotateHint) {
+    this.rotateHint.classList.toggle("show", !this.isLandscape());
+  }
+
+  this.prepareRound();
+
+  await this.start();
+}
 
   async exit() {
     this.destroy();

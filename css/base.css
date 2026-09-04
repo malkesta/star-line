@@ -65,6 +65,15 @@ body::after {
   pointer-events: none;
   z-index: 0;
 }
+/* Временное полное затемнение фона приложения на время VN */
+body.is-vn-blackout::before {
+  background-image: none !important;
+  background-color: #000;
+}
+
+body.is-vn-blackout::after {
+  opacity: 0;
+}
 
 @keyframes cosmosBreath {
   0% {

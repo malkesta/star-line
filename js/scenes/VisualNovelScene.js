@@ -71,6 +71,7 @@ export class VisualNovelScene {
 
   async enter() {
     this.audio?.stopAmbient?.();
+    document.body.classList.add("is-vn-blackout");
 
     this.resetState();
     this.applySpriteSources();
@@ -199,6 +200,7 @@ export class VisualNovelScene {
     this.scene.setAttribute("aria-hidden", "true");
 
     document.body.classList.remove("is-vn-active");
+    document.body.classList.remove("is-vn-blackout");
 
     await new Promise((resolve) => {
       window.setTimeout(resolve, this.fadeDuration);
