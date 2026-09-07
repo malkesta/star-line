@@ -2195,17 +2195,11 @@ class Obstacle {
     this.restartBtn?.addEventListener("click", this.handleRestartClick);
     this.nextBtn?.addEventListener("click", this.handleNextClick);
 
-    this.resize();
     window.addEventListener("resize", this.handleResize);
 
     this.setupInput();
 
-    this.homeStar = new HomeStar(this.sceneMetrics);
-    this.spawnStarlets(10);
-
-    this.updateTargetScoreUI();
-    this.updateUI();
-    this.draw();
+    this.prepareRound();
   }
 
   isLandscape() {
