@@ -2014,6 +2014,11 @@ class Obstacle {
     this.onNext = onNext;
     this.onRoundFinished = onRoundFinished;
 
+    this.sceneBackgroundUrl =
+      "../../assets/images/backgrounds/game_bg1.webp";
+    this.defaultBackgroundUrl =
+      "../../assets/images/backgrounds/game_bg1.webp";
+
     this.canvas = document.getElementById("gameCanvas");
     this.ctx = this.canvas.getContext("2d");
 
@@ -2304,6 +2309,29 @@ class Obstacle {
       button.style.removeProperty("--fade-glow-duration");
     }, duration * 1000 + 40);
   }
+
+  applySceneBackground() {
+  if (!this.sceneBackgroundUrl) return;
+
+  const bgUrl = new URL(this.sceneBackgroundUrl, import.meta.url).href;
+
+  document.documentElement.style.setProperty(
+    "--scene-bg-image",
+    `url("${bgUrl}")`
+  );
+}
+
+resetSceneBackground() {
+  const fallbackUrl = new URL(
+    this.defaultBackgroundUrl,
+    import.meta.url
+  ).href;
+
+  document.documentElement.style.setProperty(
+    "--scene-bg-image",
+    `url("${fallbackUrl}")`
+  );
+}
 
   async start() {
   console.log("START STATE", {
@@ -3003,6 +3031,8 @@ class Obstacle {
   this.isTransitioning = false;
   this.isDragging = false;
 
+  this.applySceneBackground();
+
   if (this.overlay) {
     this.overlay.classList.remove("show");
   }
@@ -3108,5 +3138,6 @@ class Obstacle {
       this.nextBtn.disabled = false;
       this.nextBtn.style.removeProperty("--fade-glow-duration");
     }
+    this.resetSceneBackground();
   }
 }

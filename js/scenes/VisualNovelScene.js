@@ -169,45 +169,53 @@ export class VisualNovelScene {
   }
 
   async exit() {
-    this.clearTimers();
+  this.clearTimers();
 
-    this.resultNextBtn?.removeEventListener(
-      "click",
-      this.handleResultNextClick
+  this.resultNextBtn?.removeEventListener(
+    "click",
+    this.handleResultNextClick
+  );
+
+  this.resultOverlay?.classList.remove("show");
+  this.resultOverlay?.setAttribute("aria-hidden", "true");
+
+  this.scene.removeEventListener("click", this.handleSceneClick);
+  this.scene.removeEventListener("touchstart", this.handleTouchStart);
+
+  window.removeEventListener("resize", this.handleViewportChange);
+  window.removeEventListener("orientationchange", this.handleViewportChange);
+
+  if (window.visualViewport) {
+    window.visualViewport.removeEventListener(
+      "resize",
+      this.handleViewportChange
     );
-
-    this.resultOverlay?.classList.remove("show");
-    this.resultOverlay?.setAttribute("aria-hidden", "true");
-
-    this.scene.removeEventListener("click", this.handleSceneClick);
-    this.scene.removeEventListener("touchstart", this.handleTouchStart);
-
-    window.removeEventListener("resize", this.handleViewportChange);
-    window.removeEventListener("orientationchange", this.handleViewportChange);
-
-    if (window.visualViewport) {
-      window.visualViewport.removeEventListener(
-        "resize",
-        this.handleViewportChange
-      );
-    }
-
-    this.hideChoices();
-    this.setSprites({}, null);
-
-    this.scene.style.pointerEvents = "none";
-    this.scene.style.opacity = "0";
-    this.scene.setAttribute("aria-hidden", "true");
-
-    document.body.classList.remove("is-vn-active");
-    document.body.classList.remove("is-vn-blackout");
-
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, this.fadeDuration);
-    });
-
-    this.scene.style.display = "none";
   }
+
+  this.hideChoices();
+  this.setSprites({}, null);
+
+  this.scene.style.pointerEvents = "none";
+  this.scene.style.opacity = "0";
+  this.scene.setAttribute("aria-hidden", "true");
+
+  /*
+    Класс is-vn-active держит HUD/canvas скрытыми (visibility: hidden)
+    пока VN гаснет. Раньше он снимался в НАЧАЛЕ exit(), поэтому под
+    полупрозрачной/гаснущей VN сразу становился виден пустой фон
+    приложения без игровых объектов. Снимаем его только после того,
+    как VN полностью погасла и её display переключён на none —
+    то есть непосредственно перед возвратом из exit().
+  */
+  await new Promise((resolve) => {
+    window.setTimeout(resolve, this.fadeDuration);
+  });
+
+  this.scene.style.display = "none";
+
+  document.body.classList.remove("is-vn-active");
+  document.body.classList.remove("is-vn-blackout");
+}
 
   resetState() {
     this.clearTimers();
