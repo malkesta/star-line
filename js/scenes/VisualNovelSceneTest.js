@@ -6,6 +6,8 @@ const BACKGROUNDS = {
   stars: asset("../../assets/images/vn/vn_backgrounds/test-stars.png"),
 };
 
+const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
+
 export class VisualNovelSceneTest extends VisualNovelScene {
   constructor(options = {}) {
     super({

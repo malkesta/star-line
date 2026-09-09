@@ -1,21 +1,38 @@
 export class VisualNovelScene {
   constructor({
-    sceneId = "vn",
-    sceneManager = null,
-    audio = null,
-    onNext = null,
-    startNode,
-    nodes,
-    sprites = {},
-  } = {}) {
-    this.sceneId = sceneId;
-    this.sceneManager = sceneManager;
-    this.audio = audio;
-    this.onNext = onNext;
+  sceneId = "vn",
+  sceneManager = null,
+  audio = null,
+  onNext = null,
+  startNode,
+  nodes,
+  sprites = {},
+  musicUrl = null,
+} = {}) {
+  this.sceneId = sceneId;
+  this.sceneManager = sceneManager;
+  this.audio = audio;
+  this.onNext = onNext;
 
-    this.startNode = startNode;
-    this.nodes = nodes ?? {};
-    this.sprites = sprites;
+  this.startNode = startNode;
+  this.nodes = nodes ?? {};
+  this.sprites = sprites;
+
+  /*
+    Музыка конкретного этапа VN. Если не задана — просто не будет
+    вызвано setMusic(), и останется трек, который уже играл
+    (например, от предыдущей сцены), либо не будет играть ничего.
+  */
+  this.musicUrl = musicUrl;
+
+  /*
+    Длительность плавного затихания музыки при показе финального
+    экрана VN (см. finish()). Отдельно от fadeDuration визуального
+    перехода, потому что музыка должна гаснуть медленнее/быстрее
+    по своему художественному смыслу, а не синхронно с картинкой.
+  */
+  this.musicFadeOutDuration = 1.2;
+
 
     this.scene = document.getElementById("vnScene");
 
@@ -71,6 +88,10 @@ export class VisualNovelScene {
 
   async enter() {
     this.audio?.stopAmbient?.();
+    if (this.musicUrl) {
+    this.audio?.setMusic?.(this.musicUrl);
+    this.audio?.startAmbient?.({ restart: true });
+  }
     document.body.classList.add("is-vn-blackout");
 
     this.resetState();
@@ -576,6 +597,16 @@ export class VisualNovelScene {
   this.scene.removeEventListener("touchstart", this.handleTouchStart);
 
   this.nextHint.classList.remove("show");
+
+  /*
+    Музыка этой VN-сцены плавно затихает в момент появления финального
+    экрана — независимо от того, когда пользователь потом нажмёт
+    "Дальше". fadeOutAmbient() уже умеет плавно уводить громкость
+    в 0 и сам ставит трек на паузу по завершении (см. GameAudio).
+  */
+  if (this.musicUrl) {
+    this.audio?.fadeOutAmbient?.(this.musicFadeOutDuration);
+  }
 
   const finalNode = this.nodes[this.currentNodeId] ?? {};
 
