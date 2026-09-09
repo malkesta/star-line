@@ -86,12 +86,19 @@ export class VisualNovelScene {
     this.handleResultNextClick = this.handleResultNextClick.bind(this);
   }
 
-  async enter() {
+    async enter() {
     this.audio?.stopAmbient?.();
+
     if (this.musicUrl) {
-    this.audio?.setMusic?.(this.musicUrl);
-    this.audio?.startAmbient?.({ restart: true });
-  }
+      this.audio?.setMusic?.(this.musicUrl);
+
+      try {
+        await this.audio?.init?.();
+        this.audio?.startAmbient?.(true);
+      } catch (e) {
+        console.warn("[VN] audio init skipped", e);
+      }
+    }
     document.body.classList.add("is-vn-blackout");
 
     this.resetState();

@@ -2007,12 +2007,14 @@ class Obstacle {
     audio = null,
     onNext = null,
     onRoundFinished = null,
+    musicUrl = null,
   } = {}) {
     this.sceneId = sceneId;
     this.sceneManager = sceneManager;
     this.audio = audio ?? new GameAudio();
     this.onNext = onNext;
     this.onRoundFinished = onRoundFinished;
+    this.musicUrl = musicUrl;
 
     this.sceneBackgroundUrl =
       "../../assets/images/backgrounds/game_bg1.webp";
@@ -2378,6 +2380,10 @@ resetSceneBackground() {
   console.log("game loop started immediately");
 
   try {
+      if (this.musicUrl) {
+      this.audio.setMusic(this.musicUrl);
+    }
+
     await this.audio.init();
     this.audio.startAmbient();
     console.log("audio init ok (after visuals)");

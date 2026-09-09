@@ -14,6 +14,7 @@ export class VisualNovelSceneTest extends VisualNovelScene {
       ...options,
 
       sceneId: "vn-test",
+      musicUrl: MUSIC_URL,   // ← этой строки не было
 
       sprites: {
         girl: {
