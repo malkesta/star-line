@@ -171,11 +171,7 @@ export class VisualNovelScene {
   async exit() {
   this.clearTimers();
 
-  this.resultNextBtn?.removeEventListener(
-    "click",
-    this.handleResultNextClick
-  );
-
+  this.resultNextBtn?.removeEventListener("click", this.handleResultNextClick);
   this.resultOverlay?.classList.remove("show");
   this.resultOverlay?.setAttribute("aria-hidden", "true");
 
@@ -186,10 +182,7 @@ export class VisualNovelScene {
   window.removeEventListener("orientationchange", this.handleViewportChange);
 
   if (window.visualViewport) {
-    window.visualViewport.removeEventListener(
-      "resize",
-      this.handleViewportChange
-    );
+    window.visualViewport.removeEventListener("resize", this.handleViewportChange);
   }
 
   this.hideChoices();
@@ -199,14 +192,6 @@ export class VisualNovelScene {
   this.scene.style.opacity = "0";
   this.scene.setAttribute("aria-hidden", "true");
 
-  /*
-    Класс is-vn-active держит HUD/canvas скрытыми (visibility: hidden)
-    пока VN гаснет. Раньше он снимался в НАЧАЛЕ exit(), поэтому под
-    полупрозрачной/гаснущей VN сразу становился виден пустой фон
-    приложения без игровых объектов. Снимаем его только после того,
-    как VN полностью погасла и её display переключён на none —
-    то есть непосредственно перед возвратом из exit().
-  */
   await new Promise((resolve) => {
     window.setTimeout(resolve, this.fadeDuration);
   });
@@ -558,20 +543,23 @@ export class VisualNovelScene {
     this.resultNextBtn.disabled = true;
   }
 
-  await this.exit();
+  const exitPromise = this.exit();
 
-  if (typeof this.onNext === "function") {
-    await this.onNext();
-    return;
-  }
+  const advancePromise = (async () => {
+    if (typeof this.onNext === "function") {
+      await this.onNext();
+      return;
+    }
 
-  if (typeof this.sceneManager?.activatePreloaded === "function") {
-  console.log("[VN] calling activatePreloaded, preloadedScene =", this.sceneManager.preloadedScene);
-  await this.sceneManager.activatePreloaded();
-  return;
-}
+    if (typeof this.sceneManager?.activatePreloaded === "function") {
+      await this.sceneManager.activatePreloaded();
+      return;
+    }
 
-  await this.sceneManager?.next?.();
+    await this.sceneManager?.next?.();
+  })();
+
+  await Promise.all([exitPromise, advancePromise]);
 }
 
   finish() {
