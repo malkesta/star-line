@@ -2296,6 +2296,13 @@ class Obstacle {
   this.draw();
 }
 
+  preload() {
+    this.applySceneBackground();
+    this.prepareRound();
+    }
+
+
+
   playButtonFadeGlow(button, duration = 0.32) {
     if (!button) return;
 

@@ -550,53 +550,75 @@ export class VisualNovelScene {
   }
 
   async handleResultNextClick(event) {
-    event?.stopPropagation();
+  event?.stopPropagation();
 
-    if (!this.resultShown) return;
+  if (!this.resultShown) return;
 
-    if (this.resultNextBtn) {
-      this.resultNextBtn.disabled = true;
-    }
-
-    await this.exit();
-
-    if (typeof this.onNext === "function") {
-      await this.onNext();
-      return;
-    }
-
-    await this.sceneManager?.next?.();
+  if (this.resultNextBtn) {
+    this.resultNextBtn.disabled = true;
   }
+
+  await this.exit();
+
+  if (typeof this.onNext === "function") {
+    await this.onNext();
+    return;
+  }
+
+  if (typeof this.sceneManager?.activatePreloaded === "function") {
+  console.log("[VN] calling activatePreloaded, preloadedScene =", this.sceneManager.preloadedScene);
+  await this.sceneManager.activatePreloaded();
+  return;
+}
+
+  await this.sceneManager?.next?.();
+}
 
   finish() {
-    if (this.finished || this.resultShown) return;
+  if (this.finished || this.resultShown) return;
 
-    this.finished = true;
-    this.resultShown = true;
-    this.isRunning = false;
+  this.finished = true;
+  this.resultShown = true;
+  this.isRunning = false;
 
-    this.clearTimers();
-    this.hideChoices();
+  this.clearTimers();
+  this.hideChoices();
 
-    this.scene.removeEventListener("click", this.handleSceneClick);
-    this.scene.removeEventListener("touchstart", this.handleTouchStart);
+  this.scene.removeEventListener("click", this.handleSceneClick);
+  this.scene.removeEventListener("touchstart", this.handleTouchStart);
 
-    this.nextHint.classList.remove("show");
+  this.nextHint.classList.remove("show");
 
-    const finalNode = this.nodes[this.currentNodeId] ?? {};
+  const finalNode = this.nodes[this.currentNodeId] ?? {};
 
-    if (this.resultTitle) {
-      this.resultTitle.textContent =
-        finalNode.resultTitle ?? "История продолжается";
-    }
-
-    if (this.resultMessage) {
-      this.resultMessage.textContent =
-        finalNode.resultMessage ??
-        "Ты помогла маленькой звезде снова увидеть свет.";
-    }
-
-    this.resultOverlay?.classList.add("show");
-    this.resultOverlay?.setAttribute("aria-hidden", "false");
+  if (this.resultTitle) {
+    this.resultTitle.textContent =
+      finalNode.resultTitle ?? "История продолжается";
   }
+
+  if (this.resultMessage) {
+    this.resultMessage.textContent =
+      finalNode.resultMessage ??
+      "Ты помогла маленькой звезде снова увидеть свет.";
+  }
+
+  this.resultOverlay?.classList.add("show");
+  this.resultOverlay?.setAttribute("aria-hidden", "false");
+
+  /*
+    Готовим следующую игровую сцену прямо сейчас, пока пользователь
+    ещё читает финальный экран VN. Она сама выставит свой фон и
+    отрисует homeStar/starlets, но не запустит игровой цикл и не
+    станет видимой — canvas всё ещё скрыт классом is-vn-active.
+  */
+  console.log("[VN] finish() -> preloadNext check", {
+  hasSceneManager: !!this.sceneManager,
+  hasPreloadNext: typeof this.sceneManager?.preloadNext === "function",
+});
+
+if (typeof this.sceneManager?.preloadNext === "function") {
+  const preloaded = this.sceneManager.preloadNext();
+  console.log("[VN] preloadNext() result", preloaded);
+}
+}
 }
