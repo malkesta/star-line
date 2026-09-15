@@ -376,56 +376,69 @@ export class StartScreenScene {
   }
 
   async handleStartClick() {
-    if (this.startBtn?.disabled) return;
+  if (this.startBtn?.disabled) return;
 
-    try {
-      await this.audio.init();
-    } catch (e) {
-      console.warn("Audio init skipped", e);
-    }
+  try {
+    await this.audio.init();
+  } catch (e) {
+    console.warn("Audio init skipped", e);
+  }
 
-    if (!this.audio.ambientStarted) {
-      this.audio.startAmbient();
-    }
+  if (!this.audio.ambientStarted) {
+    this.audio.startAmbient();
+  }
 
-    this.sceneManager?.resetProgress?.();
+  this.sceneManager?.resetProgress?.();
 
-    if (this.startScreen) {
-      this.startScreen.classList.remove("show");
-    }
+  if (this.startScreen) {
+    this.startScreen.classList.remove("show");
+  }
 
-    if (this.rotateHint) {
-      this.rotateHint.classList.toggle("show", !this.isLandscape);
-    }
+  if (this.rotateHint) {
+    this.rotateHint.classList.toggle("show", !this.isLandscape);
+  }
 
+  if (typeof this.sceneManager?.activatePreloaded === "function") {
+    await this.sceneManager.activatePreloaded();
+  } else {
     await this.sceneManager.next();
   }
-
+}
   async enter() {
-    this.introCinematic = document.getElementById("introCinematic");
+  this.introCinematic = document.getElementById("introCinematic");
 
-    this.ensureFullscreenButton();
+  this.ensureFullscreenButton();
 
-    if (this.startScreen) {
-      this.startScreen.classList.add("show");
-    }
-
-    this.prepareStartButton();
-    this.scheduleIntroCleanup();
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        this.positionFullscreenButton();
-      });
-    });
-
-    this.scheduleFullscreenHint();
-
-    this.startBtn?.addEventListener("click", this.handleStartClick);
-    document.addEventListener("fullscreenchange", this.handleFullscreenChange);
-    document.addEventListener("webkitfullscreenchange", this.handleFullscreenChange);
-    window.addEventListener("resize", this.handleLayoutUpdate);
+  if (this.startScreen) {
+    this.startScreen.classList.add("show");
   }
+
+  this.prepareStartButton();
+  this.scheduleIntroCleanup();
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      this.positionFullscreenButton();
+    });
+  });
+
+  this.scheduleFullscreenHint();
+
+  /*
+    Предзагружаем следующую VN-сцену (vnStart) сразу при показе
+    стартового экрана. Кнопка "Начать" заблокирована минимум на
+    3700 мс (см. prepareStartButton) — за это время фон/спрайты/
+    музыка VN успевают закешироваться в фоне.
+  */
+  if (typeof this.sceneManager?.preloadNext === "function") {
+    this.sceneManager.preloadNext();
+  }
+
+  this.startBtn?.addEventListener("click", this.handleStartClick);
+  document.addEventListener("fullscreenchange", this.handleFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", this.handleFullscreenChange);
+  window.addEventListener("resize", this.handleLayoutUpdate);
+}
 
   async exit() {
     this.startBtn?.removeEventListener("click", this.handleStartClick);

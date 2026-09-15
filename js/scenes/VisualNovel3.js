@@ -13,7 +13,7 @@ export class VisualNovel3 extends VisualNovelScene {
     super({
       ...options,
 
-      sceneId: "vn-test",
+      sceneId: "vn-3",
       musicUrl: MUSIC_URL,   // ← этой строки не было
 
       sprites: {

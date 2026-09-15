@@ -269,6 +269,31 @@ export class VisualNovelScene {
     });
   }
 
+  preload() {
+  const backgroundUrls = new Set();
+
+  Object.values(this.nodes).forEach((node) => {
+    if (node?.bg) backgroundUrls.add(node.bg);
+  });
+
+  backgroundUrls.forEach((url) => {
+    const img = new Image();
+    img.src = url;
+  });
+
+  Object.values(this.sprites).forEach((config) => {
+    if (!config?.src) return;
+    const img = new Image();
+    img.src = config.src;
+  });
+
+  if (this.musicUrl) {
+    const audioPreload = new Audio();
+    audioPreload.preload = "auto";
+    audioPreload.src = this.musicUrl;
+  }
+}
+
   updateViewportUnits() {
     const viewport = window.visualViewport;
     const width = viewport?.width ?? window.innerWidth;
