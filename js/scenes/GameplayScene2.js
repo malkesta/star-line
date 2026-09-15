@@ -816,6 +816,7 @@ class Obstacle {
     this.displayedHeartProgress = 0;
     this.targetHeartProgress = 0;
     this.heartPulseTimeout = null;
+    this.vnPreloadTimer = null;
 
     this.homeStar = null;
     this.starlets = [];
@@ -1704,6 +1705,13 @@ class Obstacle {
     this.updateUI();
     this.draw();
 
+    this.vnPreloadTimer = window.setTimeout(() => {
+    this.vnPreloadTimer = null;
+    if (typeof this.sceneManager?.preloadNext === "function") {
+      this.sceneManager.preloadNext();
+    }
+  }, 10000);
+
     await this.start();
   }
 
@@ -1712,6 +1720,13 @@ class Obstacle {
   }
 
   destroy() {
+
+    if (this.vnPreloadTimer) {
+    window.clearTimeout(this.vnPreloadTimer);
+    this.vnPreloadTimer = null;
+    }
+
+
     this.isRunning = false;
     this.gameOver = true;
     this.isTransitioning = false;
