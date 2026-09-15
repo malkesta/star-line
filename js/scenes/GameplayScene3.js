@@ -1075,6 +1075,20 @@ class Obstacle {
     }
   }
 
+  preload() {
+  if (this.sceneBackgroundUrl) {
+    const bgUrl = new URL(this.sceneBackgroundUrl, import.meta.url).href;
+    const img = new Image();
+    img.src = bgUrl;
+  }
+
+  if (this.sceneMusicUrl) {
+    const audioPreload = new Audio();
+    audioPreload.preload = "auto";
+    audioPreload.src = new URL(this.sceneMusicUrl, import.meta.url).href;
+  }
+}
+
   async start() {
     console.log("START STATE", {
       isRunning: this.isRunning,
