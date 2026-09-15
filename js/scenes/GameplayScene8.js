@@ -4819,6 +4819,9 @@ checkObstacleCollisions() {
 
     window.removeEventListener("resize", this.handleResize);
 
+    this.restartBtn?.removeEventListener("click", this.handleRestartClick);
+    this.nextBtn?.removeEventListener("click", this.handleNextClick);
+
     
     this.heartIconElement?.classList.remove("heart-icon--scene7");
 

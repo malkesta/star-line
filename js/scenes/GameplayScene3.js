@@ -1836,6 +1836,9 @@ class Obstacle {
 
     window.removeEventListener("resize", this.handleResize);
 
+    this.restartBtn?.removeEventListener("click", this.handleRestartClick);
+    this.nextBtn?.removeEventListener("click", this.handleNextClick);
+
     if (this.overlay) {
       this.overlay.classList.remove("show");
     }
