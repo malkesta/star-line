@@ -3271,6 +3271,7 @@ this.ringGoneAudio =
     this.displayedHeartProgress = 0;
     this.targetHeartProgress = 0;
     this.heartPulseTimeout = null;
+    this.vnPreloadTimer = null;
     this.motherStar = null
 
 
@@ -3389,6 +3390,8 @@ this.ringGoneAudio =
 
         if (this.onNext) {
           await this.onNext();
+        } else if (typeof this.sceneManager?.activatePreloaded === "function") {
+          await this.sceneManager.activatePreloaded();
         } else if (this.sceneManager?.next) {
           await this.sceneManager.next();
         }
@@ -4756,6 +4759,14 @@ checkObstacleCollisions() {
     this.updateUI();
     this.draw();
 
+    this.vnPreloadTimer = window.setTimeout(() => {
+      this.vnPreloadTimer = null;
+
+      if (typeof this.sceneManager?.preloadNext === "function") {
+        this.sceneManager.preloadNext();
+      }
+    }, 10000);
+
     await this.start();
   }
 
@@ -4764,6 +4775,11 @@ checkObstacleCollisions() {
   }
 
   destroy() {
+    if (this.vnPreloadTimer) {
+      window.clearTimeout(this.vnPreloadTimer);
+      this.vnPreloadTimer = null;
+    }
+
     this.isRunning = false;
     this.gameOver = true;
     this.isTransitioning = false;

@@ -1321,6 +1321,8 @@ this.onRoundFinished?.({
 
 if (this.onNext) {
   await this.onNext();
+} else if (typeof this.sceneManager?.activatePreloaded === "function") {
+  await this.sceneManager.activatePreloaded();
 } else if (this.sceneManager?.next) {
   await this.sceneManager.next();
 }  

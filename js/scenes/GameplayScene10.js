@@ -4962,6 +4962,7 @@ export class GameplayScene10 {
     this.displayedHeartProgress = 0;
     this.targetHeartProgress = 0;
     this.heartPulseTimeout = null;
+    this.vnPreloadTimer = null;
     this.motherStar = null;
 
     // --- Новые сущности сцены 9 ---
@@ -5094,6 +5095,8 @@ export class GameplayScene10 {
 
         if (this.onNext) {
           await this.onNext();
+        } else if (typeof this.sceneManager?.activatePreloaded === "function") {
+          await this.sceneManager.activatePreloaded();
         } else if (this.sceneManager?.next) {
           await this.sceneManager.next();
         }
@@ -6970,6 +6973,14 @@ ctx.shadowBlur = 0;
     this.updateUI();
     this.draw();
 
+    this.vnPreloadTimer = window.setTimeout(() => {
+      this.vnPreloadTimer = null;
+
+      if (typeof this.sceneManager?.preloadNext === "function") {
+        this.sceneManager.preloadNext();
+      }
+    }, 10000);
+
     await this.start();
   }
 
@@ -6978,6 +6989,11 @@ ctx.shadowBlur = 0;
   }
 
   destroy() {
+    if (this.vnPreloadTimer) {
+      window.clearTimeout(this.vnPreloadTimer);
+      this.vnPreloadTimer = null;
+    }
+
     this.isRunning = false;
     this.gameOver = true;
     this.isTransitioning = false;

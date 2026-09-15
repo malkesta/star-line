@@ -11,7 +11,6 @@ import { GameplayScene7 } from "./scenes/GameplayScene7.js";
 import { GameplayScene8 } from "./scenes/GameplayScene8.js";
 import { GameplayScene9 } from "./scenes/GameplayScene9.js";
 import { GameplayScene10 } from "./scenes/GameplayScene10.js";
-import { VisualNovelSceneTest } from "./scenes/VisualNovelSceneTest.js";
 import { VisualNovelStart } from "./scenes/VisualNovelStart.js";
 import { VisualNovel1 } from "./scenes/VisualNovel1.js";
 import { VisualNovel2 } from "./scenes/VisualNovel2.js";
@@ -24,7 +23,6 @@ const DEBUG_START_SCENE = null;
 // null       -> обычный порядок
 // "intro"    -> только IntroScene
 // "start"    -> только StartScreenScene
-// "vnTest"   -> только тестовая VN-сцена
 // "vnStart"  -> только VisualNovelStart
 // "game1"    -> только GameplayScene
 // "game2"    -> только GameplayScene2
@@ -57,11 +55,6 @@ const allSceneDefs = {
     "start",
     () => new StartScreenScene({ sceneManager, audio })
   ),
-
- // vnTest: createSceneDef(
- //   "vnTest",
- //   () => new VisualNovelSceneTest({ sceneManager, audio })
- // ),
 
   vnStart: createSceneDef(
     "vnStart",
@@ -183,7 +176,6 @@ sceneManager.sceneDefs =
 
 if (
   DEBUG_START_SCENE &&
-  DEBUG_START_SCENE !== "vnTest" &&
   DEBUG_START_SCENE !== "vnStart" &&
   DEBUG_START_SCENE !== "vn1" &&
   DEBUG_START_SCENE !== "vn2" &&

@@ -2833,6 +2833,19 @@ this.ringGoneAudio =
   }
 
   // Включён ли туториал на этот запуск (читаем чекбокс стартового экрана).
+  preload() {
+    if (this.sceneBackgroundUrl) {
+      const background = new Image();
+      background.src = new URL(this.sceneBackgroundUrl, import.meta.url).href;
+    }
+
+    if (this.sceneMusicUrl) {
+      const music = new Audio();
+      music.preload = "auto";
+      music.src = new URL(this.sceneMusicUrl, import.meta.url).href;
+    }
+  }
+
   readTutorialEnabled() {
     if (this.tutorialEnabledInput) {
       return !!this.tutorialEnabledInput.checked;
