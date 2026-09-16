@@ -41,8 +41,10 @@ export class GameAudio {
     this.lastHitTime = 0;
     this.lastEatTime = 0;
     this.lastRingGoneTime = 0;
+    this.lastRingCaptureTime = 0;
     this.lastStarletSpawnTime = 0;
     this.lastGoldComboTime = 0;
+    this.reverbBuffers = new Map();
     this.lastGoldComboBreakTime = 0;
   }
 
@@ -88,9 +90,13 @@ export class GameAudio {
   }
 
   createReverb(seconds = 2.8, decay = 2.6) {
+    const key = `${seconds}:${decay}`;
+    let impulse = this.reverbBuffers.get(key);
+
+    if (!impulse) {
     const rate = this.ctx.sampleRate;
     const length = rate * seconds;
-    const impulse = this.ctx.createBuffer(2, length, rate);
+      impulse = this.ctx.createBuffer(2, length, rate);
 
     for (let c = 0; c < 2; c++) {
       const data = impulse.getChannelData(c);
@@ -98,6 +104,8 @@ export class GameAudio {
         const n = Math.random() * 2 - 1;
         data[i] = n * Math.pow(1 - i / length, decay);
       }
+    }
+      this.reverbBuffers.set(key, impulse);
     }
 
     const convolver = this.ctx.createConvolver();
@@ -251,6 +259,26 @@ export class GameAudio {
     mod.start(now);
     osc.stop(now + 0.18);
     mod.stop(now + 0.18);
+  }
+
+  playRingCaptureSound() {
+    if (!this.ctx) return;
+    const now = this.now();
+    if (now - this.lastRingCaptureTime < 0.12) return;
+    this.lastRingCaptureTime = now;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(620, now);
+    osc.frequency.exponentialRampToValueAtTime(940, now + 0.12);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.035, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+    osc.connect(gain);
+    gain.connect(this.master);
+    osc.start(now);
+    osc.stop(now + 0.15);
   }
 
   playScoreSound() {
@@ -777,7 +805,16 @@ class Obstacle {
 //  Particle — универсальная частица для вспышек/взрывов (без изменений).
 // ============================================================================
 class Particle {
+  static pool = [];
+
   constructor(x, y, color, cool = false, options = {}) {
+    const recycled = Particle.pool.pop();
+    if (recycled) return recycled.reset(x, y, color, cool, options);
+
+    this.reset(x, y, color, cool, options);
+  }
+
+  reset(x, y, color, cool = false, options = {}) {
     this.x = x;
     this.y = y;
 
@@ -797,6 +834,14 @@ class Particle {
 
     this.attractTo = options.attractTo ?? null; // {x, y}
     this.attractPull = options.attractPull ?? 0;
+    this.inPool = false;
+    return this;
+  }
+
+  release() {
+    if (this.inPool) return;
+    this.inPool = true;
+    if (Particle.pool.length < 260) Particle.pool.push(this);
   }
 
   update() {
@@ -828,6 +873,29 @@ class Particle {
     }
 
     ctx.globalAlpha = 1;
+  }
+}
+
+class ParticleList extends Array {
+  constructor(maxParticles = 220) {
+    super();
+    this.maxParticles = maxParticles;
+  }
+
+  push(...particles) {
+    for (const particle of particles) {
+      if (this.length >= this.maxParticles) {
+        particle.release();
+        continue;
+      }
+      super.push(particle);
+    }
+    return this.length;
+  }
+
+  clearToPool() {
+    for (const particle of this) particle.release();
+    this.length = 0;
   }
 }
 
@@ -1607,6 +1675,7 @@ class RedRing {
     this.y = 0;
 
     this.anchorRedlet = null;
+    this.captureLockedUntil = 0;
     this.isAttached = false;
 
     this.entrySide = "top";
@@ -4957,7 +5026,7 @@ export class GameplayScene10 {
     "Собирай маленькие звездочки → " +
     "Веди их к дому, избегая хищных звезд!";
 
-    this.levelTargetScore = 400;
+    this.levelTargetScore = 100;
     this.levelPassed = false;
     this.displayedHeartProgress = 0;
     this.targetHeartProgress = 0;
@@ -4970,7 +5039,7 @@ export class GameplayScene10 {
     this.redRings = [];                 // до 3 одновременных свободных колец-мишеней для редлетов
     this.activeGoldRing = null;
     this.goldRescuedCount = 0;
-    this.goldRescueTarget = 8;
+    this.goldRescueTarget = 4;
     this.activeGoldCombo = false;       // true, когда есть Redlet, несущий GoldRing
     this.goldComboExpireTimer = 0;      // обратный отсчёт 10с для активного золотого комбо
 
@@ -4990,7 +5059,11 @@ export class GameplayScene10 {
     this.redletTrailTimer = 0;
     this.starlets = [];
     this.obstacles = [];
-    this.particles = [];
+    this.particles = new ParticleList();
+    this.particleTrailIntervalScale =
+      navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 1.5 : 1;
+    this.backgroundDustLayer = null;
+    this.lastHudState = null;
 
     this.score = 0;
     this.savedCount = 0;
@@ -5279,6 +5352,7 @@ getRankHudAnchorRect() {
   this.canvas.width = window.innerWidth;
   this.canvas.height = window.innerHeight;
   this.computeSceneMetrics();
+  this.backgroundDustLayer = this.createBackgroundDustLayer();
 
   if (this.motherStar) this.motherStar.setBounds(this.sceneMetrics);
   if (this.homeStar) this.homeStar.setBounds(this.sceneMetrics);
@@ -5603,7 +5677,9 @@ getSceneRankTitle(rank = this.getSceneRank()) {
 
   this.starlets = [];
   this.obstacles = [];
-  this.particles = [];
+  this.particles?.clearToPool();
+  this.particles = new ParticleList();
+  this.lastHudState = null;
   this.redlets = [];
   this.redletSpawnTimer = 0;
   this.redletTrailTimer = 0;
@@ -5811,7 +5887,7 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     }
 
     this._goldTrailTimer = (this._goldTrailTimer ?? 0) + delta;
-    const interval = 0.018;
+    const interval = 0.018 * this.particleTrailIntervalScale;
 
     while (this._goldTrailTimer >= interval) {
       this._goldTrailTimer -= interval;
@@ -5843,7 +5919,7 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     if (!this.redlets?.length) return;
 
     this.redletTrailTimer = (this.redletTrailTimer ?? 0) + delta;
-    const interval = 0.022;
+    const interval = 0.022 * this.particleTrailIntervalScale;
 
     while (this.redletTrailTimer >= interval) {
       this.redletTrailTimer -= interval;
@@ -6340,11 +6416,20 @@ isHomeStarReadyForTutor() {
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
       this.particles[i].update();
-      if (this.particles[i].life <= 0) this.particles.splice(i, 1);
+      if (this.particles[i].life <= 0) {
+        this.particles[i].release();
+        this.particles.splice(i, 1);
+      }
     }
 
-    this.obstacles = this.obstacles.filter((o) => !o.isOffscreen());
-    this.redlets = this.redlets.filter((r) => r && !r.markedForRemoval);
+    for (let i = this.obstacles.length - 1; i >= 0; i--) {
+      if (this.obstacles[i].isOffscreen()) this.obstacles.splice(i, 1);
+    }
+    for (let i = this.redlets.length - 1; i >= 0; i--) {
+      if (!this.redlets[i] || this.redlets[i].markedForRemoval) {
+        this.redlets.splice(i, 1);
+      }
+    }
 
     // 8) Столкновения GoldRing <-> свободный Redlet (формирование комбо).
     this.checkGoldRingRedletAttach();
@@ -6445,6 +6530,19 @@ isHomeStarReadyForTutor() {
   // RedRing.attachToRedlet() сам проверяет canAttach()/canCarryRedRing() и
   // вызывает redlet.setCarryingRedRing(this) — единая точка правды, вручную
   // состояние редлета здесь не трогаем во избежание рассинхронизации.
+  tryAttachRedRing(ring, redlet) {
+    if (!ring?.canAttach() || !redlet?.canCarryRedRing()) return false;
+    if (ring.captureLockedUntil > performance.now()) return false;
+    if (!ring.collidesWithRedlet(redlet)) return false;
+
+    ring.captureLockedUntil = performance.now() + 120;
+    ring.attachToRedlet(redlet);
+    if (ring.state !== "attached" || ring.anchorRedlet !== redlet) return false;
+
+    this.audio?.playCatchSound?.();
+    return true;
+  }
+
   checkRedletRingCapture() {
     if (!this.redRings?.length || !this.redlets?.length) return;
 
@@ -6455,11 +6553,7 @@ isHomeStarReadyForTutor() {
         if (!redlet || redlet.markedForRemoval) continue;
         if (!redlet.canCarryRedRing()) continue;
 
-        if (ring.collidesWithRedlet(redlet)) {
-          ring.attachToRedlet(redlet);
-          this.audio?.playRingGoneSound?.();
-          break;
-        }
+        if (this.tryAttachRedRing(ring, redlet)) break;
       }
     }
   }
@@ -6659,11 +6753,19 @@ this.starlets.splice(i, 1);
   // защитное, сцена не ломается при его отсутствии.
   updateGoldProgressUI() {
     if (this.goldRescuedElement) {
-    this.goldRescuedElement.textContent = `${this.goldRescuedCount}/${this.goldRescueTarget}`;
+      const progress = `${this.goldRescuedCount}/${this.goldRescueTarget}`;
+      if (this.goldRescuedElement.textContent !== progress) {
+        this.goldRescuedElement.textContent = progress;
+      }
     }
   }
 
   updateUI() {
+    const progress = Math.max(0, Math.min(1, this.timeLeft / this.totalTime));
+    const nextState = `${this.savedCount}|${this.lostCount}|${this.score}|${this.goldRescuedCount}|${Math.floor(progress * 120)}`;
+    if (this.lastHudState === nextState) return;
+    this.lastHudState = nextState;
+
     if (this.savedCountElement) {
       this.savedCountElement.textContent = this.savedCount;
     }
@@ -6677,7 +6779,6 @@ this.starlets.splice(i, 1);
     }
 
     if (this.timeFillElement) {
-      const progress = Math.max(0, Math.min(1, this.timeLeft / this.totalTime));
       this.timeFillElement.style.width = `${progress * 100}%`;
     }
 
@@ -6685,8 +6786,15 @@ this.starlets.splice(i, 1);
     this.updateRankUI();
   }
 
-  drawBackgroundDust() {
-    const g = this.ctx.createRadialGradient(
+  createBackgroundDustLayer() {
+    const layer = typeof OffscreenCanvas === "function"
+      ? new OffscreenCanvas(this.canvas.width, this.canvas.height)
+      : document.createElement("canvas");
+    layer.width = this.canvas.width;
+    layer.height = this.canvas.height;
+
+    const layerContext = layer.getContext("2d");
+    const g = layerContext.createRadialGradient(
       this.canvas.width * 0.32,
       this.canvas.height * 0.5,
       40,
@@ -6699,8 +6807,14 @@ this.starlets.splice(i, 1);
     g.addColorStop(0.35, "rgba(12, 43, 74, 0.03)");
     g.addColorStop(1, "rgba(0,0,0,0)");
 
-    this.ctx.fillStyle = g;
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    layerContext.fillStyle = g;
+    layerContext.fillRect(0, 0, layer.width, layer.height);
+    return layer;
+  }
+
+  drawBackgroundDust() {
+    this.backgroundDustLayer ??= this.createBackgroundDustLayer();
+    this.ctx.drawImage(this.backgroundDustLayer, 0, 0);
   }
 
     // --------------------------------------------------------------------
