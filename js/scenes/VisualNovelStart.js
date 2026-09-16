@@ -40,7 +40,7 @@ export class VisualNovelStart extends VisualNovelScene {
           bg: BACKGROUND_URL,
           last: true,
           resultTitle: "История начинается",
-          resultMessage: "Укажи путь",
+          resultMessage: "",
         },
       },
     });

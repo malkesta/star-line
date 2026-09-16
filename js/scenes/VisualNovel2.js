@@ -1,14 +1,24 @@
 import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
-const BACKGROUNDS = { story: asset("../../assets/images/vn/vn_backgrounds/test-stars.png"), home: asset("../../assets/images/vn/vn_backgrounds/test-night.png") };
+const BACKGROUNDS = {
+  story: asset("../../assets/images/vn/vn_backgrounds/vn-2-fairytale-morning.png"),
+  home: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-interior.png"),
+};
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
 const GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
 const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
+const MOM = asset("../../assets/images/vn/sprites/mom/mom_neutral.png");
+const DAD = asset("../../assets/images/vn/sprites/dad/dad_neutral.png");
 
 export class VisualNovel2 extends VisualNovelScene {
   constructor(options = {}) {
     super({ ...options, sceneId: "vn-2", musicUrl: MUSIC_URL,
-      sprites: { girl: { src: GIRL, alt: "Персонаж — временный спрайт" }, star: { src: STAR, alt: "Звезда — временный спрайт" } }, startNode: "intro",
+      sprites: {
+        girl: { src: GIRL, alt: "Девочка" },
+        star: { src: STAR, alt: "Звезда" },
+        mom: { src: MOM, alt: "Мама" },
+        dad: { src: DAD, alt: "Папа" },
+      }, startNode: "intro",
       nodes: {
         intro: {
           speaker: "...",
@@ -27,8 +37,8 @@ export class VisualNovel2 extends VisualNovelScene {
         decided: {
           speaker: "...",
           text: "Девочка решила:",
-          bg: BACKGROUNDS.home,
-          sprites: { girl: true },
+          bg: BACKGROUNDS.story,
+          sprites: {},
           next: "choice"
         },
         choice: {
@@ -84,23 +94,23 @@ export class VisualNovel2 extends VisualNovelScene {
           speaker: "Мама",
           text: "Так вот чем ты занимаешься по ночам! А потом на уроках не слушаешь!",
           bg: BACKGROUNDS.home,
-          sprites: { girl: true },
-          speakingSprite: "girl",
+          sprites: { girl: true, mom: true },
+          speakingSprite: "mom",
           next: "momScold2"
         },
         momScold2: {
           speaker: "Мама",
           text: "Я столько работаю, а ты тратишь время на ерунду!",
           bg: BACKGROUNDS.home,
-          sprites: { girl: true },
-          speakingSprite: "girl",
+          sprites: { girl: true, mom: true },
+          speakingSprite: "mom",
           next: "momChoice"
         },
         momChoice: {
           speaker: "",
           text: "",
           bg: BACKGROUNDS.home,
-          sprites: { girl: true },
+          sprites: { girl: true, mom: true },
           choiceLabel: "Но, мама, это же очень важно!",
           choices: [
             { label: "Без меня они не доберутся домой.", next: "momAnswer1" },
@@ -111,24 +121,24 @@ export class VisualNovel2 extends VisualNovelScene {
           speaker: "Мама",
           text: "Вот ещё. Жили как-то до тебя, и ещё проживут.",
           bg: BACKGROUNDS.home,
-          sprites: { girl: true },
-          speakingSprite: "girl",
+          sprites: { girl: true, mom: true },
+          speakingSprite: "mom",
           next: "momAfter"
         },
         momAnswer2: {
           speaker: "Мама",
           text: "Счастьем сыт не будешь! Надо нормально спать и хорошо учиться.",
           bg: BACKGROUNDS.home,
-          sprites: { girl: true },
-          speakingSprite: "girl",
+          sprites: { girl: true, mom: true },
+          speakingSprite: "mom",
           next: "momAnswer3"
         },
         momAnswer3: {
           speaker: "Мама",
           text: "Чтобы потом у тебя была хорошая жизнь.",
           bg: BACKGROUNDS.home,
-          sprites: { girl: true },
-          speakingSprite: "girl",
+          sprites: { girl: true, mom: true },
+          speakingSprite: "mom",
           next: "momAfter"
         },
         momAfter: {
@@ -172,15 +182,15 @@ export class VisualNovel2 extends VisualNovelScene {
           speaker: "Папа",
           text: "Милая. Звёзды — это огромные горящие шары. Их не нужно спасать.",
           bg: BACKGROUNDS.home,
-          sprites: { girl: true },
-          speakingSprite: "girl",
+          sprites: { girl: true, dad: true },
+          speakingSprite: "dad",
           next: "friends"
         },
         friends: {
           speaker: "Девочка",
           text: "Но, папа, они же мои друзья!",
           bg: BACKGROUNDS.home,
-          sprites: { girl: true },
+          sprites: { girl: true, dad: true },
           speakingSprite: "girl",
           next: "romance"
         },
@@ -188,16 +198,16 @@ export class VisualNovel2 extends VisualNovelScene {
           speaker: "Папа",
           text: "Опять эта твоя романтика. Слишком богатое воображение.",
           bg: BACKGROUNDS.home,
-          sprites: { girl: true },
-          speakingSprite: "girl",
+          sprites: { girl: true, dad: true },
+          speakingSprite: "dad",
           next: "busy"
         },
         busy: {
           speaker: "Папа",
           text: "Впрочем, я занят. Иди поиграй и больше не говори всяких глупостей.",
           bg: BACKGROUNDS.home,
-          sprites: { girl: true },
-          speakingSprite: "girl",
+          sprites: { girl: true, dad: true },
+          speakingSprite: "dad",
           next: "dadAfter"
         },
         dadAfter: {

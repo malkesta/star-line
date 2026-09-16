@@ -55,6 +55,8 @@ export class VisualNovelScene {
     this.spriteElements = {
       girl: document.getElementById("spriteGirl"),
       star: document.getElementById("spriteStar"),
+      mom: document.getElementById("spriteMom"),
+      dad: document.getElementById("spriteDad"),
     };
 
     this.currentNodeId = null;
