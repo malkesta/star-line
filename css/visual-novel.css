@@ -23,6 +23,10 @@
   --safe-l: env(safe-area-inset-left, 0px);
 
   --dialog-h: clamp(180px, calc(var(--vmin) * 30), 340px);
+  /* Typography follows the dialog card, not the viewport. The text area is
+     sized for roughly three comfortable dialogue lines. */
+  --dialog-text-size: calc(var(--dialog-h) * 0.096);
+  --dialog-speaker-size: calc(var(--dialog-h) * 0.12);
 }
 
 /* =========================================================================
@@ -644,7 +648,7 @@
 #vnSpeakerName {
   justify-self: center;
   color: #ffe9b0;
-  font-size: calc(var(--vmin) * 2.25);
+  font-size: var(--dialog-speaker-size);
   letter-spacing: 0.04em;
   text-align: center;
   text-shadow: 0 0 calc(var(--vmin) * 1.4) rgba(240, 201, 135, 0.32);
@@ -664,8 +668,8 @@
   max-width: 70ch;
   margin: 0;
   color: #eae6f2;
-  font-size: calc(var(--vmin) * 2.55);
-  line-height: 1.65;
+  font-size: var(--dialog-text-size);
+  line-height: 1.5;
   text-align: left;
   direction: ltr;
   text-shadow: 0 1px calc(var(--vmin) * 0.7) rgba(0, 0, 0, 0.52);
@@ -706,13 +710,13 @@
 
 .vn-choice-btn {
   height: auto;
-  min-height: calc(var(--vmin) * 6.2);
+  min-height: calc(var(--dialog-text-size) * 1.35 + var(--vmin) * 2.3);
   padding: calc(var(--vmin) * 1.15) calc(var(--vmin) * 2.2);
   border-radius: 999px;
   border: calc(var(--vmin) * 0.14) solid rgba(240, 201, 135, 0.48);
   background: linear-gradient(180deg, #332e5e, #2a2650);
   color: #f3ecdd;
-  font-size: calc(var(--vmin) * 2.1);
+  font-size: var(--dialog-text-size);
   box-shadow: 0 calc(var(--vmin) * 0.35) calc(var(--vmin) * 1.6) rgba(0, 0, 0, 0.36);
   transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }

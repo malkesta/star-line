@@ -19,7 +19,7 @@ import { VisualNovel4 } from "./scenes/VisualNovel4.js";
 import { VisualNovelFin } from "./scenes/VisualNovelFin.js";
 import { GameAudio } from "./legacy/StarLineGame.js";
 
-const DEBUG_START_SCENE = null;
+const DEBUG_START_SCENE = "vn1";
 // null       -> обычный порядок
 // "intro"    -> только IntroScene
 // "start"    -> только StartScreenScene

@@ -30,17 +30,17 @@ export class VisualNovelStart extends VisualNovelScene {
         },
         earth: {
           speaker: "...",
-          text: "Но самые удивительные истории порой случаются на земле.",
+          text: "Но самые удивительные истории случаются с ними на земле.",
           bg: BACKGROUND_URL,
           next: "ending",
         },
         ending: {
           speaker: "...",
-          text: "Со звёздами и с теми, кто чертит им путь.",
+          text: "С ними. И с теми, кто чертит им путь.",
           bg: BACKGROUND_URL,
           last: true,
-          resultTitle: "...",
-          resultMessage: "",
+          resultTitle: "История начинается",
+          resultMessage: "Укажи путь",
         },
       },
     });
