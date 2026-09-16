@@ -28,6 +28,7 @@ export class GameAudio {
     this.lastEatTime = 0;
     this.lastRingGoneTime = 0;
     this.lastStarletSpawnTime = 0;
+    this.reverbBuffers = new Map();
   }
 
   setMusic(url) {
@@ -73,16 +74,23 @@ export class GameAudio {
   }
 
   createReverb(seconds = 2.8, decay = 2.6) {
-    const rate = this.ctx.sampleRate;
-    const length = rate * seconds;
-    const impulse = this.ctx.createBuffer(2, length, rate);
+    const key = `${seconds}:${decay}`;
+    let impulse = this.reverbBuffers.get(key);
 
-    for (let c = 0; c < 2; c++) {
-      const data = impulse.getChannelData(c);
-      for (let i = 0; i < length; i++) {
-        const n = Math.random() * 2 - 1;
-        data[i] = n * Math.pow(1 - i / length, decay);
+    if (!impulse) {
+      const rate = this.ctx.sampleRate;
+      const length = rate * seconds;
+      impulse = this.ctx.createBuffer(2, length, rate);
+
+      for (let c = 0; c < 2; c++) {
+        const data = impulse.getChannelData(c);
+        for (let i = 0; i < length; i++) {
+          const n = Math.random() * 2 - 1;
+          data[i] = n * Math.pow(1 - i / length, decay);
+        }
       }
+
+      this.reverbBuffers.set(key, impulse);
     }
 
     const convolver = this.ctx.createConvolver();
