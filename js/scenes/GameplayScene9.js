@@ -761,22 +761,22 @@ class Obstacle {
     ctx.beginPath();
     ctx.arc(cx, cy, this.ringRadius, 0, Math.PI * 2);
     ctx.lineWidth = 1.1;
-    ctx.strokeStyle = "rgba(126, 60, 72, 0.92)";
+    ctx.strokeStyle = "rgba(198, 104, 74, 0.86)";
     ctx.stroke();
 
     ctx.beginPath();
     ctx.arc(cx, cy, this.ringRadius - 5, 0, Math.PI * 2);
     ctx.lineWidth = 0.75;
-    ctx.strokeStyle = "rgba(126, 60, 72, 0.62)";
+    ctx.strokeStyle = "rgba(198, 104, 74, 0.56)";
     ctx.stroke();
 
     drawStarPath(ctx, cx, cy, this.starRadius, this.starRadius * 0.48, 5);
-    ctx.fillStyle = "#0d1427";
+    ctx.fillStyle = "#40465a";
     ctx.fill();
 
     drawStarPath(ctx, cx, cy, this.starRadius, this.starRadius * 0.48, 5);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = "#7e3c48";
+    ctx.strokeStyle = "#c66b4f";
     ctx.stroke();
 
     ctx.restore();
@@ -2048,10 +2048,10 @@ class RedRing {
       this.y,
       glowRadius
     );
-    glow.addColorStop(0, `rgba(206, 69, 69, ${0.0 * glowAlpha})`);
-    glow.addColorStop(0.72, `rgba(206, 69, 69, ${0.06 * glowAlpha})`);
-    glow.addColorStop(0.9, `rgba(206, 69, 69, ${0.22 * glowAlpha})`);
-    glow.addColorStop(1, "rgba(206, 69, 69, 0)");
+    glow.addColorStop(0, `rgba(224, 112, 75, ${0.0 * glowAlpha})`);
+    glow.addColorStop(0.72, `rgba(224, 112, 75, ${0.06 * glowAlpha})`);
+    glow.addColorStop(0.9, `rgba(224, 112, 75, ${0.22 * glowAlpha})`);
+    glow.addColorStop(1, "rgba(224, 112, 75, 0)");
 
     ctx.fillStyle = glow;
     ctx.beginPath();
@@ -2061,23 +2061,23 @@ class RedRing {
     ctx.beginPath();
     ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
     ctx.lineWidth = this.ringThickness;
-    ctx.strokeStyle = `rgba(176, 40, 60, ${Math.min(1, ringAlpha * 0.9)})`;
+    ctx.strokeStyle = `rgba(187, 82, 61, ${Math.min(1, ringAlpha * 0.9)})`;
     ctx.stroke();
 
     ctx.beginPath();
     ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
     ctx.lineWidth = Math.max(1.2, this.ringThickness * 0.58);
-    ctx.strokeStyle = `rgba(230, 90, 90, ${Math.min(1, 0.26 + ringAlpha * 0.2)})`;
+    ctx.strokeStyle = `rgba(240, 151, 112, ${Math.min(1, 0.26 + ringAlpha * 0.2)})`;
     ctx.shadowBlur = 8;
-    ctx.shadowColor = "rgba(206, 69, 69, 0.24)";
+    ctx.shadowColor = "rgba(224, 112, 75, 0.24)";
     ctx.stroke();
 
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.innerRingRadius, 0, Math.PI * 2);
     ctx.lineWidth = Math.max(1, this.ringThickness * 0.16);
-    ctx.strokeStyle = `rgba(206, 69, 69, ${Math.min(1, 0.72 + ringAlpha * 0.2)})`;
+    ctx.strokeStyle = `rgba(224, 112, 75, ${Math.min(1, 0.72 + ringAlpha * 0.2)})`;
     ctx.shadowBlur = 14;
-    ctx.shadowColor = "rgba(206, 69, 69, 0.24)";
+    ctx.shadowColor = "rgba(224, 112, 75, 0.24)";
     ctx.stroke();
 
     ctx.shadowBlur = 0;
@@ -2085,18 +2085,18 @@ class RedRing {
     if (dotAlpha > 0.001) {
       ctx.beginPath();
       ctx.arc(this.x, this.y, dotRadius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(206, 69, 69, ${Math.min(1, 0.88 * dotAlpha + 0.12)})`;
+      ctx.fillStyle = `rgba(224, 112, 75, ${Math.min(1, 0.88 * dotAlpha + 0.12)})`;
       ctx.fill();
 
       ctx.beginPath();
       ctx.arc(this.x, this.y, dotRadius * 0.66, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 185, 185, ${0.34 * dotAlpha + 0.18})`;
+      ctx.fillStyle = `rgba(249, 210, 188, ${0.34 * dotAlpha + 0.18})`;
       ctx.fill();
 
       ctx.beginPath();
       ctx.arc(this.x, this.y, dotRadius, 0, Math.PI * 2);
       ctx.lineWidth = 1;
-      ctx.strokeStyle = `rgba(255, 220, 220, ${0.58 * dotAlpha + 0.18})`;
+      ctx.strokeStyle = `rgba(255, 235, 220, ${0.58 * dotAlpha + 0.18})`;
       ctx.stroke();
     }
 
@@ -2684,12 +2684,12 @@ class Redlet {
 
   const yellow = { r: 245, g: 182, b: 112 };
   const amber = { r: 255, g: 240, b: 184 };
-  const red = { r: 224, g: 58, b: 74 };
-  const deepRed = { r: 126, g: 60, b: 72 };
-  const brightEdge = { r: 255, g: 86, b: 104 };
+  const red = { r: 225, g: 115, b: 78 };
+  const deepRed = { r: 151, g: 80, b: 66 };
+  const brightEdge = { r: 242, g: 157, b: 115 };
   const gold = { r: 255, g: 205, b: 90 };
   const goldDeep = { r: 200, g: 150, b: 40 };
-  const blackCore = { r: 10, g: 14, b: 28 };
+  const blackCore = { r: 55, g: 60, b: 75 };
 
   const mix = (a, b, t) => ({
     r: a.r + (b.r - a.r) * t,
@@ -2775,13 +2775,13 @@ class Redlet {
     ctx.beginPath();
     ctx.arc(0, 0, drawRadius * 1.55, 0, Math.PI * 2);
     ctx.lineWidth = Math.max(1.25, this.radius * 0.22);
-    ctx.strokeStyle = "rgba(176, 40, 60, 0.84)";
+    ctx.strokeStyle = "rgba(187, 82, 61, 0.84)";
     ctx.stroke();
 
     ctx.beginPath();
     ctx.arc(0, 0, drawRadius * 1.55, 0, Math.PI * 2);
     ctx.lineWidth = Math.max(1, this.radius * 0.11);
-    ctx.strokeStyle = "rgba(230, 90, 90, 0.24)";
+    ctx.strokeStyle = "rgba(240, 151, 112, 0.24)";
     ctx.stroke();
   }
 
@@ -4859,12 +4859,14 @@ getSceneRankTitle(rank = this.getSceneRank()) {
         : "Еще не все";
     }
 
+    const passedByScore = this.score >= this.levelTargetScore;
+
     if (this.resultMessageElement) {
       this.resultMessageElement.textContent = this.levelPassed
         ? "Все спасённые звёзды нашли путь домой!"
-        : this.goldRescuedCount >= this.goldRescueTarget
-        ? `Домой добралось только ${this.goldRescuedCount} из 4 золотых пар.`
-        : "Еще не все звезды спасены.";
+        : !passedByScore
+        ? "Девочка надеялась спасти больше звёзд."
+        : `Домой добралось только ${this.goldRescuedCount} из ${this.goldRescueTarget} золотых пар.`;
     }
 
     this.updateRankUI();
@@ -5164,7 +5166,7 @@ getSceneRankTitle(rank = this.getSceneRank()) {
           const py = redlet.y + Math.sin(angle) * r;
 
           this.particles.push(
-            new Particle(px, py, "rgba(255, 55, 78, 0.92)", false, {
+            new Particle(px, py, "rgba(232, 127, 88, 0.82)", false, {
               vx: (Math.random() - 0.5) * 0.42,
               vy: (Math.random() - 0.5) * 0.42,
               life: 0.52 + Math.random() * 0.16,
@@ -5814,7 +5816,7 @@ isHomeStarReadyForTutor() {
 
           this.audio.playHitSound?.();
           this.emitEatBurst?.(starlet.x, starlet.y);
-          this.spawnScatterEffect(starlet.x, starlet.y, "#7e3c48", true);
+          this.spawnScatterEffect(starlet.x, starlet.y, "#c66b4f", true);
 
           this.starlets.splice(i, 1);
         }
@@ -5835,7 +5837,7 @@ isHomeStarReadyForTutor() {
           this.score = Math.max(0, this.score - 5);
           this.lostCount += 1;
           this.audio.playHitSound();
-          this.spawnScatterEffect(starlet.x, starlet.y, "#7e3c48", true);
+          this.spawnScatterEffect(starlet.x, starlet.y, "#c66b4f", true);
           this.starlets.splice(i, 1);
           break;
         }
@@ -5927,7 +5929,7 @@ this.starlets.splice(i, 1);
       if (starlet.state !== "followingGoldCombo") continue;
 
       followedCount += 1;
-      this.spawnScatterEffect(starlet.x, starlet.y, "#7e3c48", true);
+      this.spawnScatterEffect(starlet.x, starlet.y, "#c66b4f", true);
       this.starlets.splice(i, 1);
     }
 
@@ -5939,7 +5941,7 @@ this.starlets.splice(i, 1);
     this.obstacles.push(Obstacle.fromFailedGoldCombo(ring.x, ring.y, this.sceneMetrics));
 
     this.audio.playHitSound?.();
-    this.spawnScatterEffect(ring.x, ring.y, "#7e3c48", true);
+    this.spawnScatterEffect(ring.x, ring.y, "#c66b4f", true);
 
     // ring.expire() сам очищает anchorRedlet.carryingGoldRing и помечает
     // редлета на удаление вместе с проваленным комбо.
