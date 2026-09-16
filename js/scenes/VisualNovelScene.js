@@ -37,6 +37,8 @@ export class VisualNovelScene {
 
     this.rotateLock = document.getElementById("rotateLock");
     this.bg = document.getElementById("vnBg");
+    this.bgTransition = document.getElementById("vnBgTransition");
+    this.backgroundTransitionRaf = null;
 
     this.speakerEl = document.getElementById("vnSpeakerName");
     this.textWrap = document.getElementById("vnDialogTextWrap");
@@ -154,7 +156,7 @@ export class VisualNovelScene {
     this.currentNodeId = this.startNode;
 
     if (firstNode.bg) {
-      this.setBackground(firstNode.bg);
+      this.setBackground(firstNode.bg, { immediate: true });
     }
 
     this.setSprites(firstNode.sprites, firstNode.speakingSprite);
@@ -337,11 +339,35 @@ export class VisualNovelScene {
     this.entryTimer = null;
   }
 
-  setBackground(src) {
+  setBackground(src, { immediate = false } = {}) {
     if (!src || this.bg.dataset.src === src) return;
+
+    if (this.backgroundTransitionRaf) {
+      cancelAnimationFrame(this.backgroundTransitionRaf);
+      this.backgroundTransitionRaf = null;
+    }
+
+    const previousBackground = this.bg.style.backgroundImage;
 
     this.bg.dataset.src = src;
     this.bg.style.backgroundImage = `url("${src}")`;
+
+    if (immediate || !previousBackground || !this.bgTransition) {
+      if (this.bgTransition) this.bgTransition.style.opacity = "0";
+      return;
+    }
+
+    this.bgTransition.style.transition = "none";
+    this.bgTransition.style.backgroundImage = previousBackground;
+    this.bgTransition.style.opacity = "1";
+
+    this.backgroundTransitionRaf = requestAnimationFrame(() => {
+      this.backgroundTransitionRaf = requestAnimationFrame(() => {
+        this.bgTransition.style.removeProperty("transition");
+        this.bgTransition.style.opacity = "0";
+        this.backgroundTransitionRaf = null;
+      });
+    });
   }
 
   setSprites(spriteState = {}, speakingKey = null) {

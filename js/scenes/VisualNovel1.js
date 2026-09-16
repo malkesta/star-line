@@ -2,10 +2,9 @@ import { VisualNovelScene } from "./VisualNovelScene.js";
 
 const asset = (path) => new URL(path, import.meta.url).href;
 
-// TODO: replace these temporary backgrounds with the scene artwork.
 const BACKGROUNDS = {
-  story: asset("../../assets/images/vn/vn_backgrounds/test-stars.png"),
-  close: asset("../../assets/images/vn/vn_backgrounds/test-night.png"),
+  intro: asset("../../assets/images/vn/vn_backgrounds/test-night.png"),
+  hills: asset("../../assets/images/vn/vn_backgrounds/vn-1-bg.png"),
 };
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
 const PLACEHOLDER_GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
@@ -32,35 +31,35 @@ export class VisualNovel1 extends VisualNovelScene {
         intro: {
           speaker: "...",
           text: "Жила-была девочка, которая дружила со звёздами. Каждую ночь она смотрела в небо и чертила им путь.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.intro,
           sprites: {},
           next: "guides"
         },
         guides: {
           speaker: "...",
           text: "Она вела их сквозь пронзительную холодную темноту. И помогала избегать опасностей — голодных чёрных звёзд.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.intro,
           sprites: {},
           next: "visits"
         },
         visits: {
           speaker: "...",
           text: "Порой, спасённые звёзды прилетали к ней снова. Благодарить. Рассказывать, что видели в космосе и слушать сказки.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.intro,
           sprites: {},
           next: "asked"
         },
         asked: {
           speaker: "...",
           text: "И вот как-то раз, между первой сказкой и первым лучиком зари, девочка спросила.",
-          bg: BACKGROUNDS.story,
-          sprites: { girl: true },
+          bg: BACKGROUNDS.intro,
+          sprites: {},
           next: "question"
         },
         question: {
           speaker: "",
           text: "",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true },
           choiceLabel: "Никак не могу понять",
           choices: [
@@ -71,7 +70,7 @@ export class VisualNovel1 extends VisualNovelScene {
         darkStars: {
           speaker: "Звезда",
           text: "Они не злые, просто потухли. В каждом из нас есть крохотный светильник. А вокруг него чернота.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { star: true },
           speakingSprite: "star",
           next: "darkMore"
@@ -79,7 +78,7 @@ export class VisualNovel1 extends VisualNovelScene {
         darkMore: {
           speaker: "Звезда",
           text: "И когда свет слабеет, черноты всё больше и больше.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { star: true },
           speakingSprite: "star",
           next: "blame"
@@ -87,7 +86,7 @@ export class VisualNovel1 extends VisualNovelScene {
         blame: {
           speaker: "Девочка",
           text: "А я думаю, сами виноваты. Мало того, что почернели, так ещё и едят чужой свет.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "girl",
           next: "cold"
@@ -95,7 +94,7 @@ export class VisualNovel1 extends VisualNovelScene {
         cold: {
           speaker: "Звезда",
           text: "Им просто очень холодно. А когда кому-то холодно, он бывает жестоким.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "star",
           next: "never"
@@ -103,7 +102,7 @@ export class VisualNovel1 extends VisualNovelScene {
         never: {
           speaker: "Девочка",
           text: "Зря ты их защищаешь. Вот я бы никогда не стала как они!",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "girl",
           next: "merge"
@@ -111,7 +110,7 @@ export class VisualNovel1 extends VisualNovelScene {
         afraid: {
           speaker: "Звезда",
           text: "Очень страшно. В космосе холодно и жутко. И приходится лететь изо всех сил, и светить изо всех сил, чтобы не замёрзнуть.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { star: true },
           speakingSprite: "star",
           next: "safety"
@@ -119,7 +118,7 @@ export class VisualNovel1 extends VisualNovelScene {
         safety: {
           speaker: "Девочка",
           text: "Тогда почему не остаться где-нибудь? В безопасности.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "girl",
           next: "home"
@@ -127,7 +126,7 @@ export class VisualNovel1 extends VisualNovelScene {
         home: {
           speaker: "Звезда",
           text: "Только так можно добраться домой.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "star",
           next: "tired"
@@ -135,7 +134,7 @@ export class VisualNovel1 extends VisualNovelScene {
         tired: {
           speaker: "Девочка",
           text: "Но что, если ты устанешь и больше не сможешь светить? Ты же замёрзнешь.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "girl",
           next: "born"
@@ -143,7 +142,7 @@ export class VisualNovel1 extends VisualNovelScene {
         born: {
           speaker: "Звезда",
           text: "Так и рождаются чёрные звёзды. Они устают и гаснут.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "star",
           next: "blackness"
@@ -151,7 +150,7 @@ export class VisualNovel1 extends VisualNovelScene {
         blackness: {
           speaker: "Звезда",
           text: "И чернота внутри них больше нечему рассеивать.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "star",
           next: "dislike"
@@ -159,7 +158,7 @@ export class VisualNovel1 extends VisualNovelScene {
         dislike: {
           speaker: "Девочка",
           text: "Они мне не нравятся. Едят чужой свет и только умеют, что разрушать.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "girl",
           next: "never2"
@@ -167,7 +166,7 @@ export class VisualNovel1 extends VisualNovelScene {
         never2: {
           speaker: "Девочка",
           text: "Подумаешь, устали светить.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "girl",
           next: "never3"
@@ -175,7 +174,7 @@ export class VisualNovel1 extends VisualNovelScene {
         never3: {
           speaker: "Девочка",
           text: "Даже если я устану, я никогда не буду как они!",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "girl",
           next: "merge"
@@ -183,7 +182,7 @@ export class VisualNovel1 extends VisualNovelScene {
         merge: {
           speaker: "...",
           text: "Девочка сказала это так решительно.\nОна была уверена, что звезда согласится. Они же дружили.\nНо та молчала, и в её молчании звенела грусть. Холод, какой бывает только в небе.\nА девочке впервые рядом со звездой вдруг стало не по себе.",
-          bg: BACKGROUNDS.close,
+          bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           last: true,
           resultTitle: "История продолжается",
