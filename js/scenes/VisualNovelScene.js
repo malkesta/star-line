@@ -368,12 +368,11 @@ export class VisualNovelScene {
   }
 
   setSpeaker(name) {
-    const narrator = !name;
-    const label = narrator ? "Рассказчик" : name;
+    const label = name || "...";
 
     this.speakerEl.textContent = label;
     this.speakerEl.classList.toggle("show", Boolean(label));
-    this.speakerEl.classList.toggle("narrator", narrator);
+    this.speakerEl.classList.remove("narrator");
   }
 
   typeText(text) {
