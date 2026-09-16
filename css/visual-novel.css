@@ -22,7 +22,7 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
 
-  --dialog-h: clamp(180px, calc(var(--vmin) * 30), 340px);
+  --dialog-h: calc(var(--vmin) * 30);
 }
 
 /* =========================================================================
@@ -380,27 +380,6 @@
   height: auto;
 }
 
-#vnDialogTopper {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(
-    var(--safe-b) + var(--vmin) * 2.1 + var(--dialog-h) - var(--vmin) * 2.1
-  );
-  width: min(42vw, calc(var(--vmax) * 42));
-  max-width: 460px;
-  opacity: 0.92;
-  pointer-events: none;
-  z-index: 12;
-  filter: drop-shadow(0 0 10px rgba(245, 182, 112, 0.16));
-}
-
-#vnDialogTopper svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
 /* =========================================================================
    ДИАЛОГОВОЕ ОКНО
    ========================================================================== */
@@ -410,7 +389,6 @@
   transform: translateX(-50%);
   bottom: calc(var(--safe-b) + var(--vmin) * 2.1);
   width: min(96vw, calc(var(--vmax) * 100));
-  max-width: 1600px;
   height: var(--dialog-h);
   pointer-events: none;
   filter: drop-shadow(0 2.4vmin 4.4vmin rgba(0, 0, 0, 0.45));
@@ -420,17 +398,139 @@
   position: absolute;
   inset: 0;
   border-radius: calc(var(--vmin) * 3.6);
-  background:
+  --dialog-outer-surface:
     linear-gradient(180deg, rgba(8, 12, 28, 0.6) 0%, rgba(11, 16, 34, 0.72) 100%),
     radial-gradient(circle at 50% 0%, rgba(255, 228, 170, 0.08), transparent 35%);
+  background: var(--dialog-outer-surface);
   backdrop-filter: blur(12px) saturate(1.08);
   -webkit-backdrop-filter: blur(12px) saturate(1.08);
-  border: 1px solid rgba(255, 230, 193, 0.18);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    inset 0 0 40px rgba(255, 225, 168, 0.04);
-  overflow: hidden;
+  border: 0;
+  box-shadow: inset 0 0 40px rgba(255, 225, 168, 0.04);
+  overflow: visible;
+  --star-large: 5.2%;
+  --star-right: 1.075%;
+  --star-center: 1.44%;
+  --dialog-inner-surface: #07142e;
 }
+
+.vn-dialog-outer-outline {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: calc(var(--vmin) * 0.16) solid rgba(255, 231, 177, 0.74);
+  border-radius: calc(var(--vmin) * 3.6);
+  box-shadow: 0 0 calc(var(--vmin) * 1.05) rgba(245, 182, 112, 0.16);
+  pointer-events: none;
+}
+
+.vn-dialog-outer-outline::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--vmin) * 0.5);
+  border: calc(var(--vmin) * 0.1066667) solid rgba(255, 231, 177, 0.38);
+  border-radius: calc(var(--vmin) * 3.1);
+}
+
+.vn-dialog-inner-frame {
+  position: absolute;
+  inset: 14% 4.35% 16%;
+  border: calc(var(--vmin) * 0.1066667) solid rgba(255, 231, 177, 0.38);
+  border-radius: calc(var(--vmin) * 2.25);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(41, 78, 135, 0.13), transparent 58%),
+    var(--dialog-inner-surface);
+  box-shadow: none;
+  pointer-events: none;
+  --star-bottom: 1.6125%;
+}
+
+.vn-dialog-star {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Небольшой фон под декором вырезает только пересечение с внешней линией. */
+.vn-dialog-star::before {
+  content: "";
+  position: absolute;
+  inset: -14%;
+  z-index: 0;
+  border-radius: 50%;
+  background: var(--dialog-outer-surface);
+}
+
+.vn-dialog-star svg {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  filter: drop-shadow(0 0 7px rgba(255, 222, 150, 0.5));
+}
+
+.vn-star-core {
+  fill: #fff4c8;
+  stroke: rgba(235, 183, 99, 0.92);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.vn-star-highlight {
+  fill: rgba(255, 255, 237, 0.5);
+}
+
+.vn-star-ring {
+  fill: none;
+  stroke: rgba(255, 231, 177, 0.72);
+  stroke-width: 2.1;
+  stroke-linecap: round;
+}
+
+.vn-star-dot {
+  fill: #fff2c1;
+  filter: drop-shadow(0 0 3px rgba(255, 224, 153, 0.72));
+}
+
+.vn-dialog-star--top-left {
+  width: var(--star-large);
+  aspect-ratio: 1;
+  left: 0;
+  top: 0;
+  transform: translate(16.6667%, -50%);
+}
+
+.vn-dialog-star--top-left::before {
+  inset: -5%;
+}
+
+.vn-dialog-star--top-center {
+  width: var(--star-center);
+  aspect-ratio: 1;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+.vn-dialog-star--bottom-right {
+  width: var(--star-bottom);
+  aspect-ratio: 1;
+  right: 7.8%;
+  bottom: 0;
+  transform: translateY(50%);
+}
+
+.vn-dialog-star--outer-right {
+  width: var(--star-right);
+  aspect-ratio: 1;
+  right: -0.5375%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 
 #vnDialogContent {
   position: absolute;
@@ -444,6 +544,7 @@
   gap: calc(var(--vmin) * 0.7);
   pointer-events: auto;
   min-height: 0;
+  z-index: 2;
 }
 
 #vnSpeakerName {
@@ -537,34 +638,6 @@
     opacity: 1;
     transform: translateY(-2px);
   }
-}
-
-#vnFrameSvg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.frame-base {
-  fill: rgba(9, 14, 29, 0.12);
-  stroke: rgba(255, 233, 195, 0.42);
-  stroke-width: 1.8;
-}
-
-.frame-inner {
-  fill: rgba(9, 14, 29, 0.7);
-  stroke: rgba(255, 241, 214, 0.18);
-  stroke-width: 1;
-}
-
-.frame-flourish {
-  fill: none;
-  stroke: rgba(245, 182, 112, 0.55);
-  stroke-width: 1.35;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .frame-star {
@@ -700,7 +773,7 @@ body.is-vn-active #gameCanvas {
    ========================================================================== */
 @media (max-height: 420px) {
   :root {
-    --dialog-h: clamp(150px, calc(var(--vmin) * 38), 220px);
+    --dialog-h: calc(var(--vmin) * 38);
   }
 
   .vn-sprite {
