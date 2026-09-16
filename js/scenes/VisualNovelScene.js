@@ -26,12 +26,11 @@ export class VisualNovelScene {
   this.musicUrl = musicUrl;
 
   /*
-    Длительность плавного затихания музыки при показе финального
-    экрана VN (см. finish()). Отдельно от fadeDuration визуального
-    перехода, потому что музыка должна гаснуть медленнее/быстрее
-    по своему художественному смыслу, а не синхронно с картинкой.
+    На финальной карточке музыка становится тише, но продолжает играть.
+    Полное затухание запускается только после нажатия «Дальше».
   */
-  this.musicFadeOutDuration = 1.2;
+  this.musicOverlayFadeDuration = 1.2;
+  this.musicExitFadeDuration = 0.65;
 
 
     this.scene = document.getElementById("vnScene");
@@ -601,6 +600,8 @@ export class VisualNovelScene {
     this.resultNextBtn.disabled = true;
   }
 
+  await this.audio?.fadeOutAmbient?.(this.musicExitFadeDuration);
+
   const exitPromise = this.exit();
 
   const advancePromise = (async () => {
@@ -636,13 +637,11 @@ export class VisualNovelScene {
   this.nextHint.classList.remove("show");
 
   /*
-    Музыка этой VN-сцены плавно затихает в момент появления финального
-    экрана — независимо от того, когда пользователь потом нажмёт
-    "Дальше". fadeOutAmbient() уже умеет плавно уводить громкость
-    в 0 и сам ставит трек на паузу по завершении (см. GameAudio).
+    Финальная карточка приглушает музыку, сохраняя её до нажатия
+    «Дальше» — так же, как итоговый экран игровой сцены.
   */
   if (this.musicUrl) {
-    this.audio?.fadeOutAmbient?.(this.musicFadeOutDuration);
+    this.audio?.duckAmbientForOverlay?.(this.musicOverlayFadeDuration);
   }
 
   const finalNode = this.nodes[this.currentNodeId] ?? {};
