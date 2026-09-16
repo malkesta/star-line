@@ -496,7 +496,13 @@ export class VisualNovelScene {
           <circle cx="500" cy="55" r="13" fill="none" stroke="rgba(255,235,195,.35)"/>
           <path d="M500 44l3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" class="choice-star"/>
         </svg>
+        <svg class="choice-edge-star choice-edge-star--left" viewBox="0 0 100 100" aria-hidden="true">
+          <path d="M50 14C53 34 66 47 86 50C66 53 53 66 50 86C47 66 34 53 14 50C34 47 47 34 50 14Z"/>
+        </svg>
         <span class="choice-text"></span>
+        <svg class="choice-edge-star choice-edge-star--right" viewBox="0 0 100 100" aria-hidden="true">
+          <path d="M50 14C53 34 66 47 86 50C66 53 53 66 50 86C47 66 34 53 14 50C34 47 47 34 50 14Z"/>
+        </svg>
       `;
 
       button.querySelector(".choice-text").textContent = choice.label;

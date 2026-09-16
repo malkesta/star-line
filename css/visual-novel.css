@@ -585,6 +585,173 @@
 }
 
 /* =========================================================================
+   VN-КАРТОЧКИ — стиль макета VN-1_new-design
+   ========================================================================== */
+#vnDialogTopper,
+#vnFrameSvg {
+  display: none;
+}
+
+#vnDialogShell {
+  width: 80vw;
+  max-width: none;
+  filter: drop-shadow(0 1.8vmin 3.8vmin rgba(0, 0, 0, 0.55));
+}
+
+#vnDialogBackdrop {
+  border-radius: calc(var(--vmin) * 3.1);
+  background: linear-gradient(180deg, rgba(40, 36, 78, 0.94), rgba(15, 14, 36, 0.96));
+  border: calc(var(--vmin) * 0.14) solid rgba(240, 201, 135, 0.34);
+  box-shadow:
+    0 calc(var(--vmin) * 1.2) calc(var(--vmin) * 3.8) rgba(0, 0, 0, 0.52),
+    inset 0 0 0 calc(var(--vmin) * 0.1) rgba(255, 255, 255, 0.035),
+    inset 0 0 calc(var(--vmin) * 4) rgba(240, 201, 135, 0.055);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+}
+
+.vn-dialog-medallion {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 0;
+  width: calc(var(--vmin) * 7.2);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #332e5e, #14132c 72%);
+  border: calc(var(--vmin) * 0.16) solid rgba(240, 201, 135, 0.62);
+  box-shadow: 0 0 calc(var(--vmin) * 2.2) rgba(240, 201, 135, 0.32), 0 calc(var(--vmin) * 0.5) calc(var(--vmin) * 1.2) rgba(0, 0, 0, 0.42);
+  pointer-events: none;
+}
+
+.vn-dialog-medallion svg {
+  width: 47%;
+  height: 47%;
+  fill: #f0c987;
+  stroke: #ffe9b0;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 calc(var(--vmin) * 0.7) rgba(255, 220, 150, 0.7));
+}
+
+#vnDialogContent {
+  padding: calc(var(--dialog-h) * 0.2) 7% calc(var(--dialog-h) * 0.15);
+  gap: calc(var(--vmin) * 0.8);
+}
+
+#vnSpeakerName {
+  justify-self: center;
+  color: #ffe9b0;
+  font-size: calc(var(--vmin) * 2.25);
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-shadow: 0 0 calc(var(--vmin) * 1.4) rgba(240, 201, 135, 0.32);
+}
+
+#vnSpeakerName::before {
+  content: "◆";
+  color: #f0c987;
+}
+
+#vnDialogTextWrap {
+  text-align: left;
+  scrollbar-color: rgba(240, 201, 135, 0.4) transparent;
+}
+
+#vnDialogText {
+  max-width: 70ch;
+  margin: 0;
+  color: #eae6f2;
+  font-size: calc(var(--vmin) * 2.55);
+  line-height: 1.65;
+  text-align: left;
+  direction: ltr;
+  text-shadow: 0 1px calc(var(--vmin) * 0.7) rgba(0, 0, 0, 0.52);
+}
+
+#vnNextHint {
+  justify-self: center;
+  color: #f0c987;
+  font-size: calc(var(--vmin) * 1.8);
+}
+
+#vnChoiceBox {
+  top: calc(50% + var(--safe-t) * 0.5 - var(--safe-b) * 0.5 - var(--vmin) * 1.05 - var(--dialog-h) * 0.5);
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  width: min(90vw, calc(var(--vmax) * 66));
+  max-width: 640px;
+  gap: calc(var(--vmin) * 1.15);
+  padding: calc(var(--vmin) * 2.3) calc(var(--vmin) * 2.7);
+  border-radius: calc(var(--vmin) * 2.6);
+  background: linear-gradient(180deg, rgba(40, 36, 78, 0.465), rgba(15, 14, 36, 0.475));
+  border: calc(var(--vmin) * 0.12) solid rgba(240, 201, 135, 0.3);
+  box-shadow: 0 calc(var(--vmin) * 1.1) calc(var(--vmin) * 3.5) rgba(0, 0, 0, 0.5), inset 0 0 calc(var(--vmin) * 3) rgba(240, 201, 135, 0.045);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+#vnChoiceBox.show {
+  transform: translate(-50%, -50%);
+}
+
+#vnChoiceLabel {
+  color: #ffe9b0;
+  font-size: calc(var(--vmin) * 2.15);
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 calc(var(--vmin) * 1.3) rgba(240, 201, 135, 0.25);
+}
+
+.vn-choice-btn {
+  height: auto;
+  min-height: calc(var(--vmin) * 6.2);
+  padding: calc(var(--vmin) * 1.15) calc(var(--vmin) * 2.2);
+  border-radius: 999px;
+  border: calc(var(--vmin) * 0.14) solid rgba(240, 201, 135, 0.48);
+  background: linear-gradient(180deg, #332e5e, #2a2650);
+  color: #f3ecdd;
+  font-size: calc(var(--vmin) * 2.1);
+  box-shadow: 0 calc(var(--vmin) * 0.35) calc(var(--vmin) * 1.6) rgba(0, 0, 0, 0.36);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.choice-svg {
+  display: none;
+}
+
+.choice-text {
+  line-height: 1.35;
+  padding: 0;
+}
+
+.choice-edge-star {
+  position: absolute;
+  top: 50%;
+  width: calc(var(--vmin) * 1.25);
+  height: calc(var(--vmin) * 1.25);
+  transform: translateY(-50%);
+  fill: #f0c987;
+  filter: drop-shadow(0 0 calc(var(--vmin) * 0.5) rgba(255, 220, 150, 0.6));
+  pointer-events: none;
+}
+
+.choice-edge-star--left {
+  left: 7%;
+}
+
+.choice-edge-star--right {
+  right: 7%;
+}
+
+.vn-choice-btn:hover {
+  border-color: #f0c987;
+  box-shadow: 0 calc(var(--vmin) * 0.5) calc(var(--vmin) * 2.1) rgba(240, 201, 135, 0.25);
+  transform: translateY(-1px);
+}
+
+/* =========================================================================
    СОГЛАСОВАНИЕ С ОБЩИМ ИНТЕРФЕЙСОМ ИГРЫ
    ========================================================================== */
 body.is-vn-active #hud,
