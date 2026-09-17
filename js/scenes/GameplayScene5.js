@@ -1613,14 +1613,6 @@ preload() {
   this.applySceneAudio();
   this.applySceneBackground();
 
-  try {
-    await this.audio.init();
-    this.audio.startAmbient();
-    console.log("audio init ok");
-  } catch (e) {
-    console.warn("Audio init skipped", e);
-  }
-
   if (this.startScreen) {
     this.startScreen.classList.remove("show");
     console.log("startScreen hidden");
@@ -1638,6 +1630,17 @@ preload() {
 
   this.startGameLoop();
   console.log("game loop started");
+
+  // Аудио не должно задерживать игровой цикл: на мобильных resume() может
+  // ждать пользовательского жеста дольше, чем длится переход между сценами.
+  Promise.resolve(this.audio.init())
+    .then(() => {
+      this.audio.startAmbient();
+      console.log("audio init ok");
+    })
+    .catch((e) => {
+      console.warn("Audio init skipped", e);
+    });
 }
   
  createSpawnPoint() {

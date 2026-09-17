@@ -180,16 +180,32 @@ export class SceneManager {
     состояния (аудио, RAF-цикл) — но визуальная подготовка уже
     случилась заранее, поэтому эта часть происходит мгновенно.
   */
-  async activatePreloaded() {
+  async activatePreloaded({ currentSceneAlreadyExited = false } = {}) {
     if (!this.preloadedScene) {
+      if (currentSceneAlreadyExited) {
+        const nextIndex = this.currentIndex + 1;
+
+        this.currentScene = null;
+
+        if (nextIndex >= this.sceneDefs.length) {
+          this.currentIndex = this.sceneDefs.length;
+          return;
+        }
+
+        this.currentIndex = nextIndex;
+        await this.enterCurrentScene();
+        return;
+      }
+
       await this.next();
       return;
     }
 
-    if (this.currentScene) {
+    if (this.currentScene && !currentSceneAlreadyExited) {
       await this.currentScene.exit();
-      this.currentScene = null;
     }
+
+    this.currentScene = null;
 
     this.currentIndex = this.preloadedIndex;
     this.currentScene = this.preloadedScene;

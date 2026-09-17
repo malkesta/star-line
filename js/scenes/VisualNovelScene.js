@@ -632,21 +632,23 @@ export class VisualNovelScene {
 
   const exitPromise = this.exit();
 
-  const advancePromise = (async () => {
-    if (typeof this.onNext === "function") {
-      await this.onNext();
-      return;
-    }
+  await exitPromise;
 
-    if (typeof this.sceneManager?.activatePreloaded === "function") {
-      await this.sceneManager.activatePreloaded();
-      return;
-    }
+  if (typeof this.onNext === "function") {
+    await this.onNext();
+    return;
+  }
 
-    await this.sceneManager?.next?.();
-  })();
+  if (typeof this.sceneManager?.activatePreloaded === "function") {
+    // exitPromise уже полностью закрыл текущую VN. Не запускаем второй exit()
+    // внутри SceneManager: на мобильных это создавало гонку переходов.
+    await this.sceneManager.activatePreloaded({
+      currentSceneAlreadyExited: true,
+    });
+    return;
+  }
 
-  await Promise.all([exitPromise, advancePromise]);
+  await this.sceneManager?.next?.();
 }
 
   finish() {
