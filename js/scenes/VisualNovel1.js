@@ -5,7 +5,7 @@ const asset = (path) => new URL(path, import.meta.url).href;
 const BACKGROUNDS = {
   intro: asset("../../assets/images/vn/vn_backgrounds/test-night.png"),
   hills: asset("../../assets/images/vn/vn_backgrounds/vn-1-bg.png"),
-  stars: asset("../../assets/images/vn/vn_backgrounds/test-stars.png"),
+  stars: asset("../../assets/images/vn/vn_backgrounds/test-stars.webp"),
 };
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
 const PLACEHOLDER_GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
