@@ -23,6 +23,11 @@
   --safe-l: env(safe-area-inset-left, 0px);
 
   --dialog-h: clamp(180px, calc(var(--vmin) * 30), 340px);
+  /* Human sprites share a ground line. The mother's height is calibrated
+     against the girl's: about one head taller, while both remain viewport-based. */
+  --girl-sprite-baseline: 13%;
+  --girl-sprite-height: 74%;
+  --mom-sprite-height: 87%;
   /* Typography follows the dialog card, not the viewport. The text area is
      sized for roughly three comfortable dialogue lines. */
   --dialog-text-size: calc(var(--dialog-h) * 0.096);
@@ -233,6 +238,7 @@
   opacity: 0;
   transition: opacity 0.6s ease, transform 0.6s ease;
   pointer-events: none;
+  --speaking-sprite-scale: 1.06;
   transform: translateY(2vmin) scale(0.99);
   transform-origin: center bottom;
   filter: drop-shadow(0 1.6vmin 4vmin rgba(0, 0, 0, 0.58));
@@ -244,7 +250,7 @@
 }
 
 .vn-sprite.speaking {
-  transform: translateY(0) scale(1.06);
+  transform: translateY(0) scale(var(--speaking-sprite-scale));
   filter:
     drop-shadow(0 1.6vmin 4vmin rgba(0, 0, 0, 0.58))
     drop-shadow(0 0 2.2vmin rgba(245, 182, 112, 0.35));
@@ -260,8 +266,8 @@
 
 #spriteGirl {
   left: 6%;
-  bottom: 13%;
-  height: 74%;
+  bottom: var(--girl-sprite-baseline);
+  height: var(--girl-sprite-height);
   max-width: 48%;
 }
 
@@ -276,6 +282,12 @@
 #spriteMom,
 #spriteDad {
   right: 6%;
+}
+
+/* Мама стоит рядом с девочкой, а не над диалогом, как парящая звезда. */
+#spriteMom {
+  bottom: var(--girl-sprite-baseline);
+  height: var(--mom-sprite-height);
 }
 
 /* =========================================================================
@@ -933,6 +945,11 @@ body.is-vn-active #gameCanvas {
     max-width: 38vw;
   }
 
+  #spriteMom {
+    bottom: 12%;
+    height: 71%;
+  }
+
   #spriteStar {
     right: 4%;
     height: min(32vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 6));
@@ -952,6 +969,10 @@ body.is-vn-active #gameCanvas {
 
   #spriteGirl {
     height: 56%;
+  }
+
+  #spriteMom {
+    height: 66%;
   }
 
   #spriteStar {

@@ -340,6 +340,7 @@ export class VisualNovelScene {
 
   handleViewportChange() {
     this.updateViewportUnits();
+    this.refreshSpeakingSpriteScales();
 
     const blocked = this.isPortraitBlocked();
 
@@ -445,10 +446,33 @@ export class VisualNovelScene {
       }
 
       if (speakingKey) {
+        if (key === speakingKey) this.fitSpeakingSpriteToViewport(element);
         element.classList.toggle("speaking", key === speakingKey);
         element.classList.toggle("not-speaking", key !== speakingKey);
       } else {
         element.classList.remove("speaking", "not-speaking");
+      }
+    });
+  }
+
+  /*
+   * Speaking sprites grow from their feet. Limit that growth to the free
+   * space above the sprite so taller characters never cross the top edge.
+   */
+  fitSpeakingSpriteToViewport(element) {
+    const height = element.offsetHeight;
+    const groundLine = element.offsetTop + height;
+
+    if (!height || !groundLine) return;
+
+    const scale = Math.min(1.06, Math.max(1, groundLine / height));
+    element.style.setProperty("--speaking-sprite-scale", scale.toFixed(3));
+  }
+
+  refreshSpeakingSpriteScales() {
+    Object.values(this.spriteElements).forEach((element) => {
+      if (element?.classList.contains("speaking")) {
+        this.fitSpeakingSpriteToViewport(element);
       }
     });
   }
