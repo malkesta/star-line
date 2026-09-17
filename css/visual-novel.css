@@ -413,6 +413,7 @@
   pointer-events: none;
   z-index: 12;
   filter: drop-shadow(0 0 10px rgba(245, 182, 112, 0.16));
+  transition: opacity 0.35s ease, visibility 0s linear;
 }
 
 #vnDialogTopper svg {
@@ -434,6 +435,19 @@
   height: var(--dialog-h);
   pointer-events: none;
   filter: drop-shadow(0 2.4vmin 4.4vmin rgba(0, 0, 0, 0.45));
+  transition: opacity 0.35s ease, visibility 0s linear;
+}
+
+#vnDialogShell.is-hidden,
+#vnDialogTopper.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0s linear 0.25s;
+}
+
+#vnDialogShell.is-hidden-immediate,
+#vnDialogTopper.is-hidden-immediate {
+  transition: none;
 }
 
 #vnDialogBackdrop {

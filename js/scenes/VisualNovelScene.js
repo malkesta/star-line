@@ -34,6 +34,8 @@ export class VisualNovelScene {
 
 
     this.scene = document.getElementById("vnScene");
+    this.dialogShell = document.getElementById("vnDialogShell");
+    this.dialogTopper = document.getElementById("vnDialogTopper");
 
     this.rotateLock = document.getElementById("rotateLock");
     this.bg = document.getElementById("vnBg");
@@ -64,6 +66,8 @@ export class VisualNovelScene {
     this.hintTimer = null;
     this.typingQueue = null;
     this.entryTimer = null;
+    this.presentationTimer = null;
+    this.presentationId = 0;
 
     this.typingActive = false;
     this.typingDone = false;
@@ -76,6 +80,10 @@ export class VisualNovelScene {
 
     this.typingSpeed = 26;
     this.hintDelay = 700;
+    this.backgroundRevealDuration = 550;
+    this.backgroundTransitionDuration = 850;
+    this.dialogRevealDuration = 350;
+    this.spriteRevealDuration = 600;
 
     /*
       Длительность появления/исчезновения VN. Должна совпадать
@@ -106,6 +114,7 @@ export class VisualNovelScene {
 
     this.resetState();
     this.applySpriteSources();
+    this.hideDialog({ immediate: true });
 
     this.resultOverlay?.classList.remove("show");
     this.resultOverlay?.setAttribute("aria-hidden", "true");
@@ -194,12 +203,14 @@ export class VisualNovelScene {
       this.entryTimer = null;
 
       if (!this.finished && !this.resultShown) {
+        this.showDialog();
         this.typeText(firstNode.text);
       }
-    }, this.fadeDuration);
+    }, this.fadeDuration + this.backgroundRevealDuration);
   }
 
   async exit() {
+  this.presentationId += 1;
   this.clearTimers();
 
   this.resultNextBtn?.removeEventListener("click", this.handleResultNextClick);
@@ -234,6 +245,7 @@ export class VisualNovelScene {
 }
 
   resetState() {
+    this.presentationId += 1;
     this.clearTimers();
 
     this.currentNodeId = null;
@@ -335,10 +347,50 @@ export class VisualNovelScene {
     window.clearTimeout(this.typingTimer);
     window.clearTimeout(this.hintTimer);
     window.clearTimeout(this.entryTimer);
+    window.clearTimeout(this.presentationTimer);
 
     this.typingTimer = null;
     this.hintTimer = null;
     this.entryTimer = null;
+    this.presentationTimer = null;
+  }
+
+  hideDialog({ immediate = false } = {}) {
+    const elements = [this.dialogShell, this.dialogTopper].filter(Boolean);
+
+    elements.forEach((element) => {
+      if (immediate) element.classList.add("is-hidden-immediate");
+      element.classList.add("is-hidden");
+    });
+  }
+
+  showDialog() {
+    const elements = [this.dialogShell, this.dialogTopper].filter(Boolean);
+
+    elements.forEach((element) => {
+      element.classList.remove("is-hidden-immediate");
+    });
+
+    requestAnimationFrame(() => {
+      elements.forEach((element) => element.classList.remove("is-hidden"));
+    });
+  }
+
+  clearDialogContent() {
+    this.textEl.textContent = "";
+    this.textWrap.scrollTop = 0;
+    this.speakerEl.textContent = "";
+    this.speakerEl.classList.remove("show", "narrator");
+    this.nextHint.classList.remove("show");
+  }
+
+  waitForPresentation(duration) {
+    return new Promise((resolve) => {
+      this.presentationTimer = window.setTimeout(() => {
+        this.presentationTimer = null;
+        resolve();
+      }, duration);
+    });
   }
 
   setBackground(src, { immediate = false } = {}) {
@@ -483,12 +535,52 @@ export class VisualNovelScene {
     this.nextHint.classList.remove("show");
     this.hideChoices();
 
-    if (node.bg) {
-      this.setBackground(node.bg);
+    const backgroundChanged =
+      Boolean(node.bg) && this.bg.dataset.src !== node.bg;
+    const hasSprites = Object.values(node.sprites ?? {}).some(Boolean);
+
+    if (backgroundChanged && hasSprites) {
+      void this.presentBackgroundAndSprites(node);
+      return;
     }
+
+    if (node.bg) this.setBackground(node.bg);
 
     this.setSprites(node.sprites, node.speakingSprite);
     this.setSpeaker(node.speaker);
+    this.typeText(node.text);
+  }
+
+  async presentBackgroundAndSprites(node) {
+    const presentationId = ++this.presentationId;
+
+    this.inputLocked = true;
+    this.clearTimers();
+    this.typingQueue = null;
+    this.typingActive = false;
+    this.typingDone = false;
+    this.clearDialogContent();
+    this.hideDialog();
+    this.setSprites({}, null);
+
+    // Даём окну и прежним спрайтам исчезнуть до смены кадра.
+    await this.waitForPresentation(this.dialogRevealDuration);
+    if (presentationId !== this.presentationId || this.finished) return;
+
+    this.setBackground(node.bg);
+
+    // Новый фон остаётся на экране сам по себе, затем проявляются персонажи.
+    await this.waitForPresentation(this.backgroundTransitionDuration);
+    if (presentationId !== this.presentationId || this.finished) return;
+
+    this.setSprites(node.sprites, node.speakingSprite);
+
+    await this.waitForPresentation(this.spriteRevealDuration);
+    if (presentationId !== this.presentationId || this.finished) return;
+
+    this.setSpeaker(node.speaker);
+    this.showDialog();
+    this.inputLocked = false;
     this.typeText(node.text);
   }
 
