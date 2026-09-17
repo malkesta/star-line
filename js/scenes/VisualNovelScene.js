@@ -67,7 +67,9 @@ export class VisualNovelScene {
     this.typingQueue = null;
     this.entryTimer = null;
     this.presentationTimer = null;
+    this.choiceRevealTimer = null;
     this.presentationId = 0;
+    this.pendingChoiceNodeId = null;
 
     this.typingActive = false;
     this.typingDone = false;
@@ -84,6 +86,7 @@ export class VisualNovelScene {
     this.backgroundTransitionDuration = 850;
     this.dialogRevealDuration = 350;
     this.spriteRevealDuration = 600;
+    this.choiceRevealDuration = 350;
 
     /*
       Длительность появления/исчезновения VN. Должна совпадать
@@ -211,6 +214,7 @@ export class VisualNovelScene {
 
   async exit() {
   this.presentationId += 1;
+  this.pendingChoiceNodeId = null;
   this.clearTimers();
 
   this.resultNextBtn?.removeEventListener("click", this.handleResultNextClick);
@@ -249,6 +253,7 @@ export class VisualNovelScene {
     this.clearTimers();
 
     this.currentNodeId = null;
+    this.pendingChoiceNodeId = null;
     this.typingQueue = null;
     this.typingActive = false;
     this.typingDone = false;
@@ -348,11 +353,13 @@ export class VisualNovelScene {
     window.clearTimeout(this.hintTimer);
     window.clearTimeout(this.entryTimer);
     window.clearTimeout(this.presentationTimer);
+    window.clearTimeout(this.choiceRevealTimer);
 
     this.typingTimer = null;
     this.hintTimer = null;
     this.entryTimer = null;
     this.presentationTimer = null;
+    this.choiceRevealTimer = null;
   }
 
   hideDialog({ immediate = false } = {}) {
@@ -498,6 +505,8 @@ export class VisualNovelScene {
     this.typingActive = false;
     this.typingDone = true;
 
+    if (this.completeChoicePrompt()) return;
+
     this.hintTimer = window.setTimeout(() => {
       this.nextHint.classList.add("show");
     }, this.hintDelay);
@@ -514,8 +523,13 @@ export class VisualNovelScene {
     this.typingActive = false;
     this.typingDone = true;
 
-    this.textEl.textContent = node?.text ?? "";
+    const isChoicePrompt = this.pendingChoiceNodeId === this.currentNodeId;
+    this.textEl.textContent = isChoicePrompt
+      ? node?.choiceLabel ?? node?.text ?? ""
+      : node?.text ?? "";
     this.textWrap.scrollTop = this.textWrap.scrollHeight;
+
+    if (this.completeChoicePrompt()) return;
 
     this.hintTimer = window.setTimeout(() => {
       this.nextHint.classList.add("show");
@@ -532,6 +546,7 @@ export class VisualNovelScene {
     }
 
     this.currentNodeId = nodeId;
+    this.pendingChoiceNodeId = null;
     this.nextHint.classList.remove("show");
     this.hideChoices();
 
@@ -547,8 +562,42 @@ export class VisualNovelScene {
     if (node.bg) this.setBackground(node.bg);
 
     this.setSprites(node.sprites, node.speakingSprite);
+
+    if (node.choices?.length) {
+      this.beginChoicePrompt(node);
+      return;
+    }
+
     this.setSpeaker(node.speaker);
     this.typeText(node.text);
+  }
+
+  beginChoicePrompt(node) {
+    this.inputLocked = true;
+    this.pendingChoiceNodeId = this.currentNodeId;
+    this.speakerEl.textContent = "";
+    this.speakerEl.classList.remove("show", "narrator");
+    this.typeText(node.choiceLabel ?? node.text ?? "");
+  }
+
+  completeChoicePrompt() {
+    if (this.pendingChoiceNodeId !== this.currentNodeId) return false;
+
+    const node = this.nodes[this.currentNodeId];
+    this.pendingChoiceNodeId = null;
+
+    if (!node?.choices?.length) return false;
+
+    this.nextHint.classList.remove("show");
+    this.choiceRevealTimer = window.setTimeout(() => {
+      this.choiceRevealTimer = null;
+
+      if (!this.finished && this.currentNodeId && this.nodes[this.currentNodeId] === node) {
+        this.showChoices(node);
+      }
+    }, this.choiceRevealDuration);
+
+    return true;
   }
 
   async presentBackgroundAndSprites(node) {
@@ -581,6 +630,12 @@ export class VisualNovelScene {
     this.setSpeaker(node.speaker);
     this.showDialog();
     this.inputLocked = false;
+
+    if (node.choices?.length) {
+      this.beginChoicePrompt(node);
+      return;
+    }
+
     this.typeText(node.text);
   }
 
@@ -589,7 +644,12 @@ export class VisualNovelScene {
       .querySelectorAll(".vn-choice-btn")
       .forEach((button) => button.remove());
 
-    this.choiceLabel.textContent = node.choiceLabel ?? "";
+    // Фраза-приглашение выводится в обычном диалоговом окне, поэтому
+    // в самом блоке выбора остаются только варианты.
+    if (this.choiceLabel) {
+      this.choiceLabel.textContent = "";
+      this.choiceLabel.hidden = true;
+    }
 
     node.choices.forEach((choice, index) => {
       const button = document.createElement("button");
@@ -660,12 +720,14 @@ export class VisualNovelScene {
   }
 
   advance() {
-    if (this.inputLocked || this.finished) return;
+    if (this.finished) return;
 
     if (this.typingActive) {
       this.finishTyping();
       return;
     }
+
+    if (this.inputLocked) return;
 
     if (!this.typingDone) return;
 

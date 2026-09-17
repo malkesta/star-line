@@ -279,7 +279,7 @@
   bottom: calc(
     var(--safe-b) + var(--vmin) * 2.1 + var(--dialog-h) + var(--vmin) * 2.4
   );
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(calc(var(--vmin) * 1.4));
   width: min(88vw, calc(var(--vmax) * 58));
   max-width: 760px;
   max-height: calc(100vh - var(--dialog-h) - var(--vmin) * 12);
@@ -714,7 +714,7 @@
 #vnChoiceBox {
   top: calc(50% + var(--safe-t) * 0.5 - var(--safe-b) * 0.5 - var(--vmin) * 1.05 - var(--dialog-h) * 0.5);
   bottom: auto;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, calc(-50% + var(--vmin) * 1.4));
   width: min(90vw, calc(var(--vmax) * 66));
   max-width: 640px;
   gap: calc(var(--vmin) * 1.15);

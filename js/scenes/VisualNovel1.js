@@ -61,7 +61,7 @@ export class VisualNovel1 extends VisualNovelScene {
           text: "",
           bg: BACKGROUNDS.hills,
           sprites: { girl: true },
-          choiceLabel: "Никак не могу понять",
+          choiceLabel: "Никак не могу понять...",
           choices: [
             { label: "Откуда же берутся злые звёзды?", next: "darkStars" },
             { label: "Разве тебе не страшно летать в пустоте?", next: "afraid" }
