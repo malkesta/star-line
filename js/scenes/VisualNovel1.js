@@ -5,6 +5,7 @@ const asset = (path) => new URL(path, import.meta.url).href;
 const BACKGROUNDS = {
   intro: asset("../../assets/images/vn/vn_backgrounds/test-night.png"),
   hills: asset("../../assets/images/vn/vn_backgrounds/vn-1-bg.png"),
+  stars: asset("../../assets/images/vn/vn_backgrounds/test-stars.png"),
 };
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
 const PLACEHOLDER_GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
@@ -60,7 +61,7 @@ export class VisualNovel1 extends VisualNovelScene {
           speaker: "",
           text: "",
           bg: BACKGROUNDS.hills,
-          sprites: { girl: true },
+          sprites: { girl: true, star: true },
           choiceLabel: "Никак не могу понять...",
           choices: [
             { label: "Откуда же берутся злые звёзды?", next: "darkStars" },
@@ -71,7 +72,7 @@ export class VisualNovel1 extends VisualNovelScene {
           speaker: "Звезда",
           text: "Они не злые, просто потухли. В каждом из нас есть крохотный светильник. А вокруг него чернота.",
           bg: BACKGROUNDS.hills,
-          sprites: { star: true },
+          sprites: { girl: true, star: true },
           speakingSprite: "star",
           next: "darkMore"
         },
@@ -79,7 +80,7 @@ export class VisualNovel1 extends VisualNovelScene {
           speaker: "Звезда",
           text: "И когда свет слабеет, черноты всё больше и больше.",
           bg: BACKGROUNDS.hills,
-          sprites: { star: true },
+          sprites: { girl: true, star: true },
           speakingSprite: "star",
           next: "blame"
         },
@@ -111,7 +112,7 @@ export class VisualNovel1 extends VisualNovelScene {
           speaker: "Звезда",
           text: "Очень страшно. В космосе холодно и жутко. И приходится лететь изо всех сил, и светить изо всех сил, чтобы не замёрзнуть.",
           bg: BACKGROUNDS.hills,
-          sprites: { star: true },
+          sprites: { girl: true, star: true },
           speakingSprite: "star",
           next: "safety"
         },
@@ -181,9 +182,23 @@ export class VisualNovel1 extends VisualNovelScene {
         },
         merge: {
           speaker: "...",
-          text: "Девочка сказала это так решительно.\nОна была уверена, что звезда согласится. Они же дружили.\nНо та молчала, и в её молчании звенела грусть. Холод, какой бывает только в небе.\nА девочке впервые рядом со звездой вдруг стало не по себе.",
-          bg: BACKGROUNDS.hills,
-          sprites: { girl: true, star: true },
+          text: "Девочка сказала это так решительно.\nОна была уверена, что звезда согласится. Они же дружили.",
+          bg: BACKGROUNDS.stars,
+          sprites: {},
+          next: "mergeSilence"
+        },
+        mergeSilence: {
+          speaker: "...",
+          text: "Но та молчала, и в её молчании звенела грусть. Холод, какой бывает только в небе.",
+          bg: BACKGROUNDS.stars,
+          sprites: {},
+          next: "mergeUnease"
+        },
+        mergeUnease: {
+          speaker: "...",
+          text: "А девочке впервые рядом со звездой вдруг стало не по себе.",
+          bg: BACKGROUNDS.stars,
+          sprites: {},
           last: true,
           resultTitle: "История продолжается",
           resultMessage: ""

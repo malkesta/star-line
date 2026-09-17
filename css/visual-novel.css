@@ -225,15 +225,16 @@
    ========================================================================== */
 .vn-sprite {
   position: absolute;
-  bottom: 13%;
-  height: 74%;
+  bottom: calc(var(--safe-b) + var(--dialog-h) + var(--vmin) * 1.2);
+  height: min(68vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 4));
   width: auto;
-  max-width: 48%;
+  max-width: 38vw;
   object-fit: contain;
   opacity: 0;
   transition: opacity 0.6s ease, transform 0.6s ease;
   pointer-events: none;
   transform: translateY(2vmin) scale(0.99);
+  transform-origin: center bottom;
   filter: drop-shadow(0 1.6vmin 4vmin rgba(0, 0, 0, 0.58));
 }
 
@@ -243,6 +244,7 @@
 }
 
 .vn-sprite.speaking {
+  transform: translateY(0) scale(1.06);
   filter:
     drop-shadow(0 1.6vmin 4vmin rgba(0, 0, 0, 0.58))
     drop-shadow(0 0 2.2vmin rgba(245, 182, 112, 0.35));
@@ -250,6 +252,7 @@
 
 .vn-sprite.not-speaking {
   opacity: 0.62;
+  transform: translateY(0) scale(0.88);
   filter:
     drop-shadow(0 1.6vmin 4vmin rgba(0, 0, 0, 0.58))
     brightness(0.78);
@@ -257,12 +260,17 @@
 
 #spriteGirl {
   left: 6%;
+  bottom: 13%;
+  height: 74%;
+  max-width: 48%;
 }
 
 #spriteStar {
-  right: 7%;
-  height: 46%;
-  bottom: 23%;
+  right: 8%;
+  height: min(42vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 7));
+  max-width: 26vw;
+  /* У звезды нет ног: она всегда висит над верхним краем диалога. */
+  bottom: calc(var(--safe-b) + var(--dialog-h) + var(--vmin) * 1.5);
 }
 
 #spriteMom,
@@ -715,10 +723,13 @@
   top: calc(50% + var(--safe-t) * 0.5 - var(--safe-b) * 0.5 - var(--vmin) * 1.05 - var(--dialog-h) * 0.5);
   bottom: auto;
   transform: translate(-50%, calc(-50% + var(--vmin) * 1.4));
-  width: min(90vw, calc(var(--vmax) * 66));
-  max-width: 640px;
-  gap: calc(var(--vmin) * 1.15);
-  padding: calc(var(--vmin) * 2.3) calc(var(--vmin) * 2.7);
+  display: grid;
+  grid-template-columns: minmax(0, max-content);
+  justify-items: stretch;
+  width: fit-content;
+  max-width: min(90vw, calc(var(--vmax) * 66));
+  gap: calc(var(--vmin) * 0.9);
+  padding: calc(var(--vmin) * 1.4) calc(var(--vmin) * 1.6);
   border-radius: calc(var(--vmin) * 2.6);
   background: linear-gradient(180deg, rgba(40, 36, 78, 0.465), rgba(15, 14, 36, 0.475));
   border: calc(var(--vmin) * 0.12) solid rgba(240, 201, 135, 0.3);
@@ -731,6 +742,13 @@
   transform: translate(-50%, -50%);
 }
 
+/* Фраза выбора и декоративная линия теперь живут вне этой карточки:
+   внутри остаётся только компактная группа кнопок. */
+#vnChoiceBox .choice-topper,
+#vnChoiceLabel {
+  display: none;
+}
+
 #vnChoiceLabel {
   color: #ffe9b0;
   font-size: calc(var(--vmin) * 2.15);
@@ -741,7 +759,10 @@
 .vn-choice-btn {
   height: auto;
   min-height: calc(var(--dialog-text-size) * 1.35 + var(--vmin) * 2.3);
-  padding: calc(var(--vmin) * 1.15) calc(var(--vmin) * 2.2);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: calc(var(--vmin) * 1.15) calc(var(--vmin) * 3.2);
   border-radius: 999px;
   border: calc(var(--vmin) * 0.14) solid rgba(240, 201, 135, 0.48);
   background: linear-gradient(180deg, #332e5e, #2a2650);
@@ -772,11 +793,11 @@
 }
 
 .choice-edge-star--left {
-  left: 7%;
+  left: calc(var(--vmin) * 1.05);
 }
 
 .choice-edge-star--right {
-  right: 7%;
+  right: calc(var(--vmin) * 1.05);
 }
 
 .vn-choice-btn:hover {
@@ -899,16 +920,41 @@ body.is-vn-active #gameCanvas {
 /* =========================================================================
    КОМПАКТНЫЕ АЛЬБОМНЫЕ ЭКРАНЫ
    ========================================================================== */
+@media (max-height: 520px) {
+  .vn-sprite {
+    height: min(54vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 3));
+    max-width: 32vw;
+  }
+
+  #spriteGirl {
+    left: 3%;
+    bottom: 12%;
+    height: 60%;
+    max-width: 38vw;
+  }
+
+  #spriteStar {
+    right: 4%;
+    height: min(32vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 6));
+    max-width: 22vw;
+    bottom: calc(var(--safe-b) + var(--dialog-h) + var(--vmin) * 1.2);
+  }
+}
+
 @media (max-height: 420px) {
   :root {
     --dialog-h: clamp(150px, calc(var(--vmin) * 38), 220px);
   }
 
   .vn-sprite {
-    height: 64%;
+    height: min(48vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 2));
+  }
+
+  #spriteGirl {
+    height: 56%;
   }
 
   #spriteStar {
-    height: 38%;
+    height: min(28vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 5));
   }
 }
