@@ -27,7 +27,7 @@
      against the girl's: about one head taller, while both remain viewport-based. */
   --girl-sprite-baseline: 13%;
   --girl-sprite-height: 74%;
-  --mom-sprite-height: 87%;
+  --mom-sprite-height: 90%;
   /* Typography follows the dialog card, not the viewport. The text area is
      sized for roughly three comfortable dialogue lines. */
   --dialog-text-size: calc(var(--dialog-h) * 0.096);
@@ -286,8 +286,10 @@
 
 /* Мама стоит рядом с девочкой, а не над диалогом, как парящая звезда. */
 #spriteMom {
-  bottom: var(--girl-sprite-baseline);
+  /* Мама чуть ниже девочки, но при акценте остаётся в пределах кадра. */
+  bottom: 8%;
   height: var(--mom-sprite-height);
+  --speaking-sprite-scale: 1.02;
 }
 
 /* =========================================================================
@@ -946,8 +948,8 @@ body.is-vn-active #gameCanvas {
   }
 
   #spriteMom {
-    bottom: 12%;
-    height: 71%;
+    bottom: 8%;
+    height: 74%;
   }
 
   #spriteStar {
@@ -972,7 +974,8 @@ body.is-vn-active #gameCanvas {
   }
 
   #spriteMom {
-    height: 66%;
+    bottom: 8%;
+    height: 70%;
   }
 
   #spriteStar {
