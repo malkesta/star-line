@@ -150,7 +150,7 @@ export class VisualNovel1 extends VisualNovelScene {
         },
         blackness: {
           speaker: "Звезда",
-          text: "И чернота внутри них больше нечему рассеивать.",
+          text: "И черноту внутри них больше нечему рассеивать.",
           bg: BACKGROUNDS.hills,
           sprites: { girl: true, star: true },
           speakingSprite: "star",
