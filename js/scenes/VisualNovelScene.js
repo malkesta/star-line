@@ -17,6 +17,13 @@ export class VisualNovelScene {
   this.startNode = startNode;
   this.nodes = nodes ?? {};
   this.sprites = sprites;
+  this.spriteHeightRatios = new Map();
+
+  // The tallest sprite is presented at 80% of the visible viewport. The cap
+  // keeps the characters from becoming oversized on televisions and large
+  // desktop displays.
+  this.spriteViewportCoverage = 0.8;
+  this.maxTallestSpriteHeight = 840;
 
   /*
     Музыка конкретного этапа VN. Если не задана — просто не будет
@@ -117,6 +124,7 @@ export class VisualNovelScene {
 
     this.resetState();
     this.applySpriteSources();
+    await this.prepareSpriteSizing();
     this.hideDialog({ immediate: true });
 
     this.resultOverlay?.classList.remove("show");
@@ -289,6 +297,56 @@ export class VisualNovelScene {
     });
   }
 
+  async prepareSpriteSizing() {
+    const spriteDimensions = await Promise.all(
+      Object.entries(this.sprites).map(async ([key, config]) => {
+        if (!config?.src) return null;
+
+        try {
+          const dimensions = await this.getImageDimensions(config.src);
+          return { key, ...dimensions };
+        } catch (error) {
+          console.warn(`[VN] Не удалось определить размер спрайта ${key}`, error);
+          return null;
+        }
+      })
+    );
+
+    const availableSprites = spriteDimensions.filter(Boolean);
+    const tallestSprite = Math.max(
+      0,
+      ...availableSprites.map(({ height }) => height)
+    );
+
+    this.spriteHeightRatios.clear();
+
+    if (!tallestSprite) return;
+
+    availableSprites.forEach(({ key, height }) => {
+      this.spriteHeightRatios.set(key, height / tallestSprite);
+    });
+
+    this.updateSpriteSizes();
+  }
+
+  getImageDimensions(src) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+
+      image.onload = () => {
+        if (!image.naturalWidth || !image.naturalHeight) {
+          reject(new Error("Image has no intrinsic dimensions"));
+          return;
+        }
+
+        resolve({ width: image.naturalWidth, height: image.naturalHeight });
+      };
+
+      image.onerror = () => reject(new Error(`Failed to load ${src}`));
+      image.src = src;
+    });
+  }
+
   preload() {
   const backgroundUrls = new Set();
 
@@ -340,6 +398,7 @@ export class VisualNovelScene {
 
   handleViewportChange() {
     this.updateViewportUnits();
+    this.updateSpriteSizes();
     this.refreshSpeakingSpriteScales();
 
     const blocked = this.isPortraitBlocked();
@@ -347,6 +406,26 @@ export class VisualNovelScene {
     this.rotateLock?.classList.toggle("show", blocked);
     this.scene.style.visibility = blocked ? "hidden" : "visible";
     this.orientationBlocked = blocked;
+  }
+
+  updateSpriteSizes() {
+    if (!this.spriteHeightRatios.size) return;
+
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const tallestSpriteHeight = Math.min(
+      viewportHeight * this.spriteViewportCoverage,
+      this.maxTallestSpriteHeight
+    );
+
+    this.spriteHeightRatios.forEach((ratio, key) => {
+      const element = this.spriteElements[key];
+      if (!element) return;
+
+      element.style.setProperty(
+        "--sprite-render-height",
+        `${Math.round(tallestSpriteHeight * ratio)}px`
+      );
+    });
   }
 
   clearTimers() {

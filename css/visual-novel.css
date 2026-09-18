@@ -23,11 +23,9 @@
   --safe-l: env(safe-area-inset-left, 0px);
 
   --dialog-h: clamp(180px, calc(var(--vmin) * 30), 340px);
-  /* Human sprites share a ground line. Adult sprites are about one head
-     taller than the girl, while remaining viewport-based. */
+  /* Sprite heights are calculated per visual-novel scene in JavaScript from
+     the intrinsic height of its tallest declared sprite. */
   --girl-sprite-baseline: 13%;
-  --girl-sprite-height: 74%;
-  --adult-sprite-height: 90%;
   /* Typography follows the dialog card, not the viewport. The text area is
      sized for roughly three comfortable dialogue lines. */
   --dialog-text-size: calc(var(--dialog-h) * 0.096);
@@ -231,7 +229,7 @@
 .vn-sprite {
   position: absolute;
   bottom: calc(var(--safe-b) + var(--dialog-h) + var(--vmin) * 1.2);
-  height: min(68vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 4));
+  height: var(--sprite-render-height, min(80vh, 840px));
   width: auto;
   max-width: 38vw;
   object-fit: contain;
@@ -267,13 +265,11 @@
 #spriteGirl {
   left: 6%;
   bottom: var(--girl-sprite-baseline);
-  height: var(--girl-sprite-height);
   max-width: 48%;
 }
 
 #spriteStar {
   right: 8%;
-  height: min(42vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 7));
   max-width: 26vw;
   /* У звезды нет ног: она всегда висит над верхним краем диалога. */
   bottom: calc(var(--safe-b) + var(--dialog-h) + var(--vmin) * 1.5);
@@ -285,7 +281,6 @@
   /* Adults stand slightly lower than the girl, but their greater height
      places their heads above hers without exceeding the viewport. */
   bottom: 8%;
-  height: var(--adult-sprite-height);
   --speaking-sprite-scale: 1.02;
 }
 
@@ -933,26 +928,22 @@ body.is-vn-active #gameCanvas {
    ========================================================================== */
 @media (max-height: 520px) {
   .vn-sprite {
-    height: min(54vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 3));
     max-width: 32vw;
   }
 
   #spriteGirl {
     left: 3%;
     bottom: 12%;
-    height: 60%;
     max-width: 38vw;
   }
 
   #spriteMom,
   #spriteDad {
     bottom: 8%;
-    height: 74%;
   }
 
   #spriteStar {
     right: 4%;
-    height: min(32vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 6));
     max-width: 22vw;
     bottom: calc(var(--safe-b) + var(--dialog-h) + var(--vmin) * 1.2);
   }
@@ -963,21 +954,8 @@ body.is-vn-active #gameCanvas {
     --dialog-h: clamp(150px, calc(var(--vmin) * 38), 220px);
   }
 
-  .vn-sprite {
-    height: min(48vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 2));
-  }
-
-  #spriteGirl {
-    height: 56%;
-  }
-
   #spriteMom,
   #spriteDad {
     bottom: 8%;
-    height: 70%;
-  }
-
-  #spriteStar {
-    height: min(28vh, calc(100vh - var(--dialog-h) - var(--safe-t) - var(--vmin) * 5));
   }
 }
