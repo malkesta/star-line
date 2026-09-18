@@ -2,7 +2,8 @@ import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
 const BACKGROUNDS = {
   story: asset("../../assets/images/vn/vn_backgrounds/vn-2-fairytale-morning.png"),
-  home: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-interior.png"),
+  homeStart: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-start.webp"),
+  home: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-interior.webp"),
 };
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
 const GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
@@ -23,21 +24,21 @@ export class VisualNovel2 extends VisualNovelScene {
         intro: {
           speaker: "...",
           text: "Однажды ночью девочка спасла много-много звёзд. Она по праву гордилась собой — ведь сумела провести их в пустоте, и благополучно доставила домой.",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.homeStart,
           sprites: {},
           next: "tell"
         },
         tell: {
           speaker: "...",
           text: "И потому с утра ей так сильно захотелось кому-нибудь рассказать!",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.homeStart,
           sprites: {},
           next: "decided"
         },
         decided: {
           speaker: "...",
           text: "Девочка решила:",
-          bg: BACKGROUNDS.story,
+          bg: BACKGROUNDS.homeStart,
           sprites: {},
           next: "choice"
         },

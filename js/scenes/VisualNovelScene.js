@@ -576,9 +576,8 @@ export class VisualNovelScene {
 
     const backgroundChanged =
       Boolean(node.bg) && this.bg.dataset.src !== node.bg;
-    const hasSprites = Object.values(node.sprites ?? {}).some(Boolean);
 
-    if (backgroundChanged && hasSprites) {
+    if (backgroundChanged) {
       void this.presentBackgroundAndSprites(node);
       return;
     }
@@ -642,9 +641,24 @@ export class VisualNovelScene {
 
     this.setBackground(node.bg);
 
-    // Новый фон остаётся на экране сам по себе, затем проявляются персонажи.
+    // Новый фон остаётся на экране сам по себе, затем проявляются персонажи
+    // или диалоговое окно, если в узле нет спрайтов.
     await this.waitForPresentation(this.backgroundTransitionDuration);
     if (presentationId !== this.presentationId || this.finished) return;
+
+    if (!Object.values(node.sprites ?? {}).some(Boolean)) {
+      this.setSpeaker(node.speaker);
+      this.showDialog();
+      this.inputLocked = false;
+
+      if (node.choices?.length) {
+        this.beginChoicePrompt(node);
+        return;
+      }
+
+      this.typeText(node.text);
+      return;
+    }
 
     this.setSprites(node.sprites, node.speakingSprite);
 
