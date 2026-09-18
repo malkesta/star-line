@@ -23,11 +23,11 @@
   --safe-l: env(safe-area-inset-left, 0px);
 
   --dialog-h: clamp(180px, calc(var(--vmin) * 30), 340px);
-  /* Human sprites share a ground line. The mother's height is calibrated
-     against the girl's: about one head taller, while both remain viewport-based. */
+  /* Human sprites share a ground line. Adult sprites are about one head
+     taller than the girl, while remaining viewport-based. */
   --girl-sprite-baseline: 13%;
   --girl-sprite-height: 74%;
-  --mom-sprite-height: 90%;
+  --adult-sprite-height: 90%;
   /* Typography follows the dialog card, not the viewport. The text area is
      sized for roughly three comfortable dialogue lines. */
   --dialog-text-size: calc(var(--dialog-h) * 0.096);
@@ -282,13 +282,10 @@
 #spriteMom,
 #spriteDad {
   right: 6%;
-}
-
-/* Мама стоит рядом с девочкой, а не над диалогом, как парящая звезда. */
-#spriteMom {
-  /* Мама чуть ниже девочки, но при акценте остаётся в пределах кадра. */
+  /* Adults stand slightly lower than the girl, but their greater height
+     places their heads above hers without exceeding the viewport. */
   bottom: 8%;
-  height: var(--mom-sprite-height);
+  height: var(--adult-sprite-height);
   --speaking-sprite-scale: 1.02;
 }
 
@@ -947,7 +944,8 @@ body.is-vn-active #gameCanvas {
     max-width: 38vw;
   }
 
-  #spriteMom {
+  #spriteMom,
+  #spriteDad {
     bottom: 8%;
     height: 74%;
   }
@@ -973,7 +971,8 @@ body.is-vn-active #gameCanvas {
     height: 56%;
   }
 
-  #spriteMom {
+  #spriteMom,
+  #spriteDad {
     bottom: 8%;
     height: 70%;
   }

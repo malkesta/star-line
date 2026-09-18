@@ -2,8 +2,8 @@ import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
 
 const BACKGROUNDS = {
-  night: asset("../../assets/images/vn/vn_backgrounds/test-night.png"),
-  stars: asset("../../assets/images/vn/vn_backgrounds/test-stars.png"),
+  night: asset("../../assets/images/vn/vn_backgrounds/test-night-gold.png"),
+  stars: asset("../../assets/images/vn/vn_backgrounds/test-stars-gold.png"),
 };
 
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");

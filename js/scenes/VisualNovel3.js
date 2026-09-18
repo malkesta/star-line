@@ -1,6 +1,6 @@
 import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
-const BG = { story: asset("../../assets/images/vn/vn_backgrounds/test-stars.png"), school: asset("../../assets/images/vn/vn_backgrounds/test-night.png"), forest: asset("../../assets/images/vn/vn_backgrounds/test-night.png") };
+const BG = { story: asset("../../assets/images/vn/vn_backgrounds/test-stars-gold.png"), school: asset("../../assets/images/vn/vn_backgrounds/test-night-gold.png"), forest: asset("../../assets/images/vn/vn_backgrounds/test-night-gold.png") };
 const MUSIC = asset("../../assets/audio/vn/VN-1.mp3");
 const GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
 const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");

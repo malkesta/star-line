@@ -1,15 +1,15 @@
 import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
 const BACKGROUNDS = {
-  story: asset("../../assets/images/vn/vn_backgrounds/vn-2-fairytale-morning.png"),
-  homeStart: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-start.webp"),
+  story: asset("../../assets/images/vn/vn_backgrounds/vn-2-fairytale-morning-gold.png"),
+  homeStart: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-start-gold.png"),
   home: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-interior.webp"),
 };
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
 const GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
 const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
 const MOM = asset("../../assets/images/vn/sprites/mom/mom_neutral.png");
-const DAD = asset("../../assets/images/vn/sprites/dad/dad_neutral.png");
+const DAD = asset("../../assets/images/vn/sprites/dad/dad_reading.png");
 
 export class VisualNovel2 extends VisualNovelScene {
   constructor(options = {}) {
