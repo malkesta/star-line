@@ -6,7 +6,7 @@ const BACKGROUNDS = {
   home: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-interior.webp"),
 };
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
-const GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
+const GIRL = asset("../../assets/images/vn/sprites/girl/girl_home.png");
 const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
 const MOM = asset("../../assets/images/vn/sprites/mom/mom_neutral.png");
 const DAD = asset("../../assets/images/vn/sprites/dad/dad_reading.png");
