@@ -2617,7 +2617,16 @@ class Obstacle {
 }
 
 class Particle {
+  static pool = [];
+
   constructor(x, y, color, cool = false, options = {}) {
+    const recycled = Particle.pool.pop();
+    if (recycled) return recycled.reset(x, y, color, cool, options);
+
+    this.reset(x, y, color, cool, options);
+  }
+
+  reset(x, y, color, cool = false, options = {}) {
     this.x = x;
     this.y = y;
 
@@ -2638,6 +2647,14 @@ class Particle {
    
     this.attractTo = options.attractTo ?? null; // {x, y}
     this.attractPull = options.attractPull ?? 0;
+    this.inPool = false;
+    return this;
+  }
+
+  release() {
+    if (this.inPool) return;
+    this.inPool = true;
+    if (Particle.pool.length < 260) Particle.pool.push(this);
   }
 
   update() {
@@ -2669,6 +2686,29 @@ class Particle {
     }
 
     ctx.globalAlpha = 1;
+  }
+}
+
+class ParticleList extends Array {
+  constructor(maxParticles = 220) {
+    super();
+    this.maxParticles = maxParticles;
+  }
+
+  push(...particles) {
+    for (const particle of particles) {
+      if (this.length >= this.maxParticles) {
+        particle.release();
+        continue;
+      }
+      super.push(particle);
+    }
+    return this.length;
+  }
+
+  clearToPool() {
+    for (const particle of this) particle.release();
+    this.length = 0;
   }
 }
 
@@ -3284,7 +3324,9 @@ this.ringGoneAudio =
     this.prevRedRingState = null;        
     this.starlets = [];        
     this.obstacles = [];
-    this.particles = [];
+    this.particles = new ParticleList();
+    this.backgroundDustLayer = null;
+    this.lastHudState = null;
 
     this.score = 0;
     this.savedCount = 0;        
@@ -3500,6 +3542,7 @@ this.ringGoneAudio =
     this.canvas.height = window.innerHeight;
 
     this.computeSceneMetrics();
+    this.backgroundDustLayer = this.createBackgroundDustLayer();
 
     if (this.motherStar) this.motherStar.setBounds(this.sceneMetrics)
 
@@ -3819,7 +3862,9 @@ this.ringGoneAudio =
 
     this.starlets = [];
     this.obstacles = [];
-    this.particles = [];
+    this.particles?.clearToPool();
+    this.particles = new ParticleList();
+    this.lastHudState = null;
     this.redlets = [];
     this.redletSpawnTimer = 0;
     this.redletTrailTimer = 0;
@@ -4482,7 +4527,10 @@ if (this.motherStar) {
     
     for (let i = this.particles.length - 1; i >= 0; i--) {
       this.particles[i].update();
-      if (this.particles[i].life <= 0) this.particles.splice(i, 1);
+      if (this.particles[i].life <= 0) {
+        this.particles[i].release();
+        this.particles.splice(i, 1);
+      }
     }
 
     this.obstacles = this.obstacles.filter((o) => !o.isOffscreen());
@@ -4617,6 +4665,11 @@ checkObstacleCollisions() {
   }
 
   updateUI() {
+    const progress = Math.max(0, Math.min(1, this.timeLeft / this.totalTime));
+    const nextState = `${this.savedCount}|${this.lostCount}|${this.score}|${Math.floor(progress * 120)}`;
+    if (this.lastHudState === nextState) return;
+    this.lastHudState = nextState;
+
     if (this.savedCountElement) {
       this.savedCountElement.textContent = this.savedCount;
     }
@@ -4630,15 +4683,21 @@ checkObstacleCollisions() {
     }
 
     if (this.timeFillElement) {
-      const progress = Math.max(0, Math.min(1, this.timeLeft / this.totalTime));
       this.timeFillElement.style.width = `${progress * 100}%`;
     }
 
     this.updateRankUI();
   }
 
-  drawBackgroundDust() {
-    const g = this.ctx.createRadialGradient(
+  createBackgroundDustLayer() {
+    const layer = typeof OffscreenCanvas === "function"
+      ? new OffscreenCanvas(this.canvas.width, this.canvas.height)
+      : document.createElement("canvas");
+    layer.width = this.canvas.width;
+    layer.height = this.canvas.height;
+
+    const layerContext = layer.getContext("2d");
+    const g = layerContext.createRadialGradient(
       this.canvas.width * 0.32,
       this.canvas.height * 0.5,
       40,
@@ -4651,8 +4710,14 @@ checkObstacleCollisions() {
     g.addColorStop(0.35, "rgba(12, 43, 74, 0.03)");
     g.addColorStop(1, "rgba(0,0,0,0)");
 
-    this.ctx.fillStyle = g;
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    layerContext.fillStyle = g;
+    layerContext.fillRect(0, 0, layer.width, layer.height);
+    return layer;
+  }
+
+  drawBackgroundDust() {
+    this.backgroundDustLayer ??= this.createBackgroundDustLayer();
+    this.ctx.drawImage(this.backgroundDustLayer, 0, 0);
   }
 
   draw() {
