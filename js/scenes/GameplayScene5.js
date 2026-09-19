@@ -577,8 +577,17 @@ class Obstacle {
 }
         
 
-       class Particle {
+class Particle {
+  static pool = [];
+
   constructor(x, y, color, cool = false, options = {}) {
+    const recycled = Particle.pool.pop();
+    if (recycled) return recycled.reset(x, y, color, cool, options);
+
+    this.reset(x, y, color, cool, options);
+  }
+
+  reset(x, y, color, cool = false, options = {}) {
     this.x = x;
     this.y = y;
 
@@ -595,6 +604,14 @@ class Obstacle {
     this.gravity = options.gravity ?? 0;
     this.shrink = options.shrink ?? 0;
     this.alphaBoost = options.alphaBoost ?? 1;
+    this.inPool = false;
+    return this;
+  }
+
+  release() {
+    if (this.inPool) return;
+    this.inPool = true;
+    if (Particle.pool.length < 260) Particle.pool.push(this);
   }
 
   update() {
@@ -623,6 +640,29 @@ class Obstacle {
     ctx.globalAlpha = 1;
   }
 } 
+
+class ParticleList extends Array {
+  constructor(maxParticles = 220) {
+    super();
+    this.maxParticles = maxParticles;
+  }
+
+  push(...particles) {
+    for (const particle of particles) {
+      if (this.length >= this.maxParticles) {
+        particle.release();
+        continue;
+      }
+      super.push(particle);
+    }
+    return this.length;
+  }
+
+  clearToPool() {
+    for (const particle of this) particle.release();
+    this.length = 0;
+  }
+}
 
 class HomeStar {
   constructor(sceneMetrics) {
@@ -788,7 +828,7 @@ class HomeStar {
     core.addColorStop(0.48, "#F5B670");
     core.addColorStop(1, "#DEA15E");
 
-    ctx.shadowBlur = 24;
+    ctx.shadowBlur = ctx.canvas.__starLineLowQuality ? 0 : 24;
     ctx.shadowColor = "rgba(222, 161, 94, 0.72)";
     ctx.fillStyle = core;
     ctx.fill();
@@ -1082,6 +1122,8 @@ return true;
   }
 
   drawArcGlow(ctx, cx, cy, radius, start, end, alphaBoost = 1) {
+    if (ctx.canvas.__starLineLowQuality) return;
+
     const grad = ctx.createRadialGradient(cx, cy, radius - 80, cx, cy, radius + 30);
     grad.addColorStop(0, `rgba(206, 69, 69, ${0.0 * alphaBoost})`);
     grad.addColorStop(0.72, `rgba(206, 69, 69, ${0.06 * alphaBoost})`);
@@ -1107,7 +1149,7 @@ return true;
     ctx.translate(x, y);
     ctx.rotate(angle);
 
-    ctx.shadowBlur = 18 + pulse * 10;
+    ctx.shadowBlur = ctx.canvas.__starLineLowQuality ? 0 : 18 + pulse * 10;
     ctx.shadowColor = `rgba(206, 69, 69, ${0.45 + pulse * 0.2})`;
 
     ctx.beginPath();
@@ -1244,6 +1286,8 @@ this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
 
   this.canvas = document.getElementById("gameCanvas");
   this.ctx = this.canvas.getContext("2d");
+  this.renderScale = 1;
+  this.isLowQuality = false;
 
   this.savedCountElement = document.getElementById("savedCount");
   this.lostCountElement = document.getElementById("lostCount");
@@ -1281,7 +1325,9 @@ this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
   this.activeRingIndex = 0;
   this.starlets = [];
   this.obstacles = [];
-  this.particles = [];
+  this.particles = new ParticleList();
+  this.backgroundDustLayer = null;
+  this.lastHudState = null;
   this.brokenRings = [];
 
   this.score = 0;
@@ -1528,9 +1574,20 @@ this.draw();
 }
   
     resize() {
-  this.canvas.width = window.innerWidth;
-  this.canvas.height = window.innerHeight;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const isTouchTablet =
+    navigator.maxTouchPoints > 0 && Math.min(viewportWidth, viewportHeight) >= 600;
+
+  this.renderScale = isTouchTablet ? 0.75 : 1;
+  this.isLowQuality = isTouchTablet;
+  this.canvas.style.width = `${viewportWidth}px`;
+  this.canvas.style.height = `${viewportHeight}px`;
+  this.canvas.width = Math.round(viewportWidth * this.renderScale);
+  this.canvas.height = Math.round(viewportHeight * this.renderScale);
+  this.canvas.__starLineLowQuality = this.isLowQuality;
   this.computeSceneMetrics();
+  this.backgroundDustLayer = this.createBackgroundDustLayer();
 
   if (this.brokenRings?.length) {
   this.brokenRings.forEach((ring) => ring.setBounds(this.sceneMetrics));
@@ -1859,7 +1916,9 @@ updateRankUI() {
 
     this.starlets = [];
     this.obstacles = [];
-    this.particles = [];
+    this.particles?.clearToPool();
+    this.particles = new ParticleList();
+    this.lastHudState = null;
 
     this.score = 0;
     this.savedCount = 0;
@@ -2049,8 +2108,12 @@ advanceHomeStarRing() {
         setupInput() {
     if (this.inputBound) return;
 
-    this.handlePointerMoveCore = (x, y) => {
-      this.mousePos = { x, y };
+    this.handlePointerMoveCore = (clientX, clientY) => {
+      const rect = this.canvas.getBoundingClientRect();
+      this.mousePos = {
+        x: (clientX - rect.left) * (this.canvas.width / rect.width),
+        y: (clientY - rect.top) * (this.canvas.height / rect.height),
+      };
       this.isDragging = true;
     };
 
@@ -2173,6 +2236,7 @@ advanceHomeStarRing() {
   for (let i = this.particles.length - 1; i >= 0; i--) {
     this.particles[i].update();
     if (this.particles[i].life <= 0) {
+      this.particles[i].release();
       this.particles.splice(i, 1);
     }
   }
@@ -2240,6 +2304,11 @@ advanceHomeStarRing() {
   }
   
             updateUI() {
+  const progress = Math.max(0, Math.min(1, this.timeLeft / this.totalTime));
+  const nextState = `${this.savedCount}|${this.lostCount}|${this.score}|${Math.floor(progress * 120)}`;
+  if (this.lastHudState === nextState) return;
+  this.lastHudState = nextState;
+
   if (this.savedCountElement) {
     this.savedCountElement.textContent = this.savedCount;
   }
@@ -2253,15 +2322,21 @@ advanceHomeStarRing() {
   }
 
   if (this.timeFillElement) {
-    const progress = Math.max(0, Math.min(1, this.timeLeft / this.totalTime));
     this.timeFillElement.style.width = `${progress * 100}%`;
   }
 
   this.updateRankUI();
 }
 
-drawBackgroundDust() {
-  const g = this.ctx.createRadialGradient(
+createBackgroundDustLayer() {
+  const layer = typeof OffscreenCanvas === "function"
+    ? new OffscreenCanvas(this.canvas.width, this.canvas.height)
+    : document.createElement("canvas");
+  layer.width = this.canvas.width;
+  layer.height = this.canvas.height;
+
+  const layerContext = layer.getContext("2d");
+  const g = layerContext.createRadialGradient(
     this.canvas.width * 0.32,
     this.canvas.height * 0.5,
     40,
@@ -2274,8 +2349,14 @@ drawBackgroundDust() {
   g.addColorStop(0.35, "rgba(12, 43, 74, 0.03)");
   g.addColorStop(1, "rgba(0,0,0,0)");
 
-  this.ctx.fillStyle = g;
-  this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  layerContext.fillStyle = g;
+  layerContext.fillRect(0, 0, layer.width, layer.height);
+  return layer;
+}
+
+drawBackgroundDust() {
+  this.backgroundDustLayer ??= this.createBackgroundDustLayer();
+  this.ctx.drawImage(this.backgroundDustLayer, 0, 0);
 }
 
 draw() {
