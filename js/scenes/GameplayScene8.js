@@ -3980,7 +3980,7 @@ this.ringGoneAudio =
   spawnStarletsFromMotherStar() {
   if (!this.motherStar?.isSpawnReady()) return;
 
-  const maxStarlets = 12;
+  const maxStarlets = 16;
   const missing = Math.max(0, maxStarlets - this.starlets.length);
   if (missing <= 0) return;
 
