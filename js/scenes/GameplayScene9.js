@@ -5455,7 +5455,9 @@ isHomeStarReadyForTutor() {
       this.rotateHint.classList.toggle("show", !this.isLandscape());
     }
 
-    const delta = (currentTime - this.lastTime) / 1000;
+    // Не догоняем время после сворачивания вкладки: это могло за один кадр
+    // создать огромное количество частиц и заблокировать страницу.
+    const delta = Math.min(0.05, Math.max(0, (currentTime - this.lastTime) / 1000));
     this.lastTime = currentTime;
 
     this.timeLeft -= delta;
