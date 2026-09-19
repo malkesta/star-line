@@ -1,11 +1,11 @@
 import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
-const BG = { story: asset("../../assets/images/vn/vn_backgrounds/test-stars-gold.png"), room: asset("../../assets/images/vn/vn_backgrounds/test-night-gold.png") };
+const BG = { story: asset("../../assets/images/vn/vn_backgrounds/test-stars-gold.png"), room: asset("../../assets/images/vn/vn_backgrounds/garden_bg.png") };
 const MUSIC = asset("../../assets/audio/vn/VN-1.mp3");
 const GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
 const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
 export class VisualNovel4 extends VisualNovelScene {
-  constructor(options = {}) { super({ ...options, sceneId: "vn-4", musicUrl: MUSIC, sprites: { girl: { src: GIRL, alt: "Девочка — временный спрайт" }, star: { src: STAR, alt: "Звезда — временный спрайт" } }, startNode: "intro", nodes: {
+  constructor(options = {}) { super({ ...options, sceneId: "vn-4", musicUrl: MUSIC, sprites: { girl: { src: GIRL, alt: "Девочка" }, star: { src: STAR, alt: "Звезда" } }, startNode: "intro", nodes: {
     intro: {
       speaker: "...",
       text: "Шли дни. Девочка ходила в школу, слушала маму с папой. И внутри у неё было тихо и темно.",
@@ -36,7 +36,7 @@ export class VisualNovel4 extends VisualNovelScene {
     },
     window: {
       speaker: "...",
-      text: "Но потом как-то раз зажигала фонарь, и выглянула в окно. Там был след от падающей звезды.",
+      text: "Но потом как-то раз вышла в осенний сад, посмотрела в небо. Там был след от падающей звезды.",
       bg: BG.room,
       sprites: {},
       next: "cried"

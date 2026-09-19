@@ -1,11 +1,12 @@
 import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
-const BG = { story: asset("../../assets/images/vn/vn_backgrounds/test-stars-gold.png"), school: asset("../../assets/images/vn/vn_backgrounds/test-night-gold.png"), forest: asset("../../assets/images/vn/vn_backgrounds/test-night-gold.png") };
+const BG = { story: asset("../../assets/images/vn/vn_backgrounds/test-stars-gold.png"), school: asset("../../assets/images/vn/vn_backgrounds/school_bg.png"), forest: asset("../../assets/images/vn/vn_backgrounds/test-night-gold.png") };
 const MUSIC = asset("../../assets/audio/vn/VN-1.mp3");
-const GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
+const GIRL = asset("../../assets/images/vn/sprites/girl/girl_school.png");
+const GIRL_ANGER = asset("../../assets/images/vn/sprites/girl/girl_school_anger.png");
 const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
 export class VisualNovel3 extends VisualNovelScene {
-  constructor(options = {}) { super({ ...options, sceneId: "vn-3", musicUrl: MUSIC, sprites: { girl: { src: GIRL, alt: "Персонаж — временный спрайт" }, star: { src: STAR, alt: "Звезда — временный спрайт" } }, startNode: "intro", nodes: {
+  constructor(options = {}) { super({ ...options, sceneId: "vn-3", musicUrl: MUSIC, sprites: { girl: { src: GIRL, variants: { anger: GIRL_ANGER }, alt: "Девочка" }, star: { src: STAR, alt: "Звезда" } }, startNode: "intro", nodes: {
     intro: {
       speaker: "...",
       text: "Девочка стала осторожнее. Она больше не говорила про звёзды ни маме, ни папе. Просто молча рисовала маршруты в небе каждый день. Даже когда уставала.",
@@ -171,7 +172,7 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "Девочка",
       text: "Уйди! Это всё из-за тебя! Ненавижу тебя! Ненавижу!",
       bg: BG.forest,
-      sprites: { girl: true },
+      sprites: { girl: "anger" },
       speakingSprite: "girl",
       next: "help"
     },
@@ -179,7 +180,7 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "Звезда",
       text: "Я знаю, что тебе больно. И прилетела помочь.",
       bg: BG.forest,
-      sprites: { girl: true, star: true },
+      sprites: { girl: "anger", star: true },
       speakingSprite: "star",
       next: "angryChoice"
     },
@@ -187,7 +188,7 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "",
       text: "",
       bg: BG.forest,
-      sprites: { girl: true, star: true },
+      sprites: { girl: "anger", star: true },
       choiceLabel: "Глупая звезда!",
       choices: [
         { label: "Даже себе помочь не можешь!", next: "anger" },
@@ -198,7 +199,7 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "Девочка",
       text: "Вечно ноете и ноете! «Ах, в небе так холодно и страшно!», «Ах, но нам надо домой!»",
       bg: BG.forest,
-      sprites: { girl: true, star: true },
+      sprites: { girl: "anger", star: true },
       speakingSprite: "girl",
       next: "hate"
     },
@@ -206,7 +207,7 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "Девочка",
       text: "Да лучше бы вас вовсе не было!",
       bg: BG.forest,
-      sprites: { girl: true, star: true },
+      sprites: { girl: "anger", star: true },
       speakingSprite: "girl",
       next: "alone"
     },
@@ -214,14 +215,14 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "...",
       text: "Девочка всё говорила и говорила гадости, размахивала руками и доказывала, что от звёзд только хуже. А когда обернулась, поняла, что осталась одна.",
       bg: BG.forest,
-      sprites: { girl: true },
+      sprites: { girl: "anger" },
       next: "noRoute"
     },
     noRoute: {
       speaker: "...",
       text: "И в эту ночь она больше не рисовала звёздам маршрут.",
       bg: BG.forest,
-      sprites: { girl: true },
+      sprites: { girl: "anger" },
       last: true,
       resultTitle: "История продолжается",
       resultMessage: ""

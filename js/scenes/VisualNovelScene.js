@@ -293,6 +293,7 @@ export class VisualNovelScene {
       if (!element || !config?.src) return;
 
       element.src = config.src;
+      element.dataset.spriteSrc = config.src;
       element.alt = config.alt ?? "";
     });
   }
@@ -360,9 +361,12 @@ export class VisualNovelScene {
   });
 
   Object.values(this.sprites).forEach((config) => {
-    if (!config?.src) return;
-    const img = new Image();
-    img.src = config.src;
+    const sources = [config?.src, ...Object.values(config?.variants ?? {})];
+
+    sources.filter(Boolean).forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
   });
 
   if (this.musicUrl) {
@@ -514,6 +518,18 @@ export class VisualNovelScene {
   setSprites(spriteState = {}, speakingKey = null) {
     Object.entries(this.spriteElements).forEach(([key, element]) => {
       if (!element) return;
+
+      const spriteVariant =
+        typeof spriteState[key] === "string" ? spriteState[key] : null;
+      const config = this.sprites[key];
+      const source = spriteVariant
+        ? config?.variants?.[spriteVariant]
+        : config?.src;
+
+      if (source && element.dataset.spriteSrc !== source) {
+        element.src = source;
+        element.dataset.spriteSrc = source;
+      }
 
       const visible = Boolean(spriteState[key]);
 
