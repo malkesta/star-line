@@ -3384,6 +3384,8 @@ this.ringGoneAudio =
 
       this.isTransitioning = true;
 
+      document.getElementById("sceneTransitionVeil")?.classList.add("is-visible");
+
       const fadeDuration = 0.28;
 
       try {
@@ -3439,6 +3441,8 @@ this.ringGoneAudio =
         }
       } catch (error) {
         console.error("[StarLine] next transition failed", error);
+
+        document.getElementById("sceneTransitionVeil")?.classList.remove("is-visible");
 
         if (this.overlay) {
           this.overlay.classList.add("show");

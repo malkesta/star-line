@@ -38,6 +38,21 @@ body {
   position: relative;
 }
 
+/* Перекрывает остановленный canvas во время перехода из уровня в VN. */
+#sceneTransitionVeil {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  pointer-events: none;
+  opacity: 0;
+  background: #000;
+  transition: opacity 0.28s ease-in;
+}
+
+#sceneTransitionVeil.is-visible {
+  opacity: 1;
+}
+
 body::before {
   content: "";
   position: absolute;

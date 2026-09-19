@@ -5119,6 +5119,8 @@ export class GameplayScene10 {
 
       this.isTransitioning = true;
 
+      document.getElementById("sceneTransitionVeil")?.classList.add("is-visible");
+
       const fadeDuration = 0.28;
 
       try {
@@ -5175,6 +5177,8 @@ export class GameplayScene10 {
         }
       } catch (error) {
         console.error("[StarLine] next transition failed", error);
+
+        document.getElementById("sceneTransitionVeil")?.classList.remove("is-visible");
 
         if (this.overlay) {
           this.overlay.classList.add("show");

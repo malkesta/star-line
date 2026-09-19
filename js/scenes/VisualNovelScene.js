@@ -203,6 +203,9 @@ export class VisualNovelScene {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         this.scene.style.opacity = "1";
+        document
+          .getElementById("sceneTransitionVeil")
+          ?.classList.remove("is-visible");
       });
     });
 
