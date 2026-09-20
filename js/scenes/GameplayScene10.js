@@ -4047,21 +4047,16 @@ class BrokenRingObstacle {
     starlet.y = center.y + ny * targetDistance;
 
     const tangentVelocity = starlet.vx * tx + starlet.vy * ty;
-
-    const fanAngle = (Math.random() - 0.5) * 0.72;
-    const fanNx = nx * Math.cos(fanAngle) - ny * Math.sin(fanAngle);
-    const fanNy = nx * Math.sin(fanAngle) + ny * Math.cos(fanAngle);
-
     const outwardSpeed = wasOutside ? 1.8 : -2.6;
     const tangentDamping = 0.72;
 
     starlet.vx =
       tx * tangentVelocity * tangentDamping +
-      fanNx * outwardSpeed * this.bounceStrength;
+      nx * outwardSpeed * this.bounceStrength;
 
     starlet.vy =
       ty * tangentVelocity * tangentDamping +
-      fanNy * outwardSpeed * this.bounceStrength;
+      ny * outwardSpeed * this.bounceStrength;
 
     if (starlet.following) {
       starlet.following = false;
@@ -6291,10 +6286,6 @@ isHomeStarReadyForTutor() {
     if (this.homeObstacleRing) {
   this.homeObstacleRing.update(delta);
 
-  for (const starlet of this.starlets) {
-    this.homeObstacleRing.resolveStarletCollision(starlet);
-  }
-
   const goldCarrier = this.getGoldCarrierRedlet();
 
   if (this.activeGoldRing && goldCarrier) {
@@ -6399,6 +6390,13 @@ isHomeStarReadyForTutor() {
     this.starlets.forEach((s) =>
       s.update(delta, followPos, canCapture, followPos)
     );
+
+    if (this.homeObstacleRing) {
+      for (const starlet of this.starlets) {
+        this.homeObstacleRing.resolveStarletCollision(starlet);
+      }
+    }
+
     this.removeOffscreenStarlets();
 
     // 7) Obstacle[].
