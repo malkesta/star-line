@@ -5105,6 +5105,9 @@ export class GameplayScene10 {
 
     this.canvas = document.getElementById("gameCanvas");
     this.ctx = this.canvas.getContext("2d");
+    this.renderScale = 1;
+    this.isLowQuality = false;
+    this.particleBudget = 220;
 
     this.savedCountElement = document.getElementById("savedCount");
     this.lostCountElement = document.getElementById("lostCount");
@@ -5180,7 +5183,7 @@ export class GameplayScene10 {
     this.redletTrailTimer = 0;
     this.starlets = [];
     this.obstacles = [];
-    this.particles = new ParticleList();
+    this.particles = new ParticleList(this.particleBudget);
     this.particleTrailIntervalScale =
       navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 1.5 : 1;
     this.backgroundDustLayer = null;
@@ -5511,8 +5514,25 @@ getRankHudAnchorRect() {
   }
 
   resize() {
-  this.canvas.width = window.innerWidth;
-  this.canvas.height = window.innerHeight;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const isTouchTablet =
+    navigator.maxTouchPoints > 0 && Math.min(viewportWidth, viewportHeight) >= 600;
+
+  this.renderScale = isTouchTablet ? 0.75 : 1;
+  this.isLowQuality = isTouchTablet;
+  this.particleBudget = this.isLowQuality ? 140 : 220;
+  this.particleTrailIntervalScale = this.isLowQuality
+    ? 2.2
+    : navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4
+    ? 1.5
+    : 1;
+  this.canvas.style.width = `${viewportWidth}px`;
+  this.canvas.style.height = `${viewportHeight}px`;
+  this.canvas.width = Math.round(viewportWidth * this.renderScale);
+  this.canvas.height = Math.round(viewportHeight * this.renderScale);
+  this.canvas.__starLineLowQuality = this.isLowQuality;
+  if (this.particles) this.particles.maxParticles = this.particleBudget;
   this.computeSceneMetrics();
   this.backgroundDustLayer = this.createBackgroundDustLayer();
 
@@ -5842,7 +5862,7 @@ getSceneRankTitle(rank = this.getSceneRank()) {
   this.starlets = [];
   this.obstacles = [];
   this.particles?.clearToPool();
-  this.particles = new ParticleList();
+  this.particles = new ParticleList(this.particleBudget);
   this.lastHudState = null;
   this.redlets = [];
   this.redletSpawnTimer = 0;
@@ -6310,7 +6330,11 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     if (this.inputBound) return;
 
     this.handlePointerMoveCore = (x, y) => {
-      this.mousePos = { x, y };
+      const rect = this.canvas.getBoundingClientRect();
+      this.mousePos = {
+        x: (x - rect.left) * (this.canvas.width / rect.width),
+        y: (y - rect.top) * (this.canvas.height / rect.height),
+      };
       this.isDragging = true;
     };
 
