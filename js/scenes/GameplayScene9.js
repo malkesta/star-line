@@ -2574,6 +2574,16 @@ class Redlet {
     // Редлет, пойманный золотым кольцом, управляется снаружи (сценой /
     // GoldRing) — здесь просто пропускаем обычную логику охоты.
     if (this.state === 'carryingGoldRing') {
+    const goldRing = this.carryingGoldRing;
+    if (goldRing?.state === "collapsing" || goldRing?.state === "delivering") {
+      if (goldRing.state === "delivering") {
+        this.x = goldRing.deliveryTargetX;
+        this.y = goldRing.deliveryTargetY;
+      }
+      goldRing.x = this.x;
+      goldRing.y = this.y;
+      return;
+    }
     if (mousePos) {
       this.followTargetX = mousePos.x;
       this.followTargetY = mousePos.y;
@@ -2766,6 +2776,8 @@ class Redlet {
   ctx.save();
   ctx.translate(this.x + jitterX, this.y + jitterY);
   ctx.rotate(this.rotation);
+  const collapseScale = this.carryingGoldRing?.getCollapseScale?.() ?? 1;
+  ctx.scale(collapseScale, collapseScale);
 
   const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, glowRadius);
   glow.addColorStop(0, toRgb(edgeColor, 0.22 * glowBoost));
@@ -2883,6 +2895,12 @@ class GoldRing {
     // Таймер жизни комбо (Redlet + GoldRing) — жёсткие 10 секунд (ТЗ п.9).
     this.comboLifeDuration = 10.0;
     this.comboLifeTimer = 0;
+    this.collapseTimer = 0;
+    this.collapseDuration = 0.36;
+    this.deliveryTimer = 0;
+    this.deliveryDuration = 0.34;
+    this.deliveryTargetX = 0;
+    this.deliveryTargetY = 0;
 
     this.baseRadius = 0;
     this.dotRadius = 0;
@@ -2940,6 +2958,8 @@ class GoldRing {
     this.alpha = 0;
     this.spawnProgress = 0;
     this.comboLifeTimer = 0;
+    this.collapseTimer = 0;
+    this.deliveryTimer = 0;
 
     const { width = 1366, height = 768 } = this.sceneMetrics ?? {};
     const entrySide = side || ["top", "bottom", "left", "right"][
@@ -3076,6 +3096,8 @@ class GoldRing {
   this.anchorRedlet = redlet;
   this.state = "attachedToRedlet";
   this.comboLifeTimer = 0;
+  this.collapseTimer = 0;
+  this.deliveryTimer = 0;
 
   redlet.hasCapturedRing = false;
   redlet.carryingRedRing = null;
@@ -3122,6 +3144,16 @@ class GoldRing {
     this.pulsePhase += delta * 5.4;
     this.glowPhase += delta * 2.8;
     this.phase += delta * 1.9;
+
+    if (this.state === "collapsing") {
+      this.collapseTimer = Math.max(0, this.collapseTimer - delta);
+      return;
+    }
+
+    if (this.state === "delivering") {
+      this.deliveryTimer = Math.max(0, this.deliveryTimer - delta);
+      return;
+    }
 
     if (this.state === "spawning") {
       this.spawnProgress = Math.min(1, this.spawnProgress + delta / this.spawnDuration);
@@ -3238,6 +3270,37 @@ class GoldRing {
     return this.state === "attachedToRedlet" && this.comboLifeTimer >= this.comboLifeDuration;
   }
 
+  beginCollapse() {
+    if (this.state !== "attachedToRedlet") return;
+    this.state = "collapsing";
+    this.collapseTimer = this.collapseDuration;
+  }
+
+  beginDeliveryAnimation(homeStar) {
+    if (this.state !== "attachedToRedlet" || !homeStar) return;
+    this.state = "delivering";
+    this.deliveryTimer = this.deliveryDuration;
+    this.deliveryTargetX = homeStar.x;
+    this.deliveryTargetY = homeStar.y;
+
+    if (this.anchorRedlet) {
+      this.anchorRedlet.x = this.deliveryTargetX;
+      this.anchorRedlet.y = this.deliveryTargetY;
+      this.anchorRedlet.vx = 0;
+      this.anchorRedlet.vy = 0;
+    }
+    this.x = this.deliveryTargetX;
+    this.y = this.deliveryTargetY;
+  }
+
+  getCollapseScale() {
+    if (this.state !== "collapsing" && this.state !== "delivering") return 1;
+    const timer = this.state === "collapsing" ? this.collapseTimer : this.deliveryTimer;
+    const duration = this.state === "collapsing" ? this.collapseDuration : this.deliveryDuration;
+    const progress = Math.max(0, timer / duration);
+    return Math.max(0.035, progress * progress);
+  }
+
   draw(ctx) {
   if (this.hidden || this.alpha <= 0.001) return;
 
@@ -3256,6 +3319,10 @@ class GoldRing {
     this.alpha * (this.state === "attachedToRedlet" ? 0.34 : 0.22);
 
   ctx.save();
+  const collapseScale = this.getCollapseScale();
+  ctx.translate(this.x, this.y);
+  ctx.scale(collapseScale, collapseScale);
+  ctx.translate(-this.x, -this.y);
 
   const glow = ctx.createRadialGradient(
     this.x,
@@ -5145,6 +5212,54 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     }
   }
 
+  emitGoldComboFailureBurst(x, y) {
+    const particleCount = 44;
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.22;
+      const speed = 2.5 + Math.random() * 4.8;
+      const isBlack = i % 3 === 0;
+
+      this.particles.push(
+        new Particle(
+          x,
+          y,
+          isBlack ? "rgba(26, 23, 34, 0.98)" : "rgba(235, 56, 64, 0.98)",
+          false,
+          {
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1,
+            decay: 0.022 + Math.random() * 0.016,
+            size: isBlack ? 1.3 + Math.random() * 1.7 : 1.7 + Math.random() * 2.3,
+            gravity: 0.012,
+            shrink: 0.035,
+            alphaBoost: 1.25,
+          }
+        )
+      );
+    }
+  }
+
+  emitGoldComboDeliveryBurst(x, y) {
+    const particleCount = 30;
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.2;
+      const speed = 2.1 + Math.random() * 3.4;
+      this.particles.push(
+        new Particle(x, y, "rgba(255, 211, 92, 0.98)", false, {
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0.9,
+          decay: 0.026 + Math.random() * 0.014,
+          size: 1.5 + Math.random() * 2.1,
+          gravity: -0.002,
+          shrink: 0.02,
+          alphaBoost: 1.2,
+        })
+      );
+    }
+  }
+
   // Хвост частиц за золотым комбо (Redlet, несущий GoldRing).
   emitGoldComboTrail(delta) {
     const ring = this.activeGoldRing;
@@ -5968,8 +6083,6 @@ isHomeStarReadyForTutor() {
 
   if (!this.homeStar.isGoldComboDelivered(ring)) return;
 
-  const carrier = this.getGoldCarrierRedlet();
-
   // Награда только за саму доставку GoldRing+Redlet.
   const goldReward = 40;
   this.score += goldReward;
@@ -5988,15 +6101,15 @@ isHomeStarReadyForTutor() {
   }
 
   this.audio.playEatSound?.();
-  this.emitDeliveryBurst(this.homeStar.x, this.homeStar.y);
+  this.audio.playGoldComboSound?.();
+  ring.beginDeliveryAnimation(this.homeStar);
+}
 
+finishGoldComboDelivery(ring) {
+  if (!ring || ring !== this.activeGoldRing) return;
+
+  this.emitGoldComboDeliveryBurst(ring.x, ring.y);
   ring.deliver();
-
-  if (carrier) {
-  carrier.carryingGoldRing = null;
-  carrier.state = carrier.carryingRedRing ? "carryingRedRing" : "free";
-  }
-
   this.activeGoldRing = null;
   this.activeGoldCombo = false;
   this.goldComboExpireTimer = 0;
@@ -6027,13 +6140,25 @@ this.starlets.splice(i, 1);
   // доставка в этом же кадре — см. checkHomeStarDelivery выше).
   checkGoldComboExpiry(delta) {
     const ring = this.activeGoldRing;
-    if (!ring || ring.state !== "attachedToRedlet") return;
-    // Если кольцо уже было доставлено/снято в этом кадре — activeGoldRing
-    // уже null к этому моменту, так что сюда не попадём повторно.
+    if (!ring) return;
+
+    if (ring.state === "delivering") {
+      if (ring.deliveryTimer > 0) return;
+      this.finishGoldComboDelivery(ring);
+      return;
+    }
+
+    if (ring.state === "collapsing") {
+      if (ring.collapseTimer > 0) return;
+      this.finishGoldComboFailure(ring);
+      return;
+    }
 
     if (!ring.isComboExpired()) return;
+    ring.beginCollapse();
+  }
 
-    const carrier = this.getGoldCarrierRedlet();
+  finishGoldComboFailure(ring) {
 
     // Все пришвартованные старлеты уничтожаются, штраф 5 очков за каждого.
     let followedCount = 0;
@@ -6050,11 +6175,12 @@ this.starlets.splice(i, 1);
     this.score = Math.max(0, this.score - penalty);
     this.lostCount += followedCount;
 
+    this.emitGoldComboFailureBurst(ring.x, ring.y);
+
     // Комбо становится обычным препятствием (не подхватываемым).
     this.obstacles.push(Obstacle.fromFailedGoldCombo(ring.x, ring.y, this.sceneMetrics));
 
     this.audio.playHitSound?.();
-    this.spawnScatterEffect(ring.x, ring.y, "#c66b4f", true);
 
     // ring.expire() сам очищает anchorRedlet.carryingGoldRing и помечает
     // редлета на удаление вместе с проваленным комбо.
