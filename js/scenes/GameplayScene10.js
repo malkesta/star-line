@@ -3472,6 +3472,9 @@ class HomeStar {
 
     const { width, height } = sceneMetrics;
 
+    this.anchorX = sceneMetrics.homeAnchorX;
+    this.anchorY = sceneMetrics.homeAnchorY;
+
     // Звезда приходит слева и покидает экран справа.
     this.entryX = -this.baseRingRadius - width * 0.08;
     this.exitX = width + this.baseRingRadius + width * 0.08;
@@ -3512,21 +3515,22 @@ class HomeStar {
     this.radius = this.baseRadius;
     this.ringRadius = this.baseRingRadius;
     this.glowRadius = this.baseGlowRadius;
+    this.x = this.anchorX;
+    this.y = this.anchorY;
   }
 
   resetCyclePosition() {
-    this.entered = false;
-    this.state = "entering";
+    this.entered = true;
+    this.state = "anchored";
 
-    this.x = this.entryX;
-    this.y = this.baseY;
+    this.x = this.anchorX;
+    this.y = this.anchorY;
     this.vx = 0;
     this.vy = 0;
 
     this.cruiseTimer = 0;
     this.offscreenTimer = 0;
 
-    this.pickNewCruiseTarget(true);
   }
 
   activateFromLeft() {
@@ -3620,6 +3624,14 @@ class HomeStar {
     this.radius = this.baseRadius * pulse;
     this.ringRadius = this.baseRingRadius * pulse;
     this.glowRadius = this.baseGlowRadius * pulse;
+
+    // HomeStar и закреплённый на ней BrokenRing остаются в левой трети
+    // игрового поля; вращение и пульсация продолжаются.
+    this.x = this.anchorX;
+    this.y = this.anchorY;
+    this.entered = true;
+    this.state = "anchored";
+    return;
 
     if (this.state === "entering") {
       this.x += this.entrySpeed * delta;
@@ -3845,7 +3857,7 @@ class BrokenRingObstacle {
   this.gapWidth = 0;
 
   this.rotation = Math.random() * Math.PI * 2;
-  this.rotationSpeed = 0.003;
+  this.rotationSpeed = 0.0033;
   this.pulseTime = Math.random() * Math.PI * 2;
 
   this.sceneMetrics = null;
@@ -3854,7 +3866,7 @@ class BrokenRingObstacle {
   this.innerRingInset = 0;
   this.innerRingLineWidth = 0;
 
-  this.sectionCount = 1;
+    this.sectionCount = 2;
 
   this.centerX = 0;
   this.centerY = 0;
@@ -5336,6 +5348,8 @@ getRankHudAnchorRect() {
       homeRadius: clamp(15, 17 * playScale, 21),
       homeRingRadius: clamp(26, 30 * playScale, 37),
       homeGlowRadius: clamp(58, 70 * playScale, 85),
+      homeAnchorX: width * 0.22,
+      homeAnchorY: height * 0.5,
 
       starletBaseRadius: clamp(6.6, 7.0 * playScale, 8.9),
       starletDragRadius: clamp(24, 28 * playScale, 34),
