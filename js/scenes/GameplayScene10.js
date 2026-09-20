@@ -5814,14 +5814,14 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     }
   }
 
-  // До 3 колец одновременно; следующее свободное кольцо спавнится только
+  // До 2 колец одновременно; следующее свободное кольцо спавнится только
   // когда предыдущее захвачено (пункт ТЗ #10).
   spawnRedRingIfNeeded() {
     const activeCount = this.redRings.filter(
       (r) => r && r.state !== "gone"
     ).length;
 
-    if (activeCount >= 3) return null;
+    if (activeCount >= 2) return null;
 
     const sides = ["top", "bottom", "left", "right"];
     const side = sides[Math.floor(Math.random() * sides.length)];
@@ -5858,7 +5858,7 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     const activeRedlets = this.redlets.filter(
       (r) => r && !r.markedForRemoval
     ).length;
-    if (activeRedlets >= 6) return null;
+    if (activeRedlets >= 4) return null;
 
     const redlet = new Redlet(this.sceneMetrics);
     this.redlets.push(redlet);
