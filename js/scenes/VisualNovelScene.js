@@ -585,13 +585,7 @@ export class VisualNovelScene {
    * Говорящий использует его полностью, слушающий — 90% этого значения.
    */
   fitSpeakingSpriteToViewport(element) {
-    const height = element.offsetHeight;
-    const groundLine = element.offsetTop + height;
-
-    if (!height || !groundLine) return;
-
-    const scale = Math.min(1.06, Math.max(1, groundLine / height));
-    element.style.setProperty("--speaking-sprite-scale", scale.toFixed(3));
+    element.style.setProperty("--speaking-sprite-scale", "1");
   }
 
   refreshSpeakingSpriteScales() {
