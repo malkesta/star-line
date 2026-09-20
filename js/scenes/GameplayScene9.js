@@ -2173,6 +2173,11 @@ class Redlet {
     this.stealBoostTimer = 0;
     this.stealBoostDuration = 0.9;
     this.stealBoostMultiplier = 1.55;
+    // После кражи прежний владелец ненадолго не может сразу же украсть
+    // кольцо обратно у того же редлета. Это убирает "пинг-понг" пары.
+    this.stealCooldownTarget = null;
+    this.stealCooldownTimer = 0;
+    this.stealReturnCooldownDuration = 0.85;
 
     this.sizeFactor = 1;
     this.minSizeFactor = 1.33;
@@ -2237,6 +2242,8 @@ class Redlet {
     this.carryingGoldRing = null;
     this.markedForRemoval = false;
     this.stealBoostTimer = 0;
+    this.stealCooldownTarget = null;
+    this.stealCooldownTimer = 0;
 
     this.transformProgress = 0;
     this.redness = 0;
@@ -2400,6 +2407,8 @@ class Redlet {
     if (!redRing || !victimRedlet) return;
     redRing.stealTo(this);
     this.stealBoostTimer = this.stealBoostDuration;
+    victimRedlet.stealCooldownTarget = this;
+    victimRedlet.stealCooldownTimer = this.stealReturnCooldownDuration;
   }
 
   // Может ли этот (свободный) редлет украсть кольцо у victim — оба должны
@@ -2410,6 +2419,12 @@ class Redlet {
     if (victimRedlet.state === "carryingGoldRing") return false;
 
     if (!this.canCaptureRing()) return false;
+    if (
+      this.stealCooldownTimer > 0 &&
+      this.stealCooldownTarget === victimRedlet
+    ) {
+      return false;
+    }
     if (!victimRedlet.hasCapturedRing || !victimRedlet.carryingRedRing) {
       return false;
     }
@@ -2513,7 +2528,25 @@ class Redlet {
     }
 
     if (closestVictim) {
-      return { x: closestVictim.x, y: closestVictim.y, mode: "steal" };
+      // Подлетаем к границе кражи, а не в центр носителя: редлеты могут
+      // лететь рядом, не накладываясь и не раскачивая друг друга.
+      let dx = this.x - closestVictim.x;
+      let dy = this.y - closestVictim.y;
+      let distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance < 0.001) {
+        dx = Math.cos(this.phase);
+        dy = Math.sin(this.phase);
+        distance = 1;
+      }
+      const standoff = Math.max(
+        this.radius + closestVictim.radius,
+        this.stealRadius + closestVictim.radius - this.radius * 0.35
+      );
+      return {
+        x: closestVictim.x + (dx / distance) * standoff,
+        y: closestVictim.y + (dy / distance) * standoff,
+        mode: "steal",
+      };
     }
 
     // Совсем ничего нет — ждём в центре рабочей зоны.
@@ -2532,6 +2565,10 @@ class Redlet {
 
     if (this.stealBoostTimer > 0) {
       this.stealBoostTimer = Math.max(0, this.stealBoostTimer - delta);
+    }
+    if (this.stealCooldownTimer > 0) {
+      this.stealCooldownTimer = Math.max(0, this.stealCooldownTimer - delta);
+      if (this.stealCooldownTimer === 0) this.stealCooldownTarget = null;
     }
 
     // Редлет, пойманный золотым кольцом, управляется снаружи (сценой /
@@ -5586,6 +5623,8 @@ isHomeStarReadyForTutor() {
       );
     }
 
+    this.separateRedRingCombos();
+
     // 9б) Кража RedRing между редлетами при касании (ТЗ п.12).
     if (liveGameplay) {
       this.checkRedletStealing();
@@ -5773,6 +5812,80 @@ isHomeStarReadyForTutor() {
   // свободные редлеты летят к существующим комбо и крадут кольцо при
   // касании. Носитель золотого комбо (carryingGoldRing) никогда не может
   // стать жертвой кражи — у него нет hasCapturedRing/RedRing.
+  // Разводит только два самостоятельных вражеских комбо (Redlet + RedRing).
+  // Работает попарно без выделений памяти и не вмешивается в GoldRing-комбо.
+  separateRedRingCombos() {
+    for (let i = 0; i < this.redlets.length - 1; i++) {
+      const first = this.redlets[i];
+      if (
+        !first ||
+        first.markedForRemoval ||
+        !first.hasCapturedRing ||
+        !first.carryingRedRing
+      ) continue;
+
+      for (let j = i + 1; j < this.redlets.length; j++) {
+        const second = this.redlets[j];
+        if (
+          !second ||
+          second.markedForRemoval ||
+          !second.hasCapturedRing ||
+          !second.carryingRedRing
+        ) continue;
+
+        let dx = first.x - second.x;
+        let dy = first.y - second.y;
+        let distance = Math.hypot(dx, dy);
+
+        // Детерминированное направление только для редкого случая точного
+        // совпадения центров — оно не добавляет случайного дрожания.
+        if (distance < 0.001) {
+          const angle = (i + j + 1) * 2.399963229728653;
+          dx = Math.cos(angle);
+          dy = Math.sin(angle);
+          distance = 1;
+        }
+
+        const firstRadius = Math.max(
+          first.radius,
+          first.carryingRedRing.collisionRadius
+        );
+        const secondRadius = Math.max(
+          second.radius,
+          second.carryingRedRing.collisionRadius
+        );
+        const minimumDistance = firstRadius + secondRadius + 8;
+
+        if (distance >= minimumDistance) continue;
+
+        const nx = dx / distance;
+        const ny = dy / distance;
+        const correction = (minimumDistance - distance) * 0.5;
+
+        first.x = Math.max(first.minX, Math.min(first.maxX, first.x + nx * correction));
+        first.y = Math.max(first.minY, Math.min(first.maxY, first.y + ny * correction));
+        second.x = Math.max(second.minX, Math.min(second.maxX, second.x - nx * correction));
+        second.y = Math.max(second.minY, Math.min(second.maxY, second.y - ny * correction));
+
+        // Гасим только скорость сближения, чтобы комбо не пружинили друг
+        // через друга на следующем кадре.
+        const relativeSpeed = (first.vx - second.vx) * nx + (first.vy - second.vy) * ny;
+        if (relativeSpeed < 0) {
+          const impulse = -relativeSpeed * 0.5;
+          first.vx += nx * impulse;
+          first.vy += ny * impulse;
+          second.vx -= nx * impulse;
+          second.vy -= ny * impulse;
+        }
+
+        first.carryingRedRing.x = first.x;
+        first.carryingRedRing.y = first.y;
+        second.carryingRedRing.x = second.x;
+        second.carryingRedRing.y = second.y;
+      }
+    }
+  }
+
   checkRedletStealing() {
     if (!this.redlets?.length) return;
 
