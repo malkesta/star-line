@@ -182,7 +182,10 @@ export class VisualNovelScene {
       this.setBackground(firstNode.bg, { immediate: true });
     }
 
-    this.setSprites(firstNode.sprites, firstNode.speakingSprite);
+    this.setSprites(
+      firstNode.sprites,
+      this.getNodeSpeakingSprite(firstNode)
+    );
     this.setSpeaker(firstNode.speaker);
 
     /*
@@ -706,7 +709,7 @@ export class VisualNovelScene {
 
     if (node.bg) this.setBackground(node.bg);
 
-    this.setSprites(node.sprites, node.speakingSprite);
+    this.setSprites(node.sprites, this.getNodeSpeakingSprite(node));
 
     if (node.choices?.length) {
       this.beginChoicePrompt(node);
@@ -717,6 +720,16 @@ export class VisualNovelScene {
     this.typeText(node.text);
   }
 
+  getNodeSpeakingSprite(node) {
+    if (!node?.choices?.length) return node?.speakingSprite ?? null;
+
+    return (
+      node.choiceSpeakingSprite ??
+      node.speakingSprite ??
+      (node.sprites?.girl ? "girl" : null)
+    );
+  }
+
   beginChoicePrompt(node) {
     this.inputLocked = true;
     this.pendingChoiceNodeId = this.currentNodeId;
@@ -724,10 +737,7 @@ export class VisualNovelScene {
     // Выбор — это реплика игрока. По умолчанию активна героиня, поэтому
     // второй видимый персонаж получает состояние not-speaking и затемняется.
     // Нетипичная сцена может явно указать choiceSpeakingSprite.
-    const choiceSpeakingSprite =
-      node.choiceSpeakingSprite ??
-      node.speakingSprite ??
-      (node.sprites?.girl ? "girl" : null);
+    const choiceSpeakingSprite = this.getNodeSpeakingSprite(node);
     if (choiceSpeakingSprite) {
       this.setSprites(node.sprites, choiceSpeakingSprite);
     }
@@ -794,7 +804,7 @@ export class VisualNovelScene {
       return;
     }
 
-    this.setSprites(node.sprites, node.speakingSprite);
+    this.setSprites(node.sprites, this.getNodeSpeakingSprite(node));
 
     await this.waitForPresentation(this.spriteRevealDuration);
     if (presentationId !== this.presentationId || this.finished) return;
