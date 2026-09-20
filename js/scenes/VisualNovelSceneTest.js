@@ -21,6 +21,7 @@ export class VisualNovelSceneTest extends VisualNovelScene {
           src: asset("../../assets/images/vn/sprites/girl/neutral.png"),
           alt: "Девочка",
           visualScale: 1,
+          viewportHeightRatio: 0.783,
         },
 
         star: {

@@ -8,7 +8,7 @@ const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
 const BOY_CLASSMATE = asset("../../assets/images/vn/sprites/boy_classmate/boy.png");
 const GIRL_CLASSMATE = asset("../../assets/images/vn/sprites/girl_classmate/girl_classmate.png");
 export class VisualNovel3 extends VisualNovelScene {
-  constructor(options = {}) { super({ ...options, sceneId: "vn-3", musicUrl: MUSIC, sprites: { girl: { src: GIRL, variants: { anger: GIRL_ANGER }, alt: "Девочка", visualScale: 1 }, star: { src: STAR, alt: "Звезда", visualScale: 1 }, boyClassmate: { src: BOY_CLASSMATE, alt: "Одноклассник", visualScale: 1 }, girlClassmate: { src: GIRL_CLASSMATE, alt: "Одноклассница", visualScale: 1 } }, startNode: "intro", nodes: {
+  constructor(options = {}) { super({ ...options, sceneId: "vn-3", musicUrl: MUSIC, sprites: { girl: { src: GIRL, variants: { anger: GIRL_ANGER }, alt: "Девочка", visualScale: 1, viewportHeightRatio: 0.783 }, star: { src: STAR, alt: "Звезда", visualScale: 1 }, boyClassmate: { src: BOY_CLASSMATE, alt: "Одноклассник", visualScale: 1 }, girlClassmate: { src: GIRL_CLASSMATE, alt: "Одноклассница", visualScale: 1 } }, startNode: "intro", nodes: {
     intro: {
       speaker: "...",
       text: "Девочка стала осторожнее. Она больше не говорила про звёзды ни маме, ни папе. Просто молча рисовала маршруты в небе каждый день. Даже когда уставала.",

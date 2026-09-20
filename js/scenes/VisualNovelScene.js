@@ -19,6 +19,7 @@ export class VisualNovelScene {
   this.sprites = sprites;
   this.spriteHeightRatios = new Map();
   this.spriteVisualScales = new Map();
+  this.spriteViewportHeightRatios = new Map();
 
   // The tallest sprite fills the free stage area above the dialogue. Individual
   // character configs can make a small, stable adjustment with visualScale.
@@ -328,6 +329,7 @@ export class VisualNovelScene {
 
     this.spriteHeightRatios.clear();
     this.spriteVisualScales.clear();
+    this.spriteViewportHeightRatios.clear();
 
     if (!tallestSprite) return;
 
@@ -338,6 +340,10 @@ export class VisualNovelScene {
         key,
         Number.isFinite(visualScale) && visualScale > 0 ? visualScale : 1
       );
+      const viewportHeightRatio = Number(this.sprites[key]?.viewportHeightRatio);
+      if (Number.isFinite(viewportHeightRatio) && viewportHeightRatio > 0) {
+        this.spriteViewportHeightRatios.set(key, viewportHeightRatio);
+      }
     });
 
     this.updateSpriteSizes();
@@ -451,10 +457,14 @@ export class VisualNovelScene {
       if (!element) return;
 
       const visualScale = this.spriteVisualScales.get(key) ?? 1;
+      const viewportHeightRatio = this.spriteViewportHeightRatios.get(key);
+      const baseHeight = viewportHeightRatio
+        ? viewportHeight * viewportHeightRatio
+        : tallestSpriteHeight * ratio;
 
       element.style.setProperty(
         "--sprite-render-height",
-        `${Math.round(tallestSpriteHeight * ratio * visualScale)}px`
+        `${Math.round(baseHeight * visualScale)}px`
       );
     });
   }

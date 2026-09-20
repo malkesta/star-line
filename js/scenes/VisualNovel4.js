@@ -5,7 +5,7 @@ const MUSIC = asset("../../assets/audio/vn/VN-1.mp3");
 const GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
 const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
 export class VisualNovel4 extends VisualNovelScene {
-  constructor(options = {}) { super({ ...options, sceneId: "vn-4", musicUrl: MUSIC, sprites: { girl: { src: GIRL, alt: "Девочка", visualScale: 1 }, star: { src: STAR, alt: "Звезда", visualScale: 1 } }, startNode: "intro", nodes: {
+  constructor(options = {}) { super({ ...options, sceneId: "vn-4", musicUrl: MUSIC, sprites: { girl: { src: GIRL, alt: "Девочка", visualScale: 1, viewportHeightRatio: 0.783 }, star: { src: STAR, alt: "Звезда", visualScale: 1 } }, startNode: "intro", nodes: {
     intro: {
       speaker: "...",
       text: "Шли дни. Девочка ходила в школу, слушала маму с папой. И внутри у неё было тихо и темно.",

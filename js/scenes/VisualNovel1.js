@@ -22,6 +22,7 @@ export class VisualNovel1 extends VisualNovelScene {
           src: PLACEHOLDER_GIRL,
           alt: "Девочка — временный спрайт",
           visualScale: 1,
+          viewportHeightRatio: 0.783,
         },
         star: {
           src: PLACEHOLDER_STAR,
