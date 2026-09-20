@@ -2180,7 +2180,7 @@ class Redlet {
     this.speedVariance = 0.18;
     this.speedFactor = 1;
 
-    // Кратковременное ускорение сразу после кражи чужого кольца (ТЗ п.12).
+  // Кратковременное ускорение сразу после кражи чужого кольца (ТЗ п.12).
     this.stealBoostTimer = 0;
     this.stealBoostDuration = 0.9;
     this.stealBoostMultiplier = 1.55;
@@ -2587,6 +2587,14 @@ class Redlet {
     if (this.state === "carryingGoldRing") {
   const goldRing = this.carryingGoldRing;
 
+  // Во время финального сжатия провалившегося комбо Redlet остаётся в
+  // точке коллапса вместе с GoldRing и больше не реагирует на курсор.
+  if (goldRing?.state === "collapsing") {
+    goldRing.x = this.x;
+    goldRing.y = this.y;
+    return;
+  }
+
   // После удара о BrokenRing комбо коротко движется по инерции:
   // не тянется к курсору, но GoldRing продолжает быть привязан к Redlet.
   if (goldRing?.obstacleBounceTimer > 0) {
@@ -2820,6 +2828,8 @@ class Redlet {
   ctx.save();
   ctx.translate(this.x + jitterX, this.y + jitterY);
   ctx.rotate(this.rotation);
+  const collapseScale = this.carryingGoldRing?.getCollapseScale?.() ?? 1;
+  ctx.scale(collapseScale, collapseScale);
 
   const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, glowRadius);
   glow.addColorStop(0, toRgb(edgeColor, 0.22 * glowBoost));
@@ -2937,6 +2947,8 @@ class GoldRing {
     // Таймер жизни комбо (Redlet + GoldRing) — жёсткие 10 секунд (ТЗ п.9).
     this.comboLifeDuration = 10.0;
     this.comboLifeTimer = 0;
+    this.collapseTimer = 0;
+    this.collapseDuration = 0.36;
     // Короткая инерция после удара о BrokenRing.
     this.obstacleBounceTimer = 0;
     this.obstacleBounceDuration = 0.42;
@@ -2998,6 +3010,7 @@ class GoldRing {
     this.alpha = 0;
     this.spawnProgress = 0;
     this.comboLifeTimer = 0;
+    this.collapseTimer = 0;
     this.obstacleBounceTimer = 0;
     this.obstacleDetached = false;
 
@@ -3153,6 +3166,7 @@ class GoldRing {
   this.anchorRedlet = redlet;
   this.state = "attachedToRedlet";
   this.comboLifeTimer = 0;
+  this.collapseTimer = 0;
   this.obstacleDetached = false;
 
   redlet.hasCapturedRing = false;
@@ -3200,6 +3214,11 @@ class GoldRing {
     this.pulsePhase += delta * 5.4;
     this.glowPhase += delta * 2.8;
     this.phase += delta * 1.9;
+
+    if (this.state === "collapsing") {
+      this.collapseTimer = Math.max(0, this.collapseTimer - delta);
+      return;
+    }
 
     if (this.state === "spawning") {
       this.spawnProgress = Math.min(1, this.spawnProgress + delta / this.spawnDuration);
@@ -3318,6 +3337,19 @@ class GoldRing {
     return this.state === "attachedToRedlet" && this.comboLifeTimer >= this.comboLifeDuration;
   }
 
+  beginCollapse() {
+    if (this.state !== "attachedToRedlet") return;
+    this.state = "collapsing";
+    this.collapseTimer = this.collapseDuration;
+    this.obstacleDetached = false;
+  }
+
+  getCollapseScale() {
+    if (this.state !== "collapsing") return 1;
+    const progress = Math.max(0, this.collapseTimer / this.collapseDuration);
+    return Math.max(0.035, progress * progress);
+  }
+
   draw(ctx) {
   if (this.hidden || this.alpha <= 0.001) return;
 
@@ -3336,6 +3368,10 @@ class GoldRing {
     this.alpha * (this.state === "attachedToRedlet" ? 0.34 : 0.22);
 
   ctx.save();
+  const collapseScale = this.getCollapseScale();
+  ctx.translate(this.x, this.y);
+  ctx.scale(collapseScale, collapseScale);
+  ctx.translate(-this.x, -this.y);
 
   const glow = ctx.createRadialGradient(
     this.x,
@@ -5971,6 +6007,35 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     }
   }
 
+  // Финальный всполох при схлопывании просроченного GoldRing-комбо.
+  emitGoldComboFailureBurst(x, y) {
+    const particleCount = 44;
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.22;
+      const speed = 2.5 + Math.random() * 4.8;
+      const isBlack = i % 3 === 0;
+
+      this.particles.push(
+        new Particle(
+          x,
+          y,
+          isBlack ? "rgba(26, 23, 34, 0.98)" : "rgba(235, 56, 64, 0.98)",
+          false,
+          {
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1,
+            decay: 0.022 + Math.random() * 0.016,
+            size: isBlack ? 1.3 + Math.random() * 1.7 : 1.7 + Math.random() * 2.3,
+            gravity: 0.012,
+            shrink: 0.035,
+            alphaBoost: 1.25,
+          }
+        )
+      );
+    }
+  }
+
   // Хвост частиц за золотым комбо (Redlet, несущий GoldRing).
   emitGoldComboTrail(delta) {
     const ring = this.activeGoldRing;
@@ -6879,14 +6944,21 @@ this.starlets.splice(i, 1);
   // доставка в этом же кадре — см. checkHomeStarDelivery выше).
   checkGoldComboExpiry(delta) {
     const ring = this.activeGoldRing;
-    if (!ring || ring.state !== "attachedToRedlet") return;
-    // Если кольцо уже было доставлено/снято в этом кадре — activeGoldRing
-    // уже null к этому моменту, так что сюда не попадём повторно.
+    if (!ring) return;
+
+    // Сначала даём комбо сжаться визуально; Obstacle создаётся только в
+    // финальной точке коллапса.
+    if (ring.state === "collapsing") {
+      if (ring.collapseTimer > 0) return;
+      this.finishGoldComboFailure(ring);
+      return;
+    }
 
     if (!ring.isComboExpired()) return;
+    ring.beginCollapse();
+  }
 
-    const carrier = this.getGoldCarrierRedlet();
-
+  finishGoldComboFailure(ring) {
     // Все пришвартованные старлеты уничтожаются, штраф 5 очков за каждого.
     let followedCount = 0;
     for (let i = this.starlets.length - 1; i >= 0; i--) {
@@ -6902,11 +6974,13 @@ this.starlets.splice(i, 1);
     this.score = Math.max(0, this.score - penalty);
     this.lostCount += followedCount;
 
+    // Всполох обозначает точку схлопывания до появления препятствия.
+    this.emitGoldComboFailureBurst(ring.x, ring.y);
+
     // Комбо становится обычным препятствием (не подхватываемым).
     this.obstacles.push(Obstacle.fromFailedGoldCombo(ring.x, ring.y, this.sceneMetrics));
 
     this.audio.playHitSound?.();
-    this.spawnScatterEffect(ring.x, ring.y, "#c66b4f", true);
 
     // ring.expire() сам очищает anchorRedlet.carryingGoldRing и помечает
     // редлета на удаление вместе с проваленным комбо.
