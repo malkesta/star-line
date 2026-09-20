@@ -2611,6 +2611,16 @@ class Redlet {
     return;
   }
 
+  // Удар снимает комбо с курсора, но не разрушает его. Оно остаётся на
+  // месте, продолжает собирать Starlet и ждёт нового захвата игроком.
+  if (goldRing?.obstacleDetached) {
+    this.vx *= 0.86;
+    this.vy *= 0.86;
+    goldRing.x = this.x;
+    goldRing.y = this.y;
+    return;
+  }
+
   // После короткой инерции снова следуем за курсором.
   if (mousePos) {
     this.followTargetX = mousePos.x;
@@ -2930,6 +2940,7 @@ class GoldRing {
     // Короткая инерция после удара о BrokenRing.
     this.obstacleBounceTimer = 0;
     this.obstacleBounceDuration = 0.42;
+    this.obstacleDetached = false;
 
     this.baseRadius = 0;
     this.dotRadius = 0;
@@ -2988,6 +2999,7 @@ class GoldRing {
     this.spawnProgress = 0;
     this.comboLifeTimer = 0;
     this.obstacleBounceTimer = 0;
+    this.obstacleDetached = false;
 
     const { width = 1366, height = 768 } = this.sceneMetrics ?? {};
     const entrySide = side || ["top", "bottom", "left", "right"][
@@ -3042,6 +3054,23 @@ class GoldRing {
       return true;
     }
     return false;
+  }
+
+  // После удара о BrokenRing активное комбо остаётся на сцене, но ожидает,
+  // пока игрок снова коснётся его курсором.
+  tryReclaimAfterObstacle(mousePos, isPointerDown) {
+    if (!this.obstacleDetached || !isPointerDown || !mousePos) return false;
+    if (this.obstacleBounceTimer > 0 || this.state !== "attachedToRedlet") {
+      return false;
+    }
+
+    const dx = this.x - mousePos.x;
+    const dy = this.y - mousePos.y;
+    const catchDistance = this.dragRadius + this.collisionRadius * 0.65;
+    if (Math.hypot(dx, dy) >= catchDistance) return false;
+
+    this.obstacleDetached = false;
+    return true;
   }
 
   // Столкновение движущегося за курсором золотого кольца со свободным
@@ -3124,6 +3153,7 @@ class GoldRing {
   this.anchorRedlet = redlet;
   this.state = "attachedToRedlet";
   this.comboLifeTimer = 0;
+  this.obstacleDetached = false;
 
   redlet.hasCapturedRing = false;
   redlet.carryingRedRing = null;
@@ -3263,6 +3293,8 @@ class GoldRing {
 
     if (this.state === "attachedToRedlet") {
       this.alpha = 1;
+
+      this.tryReclaimAfterObstacle(mousePos, isPointerDown);
 
       if (this.anchorRedlet && !this.anchorRedlet.markedForRemoval) {
         this.x = this.anchorRedlet.x;
@@ -4203,38 +4235,12 @@ class BrokenRingObstacle {
     ty * tangentVelocity * tangentDamping +
     fanNy * outwardSpeed * this.bounceStrength;
 
-  // Никакого clearCarriedGoldRing(), releaseFromCursor() или изменения state:
-  // комбо остаётся активным и продолжает быть привязанным к курсору.
-  goldRing.ringCooldown = wasOutside ? 4 : 7;
-
-
-  // Сбрасываем GoldCombo: Redlet и GoldRing больше не следуют за курсором.
-  this.onGoldComboBreak?.();
-  goldRing.anchorRedlet = null;
-  goldRing.targetRedlet = null;
-  goldRing.state = "idle";
-  goldRing.comboLifeTimer = 0;
-  goldRing.obstacleBounceTimer = 0;
-
-  // Redlet снова становится свободным и сохраняет импульс отскока,
-  // который мы рассчитали выше в carrierRedlet.vx / carrierRedlet.vy.
-  carrierRedlet.carryingGoldRing = null;
-  carrierRedlet.state = carrierRedlet.carryingRedRing
-    ? "carryingRedRing"
-    : "free";
-
-  // Разводим объекты чуть в стороны, чтобы GoldRing не прицепился
-  // обратно мгновенно в следующем кадре.
-  const splitDistance = Math.max(
-    goldRing.collisionRadius * 1.25,
-    carrierRedlet.radius * 1.5
-  );
-
-  goldRing.x = carrierRedlet.x + fanNx * splitDistance;
-  goldRing.y = carrierRedlet.y + fanNy * splitDistance;
-
-  goldRing.vx = carrierRedlet.vx + fanNx * 1.1;
-  goldRing.vy = carrierRedlet.vy + fanNy * 1.1;
+  // Комбо сохраняется, но на короткое время не слушается игрока: Redlet
+  // продолжает движение по импульсу выше, а GoldRing остаётся прикреплённым.
+  goldRing.ringCooldown = wasOutside ? 18 : 24;
+  goldRing.obstacleBounceTimer = goldRing.obstacleBounceDuration;
+  goldRing.obstacleDetached = true;
+  this.onGoldComboBounce?.(goldRing, carrierRedlet, nx, ny);
 
   return true;
 }
@@ -5274,8 +5280,29 @@ export class GameplayScene10 {
   1.0
 );
 
-this.homeObstacleRing.onGoldComboBreak = () => {
+this.homeObstacleRing.onGoldComboBounce = (goldRing, carrier, nx, ny) => {
   this.audio?.playGoldComboBreakSound?.();
+
+  // Удар сбрасывает только хвост комбо. Небольшой releaseCooldown нужен,
+  // чтобы эти Starlet не схватились повторно в тот же кадр.
+  for (const starlet of this.starlets) {
+    if (!starlet || starlet.state !== "followingGoldCombo") continue;
+
+    let dx = starlet.x - carrier.x;
+    let dy = starlet.y - carrier.y;
+    let distance = Math.hypot(dx, dy);
+    if (distance < 0.001) {
+      dx = nx;
+      dy = ny;
+      distance = 1;
+    }
+
+    starlet.following = false;
+    starlet.state = "free";
+    starlet.releaseCooldown = Math.max(starlet.releaseCooldown ?? 0, 42);
+    starlet.vx = (dx / distance) * (1.5 + Math.random() * 0.8) + nx * 0.55;
+    starlet.vy = (dy / distance) * (1.5 + Math.random() * 0.8) + ny * 0.55;
+  }
 };
 
 this.homeObstacleRing.setAnchor(this.homeStar);
@@ -5940,6 +5967,10 @@ getSceneRankTitle(rank = this.getSceneRank()) {
 
     this._goldTrailTimer = (this._goldTrailTimer ?? 0) + delta;
     const interval = 0.018 * this.particleTrailIntervalScale;
+    const isStunned = ring.obstacleBounceTimer > 0;
+    const trailColor = isStunned
+      ? "rgba(224, 70, 86, 0.9)"
+      : "rgba(255, 205, 90, 0.92)";
 
     while (this._goldTrailTimer >= interval) {
       this._goldTrailTimer -= interval;
@@ -5952,7 +5983,7 @@ getSceneRankTitle(rank = this.getSceneRank()) {
         const py = ring.y + Math.sin(angle) * radius;
 
         this.particles.push(
-          new Particle(px, py, "rgba(255, 205, 90, 0.92)", false, {
+          new Particle(px, py, trailColor, false, {
             vx: (Math.random() - 0.5) * 0.42 - 0.02,
             vy: (Math.random() - 0.5) * 0.42 + 0.02,
             life: 0.82 + Math.random() * 0.24,
