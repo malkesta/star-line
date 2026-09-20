@@ -5300,8 +5300,22 @@ this.homeObstacleRing.onGoldComboBounce = (goldRing, carrier, nx, ny) => {
     starlet.following = false;
     starlet.state = "free";
     starlet.releaseCooldown = Math.max(starlet.releaseCooldown ?? 0, 42);
-    starlet.vx = (dx / distance) * (1.5 + Math.random() * 0.8) + nx * 0.55;
-    starlet.vy = (dy / distance) * (1.5 + Math.random() * 0.8) + ny * 0.55;
+
+    // Как при самостоятельном ударе о BrokenRing: каждая Starlet получает
+    // свой радиальный и боковой импульс, поэтому хвост распадается, а не
+    // улетает одним плотным сгустком.
+    const radialX = dx / distance;
+    const radialY = dy / distance;
+    const tangentX = -radialY;
+    const tangentY = radialX;
+    const radialSpeed = 2.1 + Math.random() * 1.35;
+    const tangentSpeed = (Math.random() - 0.5) * 3.1;
+    const separation = starlet.radius * (1.7 + Math.random() * 2.1);
+
+    starlet.x += radialX * separation + tangentX * tangentSpeed * 3;
+    starlet.y += radialY * separation + tangentY * tangentSpeed * 3;
+    starlet.vx = radialX * radialSpeed + tangentX * tangentSpeed + nx * 0.5;
+    starlet.vy = radialY * radialSpeed + tangentY * tangentSpeed + ny * 0.5;
   }
 };
 
