@@ -22,6 +22,7 @@ export class VisualNovelSceneTest extends VisualNovelScene {
           alt: "Девочка",
           visualScale: 1,
           viewportHeightRatio: 0.783,
+          focusViewportHeightRatio: 1.2,
         },
 
         star: {

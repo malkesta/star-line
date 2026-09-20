@@ -461,10 +461,31 @@ export class VisualNovelScene {
       const baseHeight = viewportHeightRatio
         ? viewportHeight * viewportHeightRatio
         : tallestSpriteHeight * ratio;
+      const focusHeightRatio = Number(this.sprites[key]?.focusViewportHeightRatio);
+      const resolvedFocusHeightRatio =
+        Number.isFinite(focusHeightRatio) && focusHeightRatio > 0
+          ? focusHeightRatio
+          : 1.2;
+      const availableFocusHeight = Math.max(
+        0,
+        spriteBaseline - stageTopInset
+      );
+      const focusHeight = Math.min(
+        viewportHeight * resolvedFocusHeightRatio * visualScale,
+        availableFocusHeight
+      );
 
       element.style.setProperty(
         "--sprite-render-height",
         `${Math.round(baseHeight * visualScale)}px`
+      );
+      element.style.setProperty(
+        "--sprite-focus-height",
+        `${Math.round(focusHeight)}px`
+      );
+      element.style.setProperty(
+        "--sprite-focus-bottom",
+        "var(--sprite-stage-baseline)"
       );
     });
   }
@@ -569,11 +590,13 @@ export class VisualNovelScene {
       }
 
       const visible = Boolean(spriteState[key]);
+      const presentation = this.getSpritePresentation(config, key, speakingKey);
 
       element.classList.toggle("show", visible);
+      element.classList.toggle("focus", visible && presentation === "focus");
 
       if (!visible) {
-        element.classList.remove("speaking", "not-speaking");
+        element.classList.remove("speaking", "not-speaking", "focus");
         return;
       }
 
@@ -604,6 +627,13 @@ export class VisualNovelScene {
         this.fitSpeakingSpriteToViewport(element);
       }
     });
+  }
+
+  getSpritePresentation(config, key, speakingKey) {
+    if (!speakingKey) return "medium";
+    if (key !== speakingKey) return "listener";
+
+    return config?.speakerFrame === "medium" ? "medium" : "focus";
   }
 
   setSpeaker(name) {

@@ -234,7 +234,7 @@
   max-width: 38vw;
   object-fit: contain;
   opacity: 0;
-  transition: opacity 0.6s ease, transform 0.6s ease;
+  transition: opacity 0.6s ease, transform 0.6s ease, height 0.45s ease, bottom 0.45s ease;
   pointer-events: none;
   --speaking-sprite-scale: 1;
   transform: translateY(2vmin) scale(0.99);
@@ -256,15 +256,20 @@
 
 .vn-sprite.not-speaking {
   opacity: 1;
-  transform: translateY(0) scale(calc(var(--speaking-sprite-scale) * 0.9));
+  transform: translateY(0) scale(var(--speaking-sprite-scale));
   filter:
     drop-shadow(0 1.6vmin 4vmin rgba(0, 0, 0, 0.58))
     brightness(0.4);
 }
 
+.vn-sprite.focus {
+  height: var(--sprite-focus-height, var(--sprite-render-height));
+  bottom: var(--sprite-focus-bottom, var(--sprite-stage-baseline));
+}
+
 #spriteGirl {
   left: 6%;
-  max-width: 48%;
+  max-width: 60vw;
 }
 
 #spriteStar {
@@ -275,7 +280,7 @@
 #spriteMom,
 #spriteDad {
   right: 6%;
-  max-width: 48vw;
+  max-width: 60vw;
 }
 
 #spriteBoyClassmate {
