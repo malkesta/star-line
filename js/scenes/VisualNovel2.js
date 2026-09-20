@@ -15,10 +15,10 @@ export class VisualNovel2 extends VisualNovelScene {
   constructor(options = {}) {
     super({ ...options, sceneId: "vn-2", musicUrl: MUSIC_URL,
       sprites: {
-        girl: { src: GIRL, alt: "Девочка" },
-        star: { src: STAR, alt: "Звезда" },
-        mom: { src: MOM, alt: "Мама" },
-        dad: { src: DAD, alt: "Папа" },
+        girl: { src: GIRL, alt: "Девочка", visualScale: 1 },
+        star: { src: STAR, alt: "Звезда", visualScale: 1 },
+        mom: { src: MOM, alt: "Мама", visualScale: 1.15 },
+        dad: { src: DAD, alt: "Папа", visualScale: 1.15 },
       }, startNode: "intro",
       nodes: {
         intro: {

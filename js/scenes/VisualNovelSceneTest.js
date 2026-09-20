@@ -20,11 +20,13 @@ export class VisualNovelSceneTest extends VisualNovelScene {
         girl: {
           src: asset("../../assets/images/vn/sprites/girl/neutral.png"),
           alt: "Девочка",
+          visualScale: 1,
         },
 
         star: {
           src: asset("../../assets/images/vn/sprites/star/neutral.png"),
           alt: "Звезда",
+          visualScale: 1,
         },
       },
 

@@ -5,8 +5,10 @@ const MUSIC = asset("../../assets/audio/vn/VN-1.mp3");
 const GIRL = asset("../../assets/images/vn/sprites/girl/girl_school.png");
 const GIRL_ANGER = asset("../../assets/images/vn/sprites/girl/girl_school_anger.png");
 const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
+const BOY_CLASSMATE = asset("../../assets/images/vn/sprites/boy_classmate/boy.png");
+const GIRL_CLASSMATE = asset("../../assets/images/vn/sprites/girl_classmate/girl_classmate.png");
 export class VisualNovel3 extends VisualNovelScene {
-  constructor(options = {}) { super({ ...options, sceneId: "vn-3", musicUrl: MUSIC, sprites: { girl: { src: GIRL, variants: { anger: GIRL_ANGER }, alt: "Девочка" }, star: { src: STAR, alt: "Звезда" } }, startNode: "intro", nodes: {
+  constructor(options = {}) { super({ ...options, sceneId: "vn-3", musicUrl: MUSIC, sprites: { girl: { src: GIRL, variants: { anger: GIRL_ANGER }, alt: "Девочка", visualScale: 1 }, star: { src: STAR, alt: "Звезда", visualScale: 1 }, boyClassmate: { src: BOY_CLASSMATE, alt: "Одноклассник", visualScale: 1 }, girlClassmate: { src: GIRL_CLASSMATE, alt: "Одноклассница", visualScale: 1 } }, startNode: "intro", nodes: {
     intro: {
       speaker: "...",
       text: "Девочка стала осторожнее. Она больше не говорила про звёзды ни маме, ни папе. Просто молча рисовала маршруты в небе каждый день. Даже когда уставала.",
@@ -43,21 +45,23 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "...",
       text: "Но как только она подошла, услышала нечто странное.",
       bg: BG.school,
-      sprites: {},
+      sprites: { boyClassmate: true, girlClassmate: true },
       next: "insult1"
     },
     insult1: {
       speaker: "Мальчик",
       text: "Да она тупая! Треплется, будто слушает звёзды! Совсем дурочка.",
       bg: BG.school,
-      sprites: {},
+      sprites: { boyClassmate: true, girlClassmate: true },
+      speakingSprite: "boyClassmate",
       next: "insult2"
     },
     insult2: {
       speaker: "Другая девочка",
       text: "И вечно сидит в своей дурацкой книжке. Со странностями, в общем.",
       bg: BG.school,
-      sprites: {},
+      sprites: { boyClassmate: true, girlClassmate: true },
+      speakingSprite: "girlClassmate",
       next: "freeze"
     },
     freeze: {
@@ -71,14 +75,16 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "Мальчик",
       text: "Эй, это ведь она! А ну иди отсюда, тупая! Нам тут такие не нужны.",
       bg: BG.school,
-      sprites: {},
+      sprites: { boyClassmate: true },
+      speakingSprite: "boyClassmate",
       next: "stars"
     },
     stars: {
       speaker: "Мальчик",
       text: "Вали к своим звёздам!",
       bg: BG.school,
-      sprites: {},
+      sprites: { boyClassmate: true },
+      speakingSprite: "boyClassmate",
       next: "run"
     },
     run: {
@@ -107,7 +113,8 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "Мальчик",
       text: "А вот и эта. Эй, тупая, говорят, ты там со звёздами болтаешь.",
       bg: BG.school,
-      sprites: {},
+      sprites: { boyClassmate: true },
+      speakingSprite: "boyClassmate",
       next: "paralyzed"
     },
     paralyzed: {
@@ -136,14 +143,16 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "Другая девочка",
       text: "Ещё и заика! Она потому всё это придумывает!",
       bg: BG.school,
-      sprites: {},
+      sprites: { girlClassmate: true },
+      speakingSprite: "girlClassmate",
       next: "normal"
     },
     normal: {
       speaker: "Другая девочка",
       text: "Говорить нормально не умеет!",
       bg: BG.school,
-      sprites: {},
+      sprites: { girlClassmate: true },
+      speakingSprite: "girlClassmate",
       next: "stammer3"
     },
     stammer3: {
@@ -158,7 +167,8 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "Мальчик",
       text: "Тупая! Заика! Тупая! Заика!",
       bg: BG.school,
-      sprites: {},
+      sprites: { boyClassmate: true },
+      speakingSprite: "boyClassmate",
       next: "run2"
     },
     run2: {

@@ -18,12 +18,11 @@ export class VisualNovelScene {
   this.nodes = nodes ?? {};
   this.sprites = sprites;
   this.spriteHeightRatios = new Map();
+  this.spriteVisualScales = new Map();
 
-  // The tallest sprite is presented at 80% of the visible viewport. The cap
-  // keeps the characters from becoming oversized on televisions and large
-  // desktop displays.
-  this.spriteViewportCoverage = 0.8;
-  this.maxTallestSpriteHeight = 840;
+  // The tallest sprite fills the free stage area above the dialogue. Individual
+  // character configs can make a small, stable adjustment with visualScale.
+  this.spriteStageCoverage = 0.84;
 
   /*
     Музыка конкретного этапа VN. Если не задана — просто не будет
@@ -66,6 +65,8 @@ export class VisualNovelScene {
       star: document.getElementById("spriteStar"),
       mom: document.getElementById("spriteMom"),
       dad: document.getElementById("spriteDad"),
+      boyClassmate: document.getElementById("spriteBoyClassmate"),
+      girlClassmate: document.getElementById("spriteGirlClassmate"),
     };
 
     this.currentNodeId = null;
@@ -323,11 +324,17 @@ export class VisualNovelScene {
     );
 
     this.spriteHeightRatios.clear();
+    this.spriteVisualScales.clear();
 
     if (!tallestSprite) return;
 
     availableSprites.forEach(({ key, height }) => {
       this.spriteHeightRatios.set(key, height / tallestSprite);
+      const visualScale = Number(this.sprites[key]?.visualScale);
+      this.spriteVisualScales.set(
+        key,
+        Number.isFinite(visualScale) && visualScale > 0 ? visualScale : 1
+      );
     });
 
     this.updateSpriteSizes();
@@ -418,19 +425,33 @@ export class VisualNovelScene {
   updateSpriteSizes() {
     if (!this.spriteHeightRatios.size) return;
 
-    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-    const tallestSpriteHeight = Math.min(
-      viewportHeight * this.spriteViewportCoverage,
-      this.maxTallestSpriteHeight
+    const viewport = window.visualViewport;
+    const viewportWidth = viewport?.width ?? window.innerWidth;
+    const viewportHeight = viewport?.height ?? window.innerHeight;
+    const vmin = Math.min(viewportWidth, viewportHeight);
+    const dialogBounds = this.dialogShell?.getBoundingClientRect();
+    const stageTopInset = vmin * 0.04;
+    // All characters share the dialog's lower edge as their stage baseline.
+    // It is also the point from which the available scene height is measured.
+    const measuredStageBaseline = dialogBounds?.bottom ?? 0;
+    const spriteBaseline = measuredStageBaseline > 0
+      ? measuredStageBaseline
+      : viewportHeight - vmin * 0.021;
+    const freeStageHeight = spriteBaseline - stageTopInset;
+    const tallestSpriteHeight = Math.max(
+      0,
+      freeStageHeight * this.spriteStageCoverage
     );
 
     this.spriteHeightRatios.forEach((ratio, key) => {
       const element = this.spriteElements[key];
       if (!element) return;
 
+      const visualScale = this.spriteVisualScales.get(key) ?? 1;
+
       element.style.setProperty(
         "--sprite-render-height",
-        `${Math.round(tallestSpriteHeight * ratio)}px`
+        `${Math.round(tallestSpriteHeight * ratio * visualScale)}px`
       );
     });
   }

@@ -20,11 +20,13 @@ export class VisualNovel1 extends VisualNovelScene {
       sprites: {
         girl: {
           src: PLACEHOLDER_GIRL,
-          alt: "Девочка — временный спрайт"
+          alt: "Девочка — временный спрайт",
+          visualScale: 1,
         },
         star: {
           src: PLACEHOLDER_STAR,
-          alt: "Звезда — временный спрайт"
+          alt: "Звезда — временный спрайт",
+          visualScale: 1,
         },
       },
       startNode: "intro",

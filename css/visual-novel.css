@@ -25,7 +25,7 @@
   --dialog-h: clamp(180px, calc(var(--vmin) * 30), 340px);
   /* Sprite heights are calculated per visual-novel scene in JavaScript from
      the intrinsic height of its tallest declared sprite. */
-  --girl-sprite-baseline: 13%;
+  --sprite-stage-baseline: calc(var(--safe-b) + var(--vmin) * 2.1);
   /* Typography follows the dialog card, not the viewport. The text area is
      sized for roughly three comfortable dialogue lines. */
   --dialog-text-size: calc(var(--dialog-h) * 0.096);
@@ -228,7 +228,7 @@
    ========================================================================== */
 .vn-sprite {
   position: absolute;
-  bottom: calc(var(--safe-b) + var(--dialog-h) + var(--vmin) * 1.2);
+  bottom: var(--sprite-stage-baseline);
   height: var(--sprite-render-height, min(80vh, 840px));
   width: auto;
   max-width: 38vw;
@@ -264,24 +264,28 @@
 
 #spriteGirl {
   left: 6%;
-  bottom: var(--girl-sprite-baseline);
   max-width: 48%;
 }
 
 #spriteStar {
   right: 8%;
   max-width: 26vw;
-  /* У звезды нет ног: она всегда висит над верхним краем диалога. */
-  bottom: calc(var(--safe-b) + var(--dialog-h) + var(--vmin) * 1.5);
 }
 
 #spriteMom,
 #spriteDad {
   right: 6%;
-  /* Adults stand slightly lower than the girl, but their greater height
-     places their heads above hers without exceeding the viewport. */
-  bottom: 8%;
   --speaking-sprite-scale: 1.02;
+}
+
+#spriteBoyClassmate {
+  left: 6%;
+  max-width: 42%;
+}
+
+#spriteGirlClassmate {
+  right: 6%;
+  max-width: 42%;
 }
 
 /* =========================================================================
@@ -942,19 +946,12 @@ body.is-vn-active #gameCanvas {
 
   #spriteGirl {
     left: 3%;
-    bottom: 12%;
     max-width: 38vw;
-  }
-
-  #spriteMom,
-  #spriteDad {
-    bottom: 8%;
   }
 
   #spriteStar {
     right: 4%;
     max-width: 22vw;
-    bottom: calc(var(--safe-b) + var(--dialog-h) + var(--vmin) * 1.2);
   }
 }
 
@@ -963,8 +960,4 @@ body.is-vn-active #gameCanvas {
     --dialog-h: clamp(150px, calc(var(--vmin) * 38), 220px);
   }
 
-  #spriteMom,
-  #spriteDad {
-    bottom: 8%;
-  }
 }
