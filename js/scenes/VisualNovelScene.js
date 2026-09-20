@@ -544,7 +544,10 @@ export class VisualNovelScene {
       }
 
       if (speakingKey) {
-        if (key === speakingKey) this.fitSpeakingSpriteToViewport(element);
+        // И говорящий, и слушающий сначала получают свой масштаб для
+        // текущего viewport. CSS уменьшает слушающего ровно на 10% от
+        // этого же относительного значения.
+        this.fitSpeakingSpriteToViewport(element);
         element.classList.toggle("speaking", key === speakingKey);
         element.classList.toggle("not-speaking", key !== speakingKey);
       } else {
@@ -554,8 +557,8 @@ export class VisualNovelScene {
   }
 
   /*
-   * Speaking sprites grow from their feet. Limit that growth to the free
-   * space above the sprite so taller characters never cross the top edge.
+   * Каждый видимый спрайт получает допустимый масштаб от высоты viewport.
+   * Говорящий использует его полностью, слушающий — 90% этого значения.
    */
   fitSpeakingSpriteToViewport(element) {
     const height = element.offsetHeight;
@@ -569,7 +572,7 @@ export class VisualNovelScene {
 
   refreshSpeakingSpriteScales() {
     Object.values(this.spriteElements).forEach((element) => {
-      if (element?.classList.contains("speaking")) {
+      if (element?.classList.contains("show")) {
         this.fitSpeakingSpriteToViewport(element);
       }
     });
@@ -696,6 +699,18 @@ export class VisualNovelScene {
   beginChoicePrompt(node) {
     this.inputLocked = true;
     this.pendingChoiceNodeId = this.currentNodeId;
+
+    // Выбор — это реплика игрока. По умолчанию активна героиня, поэтому
+    // второй видимый персонаж получает состояние not-speaking и затемняется.
+    // Нетипичная сцена может явно указать choiceSpeakingSprite.
+    const choiceSpeakingSprite =
+      node.choiceSpeakingSprite ??
+      node.speakingSprite ??
+      (node.sprites?.girl ? "girl" : null);
+    if (choiceSpeakingSprite) {
+      this.setSprites(node.sprites, choiceSpeakingSprite);
+    }
+
     this.speakerEl.textContent = "";
     this.speakerEl.classList.remove("show", "narrator");
     this.typeText(node.choiceLabel ?? node.text ?? "");
