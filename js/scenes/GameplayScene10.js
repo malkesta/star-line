@@ -2589,7 +2589,11 @@ class Redlet {
 
   // Во время финального сжатия провалившегося комбо Redlet остаётся в
   // точке коллапса вместе с GoldRing и больше не реагирует на курсор.
-  if (goldRing?.state === "collapsing") {
+  if (goldRing?.state === "collapsing" || goldRing?.state === "delivering") {
+    if (goldRing.state === "delivering") {
+      this.x = goldRing.deliveryTargetX;
+      this.y = goldRing.deliveryTargetY;
+    }
     goldRing.x = this.x;
     goldRing.y = this.y;
     return;
@@ -2949,6 +2953,10 @@ class GoldRing {
     this.comboLifeTimer = 0;
     this.collapseTimer = 0;
     this.collapseDuration = 0.36;
+    this.deliveryTimer = 0;
+    this.deliveryDuration = 0.34;
+    this.deliveryTargetX = 0;
+    this.deliveryTargetY = 0;
     // Короткая инерция после удара о BrokenRing.
     this.obstacleBounceTimer = 0;
     this.obstacleBounceDuration = 0.42;
@@ -3011,6 +3019,7 @@ class GoldRing {
     this.spawnProgress = 0;
     this.comboLifeTimer = 0;
     this.collapseTimer = 0;
+    this.deliveryTimer = 0;
     this.obstacleBounceTimer = 0;
     this.obstacleDetached = false;
 
@@ -3167,6 +3176,7 @@ class GoldRing {
   this.state = "attachedToRedlet";
   this.comboLifeTimer = 0;
   this.collapseTimer = 0;
+  this.deliveryTimer = 0;
   this.obstacleDetached = false;
 
   redlet.hasCapturedRing = false;
@@ -3217,6 +3227,11 @@ class GoldRing {
 
     if (this.state === "collapsing") {
       this.collapseTimer = Math.max(0, this.collapseTimer - delta);
+      return;
+    }
+
+    if (this.state === "delivering") {
+      this.deliveryTimer = Math.max(0, this.deliveryTimer - delta);
       return;
     }
 
@@ -3344,9 +3359,29 @@ class GoldRing {
     this.obstacleDetached = false;
   }
 
+  beginDeliveryAnimation(homeStar) {
+    if (this.state !== "attachedToRedlet" || !homeStar) return;
+    this.state = "delivering";
+    this.deliveryTimer = this.deliveryDuration;
+    this.deliveryTargetX = homeStar.x;
+    this.deliveryTargetY = homeStar.y;
+    this.obstacleDetached = false;
+
+    if (this.anchorRedlet) {
+      this.anchorRedlet.x = this.deliveryTargetX;
+      this.anchorRedlet.y = this.deliveryTargetY;
+      this.anchorRedlet.vx = 0;
+      this.anchorRedlet.vy = 0;
+    }
+    this.x = this.deliveryTargetX;
+    this.y = this.deliveryTargetY;
+  }
+
   getCollapseScale() {
-    if (this.state !== "collapsing") return 1;
-    const progress = Math.max(0, this.collapseTimer / this.collapseDuration);
+    if (this.state !== "collapsing" && this.state !== "delivering") return 1;
+    const timer = this.state === "collapsing" ? this.collapseTimer : this.deliveryTimer;
+    const duration = this.state === "collapsing" ? this.collapseDuration : this.deliveryDuration;
+    const progress = Math.max(0, timer / duration);
     return Math.max(0.035, progress * progress);
   }
 
@@ -6036,6 +6071,27 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     }
   }
 
+  // Короткий золотой всполох в конце анимации успешной доставки.
+  emitGoldComboDeliveryBurst(x, y) {
+    const particleCount = 30;
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.2;
+      const speed = 2.1 + Math.random() * 3.4;
+      this.particles.push(
+        new Particle(x, y, "rgba(255, 211, 92, 0.98)", false, {
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0.9,
+          decay: 0.026 + Math.random() * 0.014,
+          size: 1.5 + Math.random() * 2.1,
+          gravity: -0.002,
+          shrink: 0.02,
+          alphaBoost: 1.2,
+        })
+      );
+    }
+  }
+
   // Хвост частиц за золотым комбо (Redlet, несущий GoldRing).
   emitGoldComboTrail(delta) {
     const ring = this.activeGoldRing;
@@ -6885,8 +6941,6 @@ isHomeStarReadyForTutor() {
 
   if (!this.homeStar.isGoldComboDelivered(ring)) return;
 
-  const carrier = this.getGoldCarrierRedlet();
-
   // Награда только за саму доставку GoldRing+Redlet.
   const goldReward = 40;
   this.score += goldReward;
@@ -6905,15 +6959,15 @@ isHomeStarReadyForTutor() {
   }
 
   this.audio.playEatSound?.();
-  this.emitDeliveryBurst(this.homeStar.x, this.homeStar.y);
+  this.audio.playGoldComboSound?.();
+  ring.beginDeliveryAnimation(this.homeStar);
+}
 
+finishGoldComboDelivery(ring) {
+  if (!ring || ring !== this.activeGoldRing) return;
+
+  this.emitGoldComboDeliveryBurst(ring.x, ring.y);
   ring.deliver();
-
-  if (carrier) {
-  carrier.carryingGoldRing = null;
-  carrier.state = carrier.carryingRedRing ? "carryingRedRing" : "free";
-  }
-
   this.activeGoldRing = null;
   this.activeGoldCombo = false;
   this.goldComboExpireTimer = 0;
@@ -6945,6 +6999,12 @@ this.starlets.splice(i, 1);
   checkGoldComboExpiry(delta) {
     const ring = this.activeGoldRing;
     if (!ring) return;
+
+    if (ring.state === "delivering") {
+      if (ring.deliveryTimer > 0) return;
+      this.finishGoldComboDelivery(ring);
+      return;
+    }
 
     // Сначала даём комбо сжаться визуально; Obstacle создаётся только в
     // финальной точке коллапса.
