@@ -5038,14 +5038,14 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     }
   }
 
-  // До 3 колец одновременно; следующее свободное кольцо спавнится только
+  // До 2 колец одновременно; следующее свободное кольцо спавнится только
   // когда предыдущее захвачено (пункт ТЗ #10).
   spawnRedRingIfNeeded() {
     const activeCount = this.redRings.filter(
       (r) => r && r.state !== "gone"
     ).length;
 
-    if (activeCount >= 3) return null;
+    if (activeCount >= 2) return null;
 
     const sides = ["top", "bottom", "left", "right"];
     const side = sides[Math.floor(Math.random() * sides.length)];
@@ -5082,7 +5082,7 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     const activeRedlets = this.redlets.filter(
       (r) => r && !r.markedForRemoval
     ).length;
-    if (activeRedlets >= 6) return null;
+    if (activeRedlets >= 4) return null;
 
     const redlet = new Redlet(this.sceneMetrics);
     this.redlets.push(redlet);
@@ -5149,7 +5149,7 @@ getSceneRankTitle(rank = this.getSceneRank()) {
     if (!this.redlets?.length) return;
 
     this.redletTrailTimer = (this.redletTrailTimer ?? 0) + delta;
-    const interval = 0.022 * this.particleTrailIntervalScale;
+    const interval = 0.06 * this.particleTrailIntervalScale;
 
     while (this.redletTrailTimer >= interval) {
       this.redletTrailTimer -= interval;
@@ -5166,12 +5166,12 @@ getSceneRankTitle(rank = this.getSceneRank()) {
           const py = redlet.y + Math.sin(angle) * r;
 
           this.particles.push(
-            new Particle(px, py, "rgba(232, 127, 88, 0.82)", false, {
-              vx: (Math.random() - 0.5) * 0.42,
-              vy: (Math.random() - 0.5) * 0.42,
-              life: 0.52 + Math.random() * 0.16,
-              decay: 0.028 + Math.random() * 0.014,
-              size: 1.02 + Math.random() * 1.08,
+            new Particle(px, py, "rgba(224, 70, 86, 0.7)", false, {
+              vx: (Math.random() - 0.5) * 0.28,
+              vy: (Math.random() - 0.5) * 0.28,
+              life: 0.34 + Math.random() * 0.1,
+              decay: 0.04 + Math.random() * 0.02,
+              size: 0.65 + Math.random() * 0.6,
               gravity: -0.0012,
               shrink: 0.0085,
               alphaBoost: 0.9,
@@ -5188,17 +5188,15 @@ getSceneRankTitle(rank = this.getSceneRank()) {
         const px = redlet.x + Math.cos(angle) * r;
         const py = redlet.y + Math.sin(angle) * r;
 
-        const color = redlet.carryingGoldRing
-          ? "rgba(255, 205, 90, 0.96)"
-          : "rgba(18, 24, 36, 0.96)";
+        const color = "rgba(224, 70, 86, 0.7)";
 
         this.particles.push(
           new Particle(px, py, color, false, {
-            vx: (Math.random() - 0.5) * 0.42,
-            vy: (Math.random() - 0.5) * 0.42,
-            life: 0.58 + Math.random() * 0.18,
-            decay: 0.026 + Math.random() * 0.014,
-            size: 1.15 + Math.random() * 1.25,
+            vx: (Math.random() - 0.5) * 0.28,
+            vy: (Math.random() - 0.5) * 0.28,
+            life: 0.38 + Math.random() * 0.1,
+            decay: 0.04 + Math.random() * 0.02,
+            size: 0.7 + Math.random() * 0.65,
             gravity: -0.0012,
             shrink: 0.008,
             alphaBoost: 0.96,
