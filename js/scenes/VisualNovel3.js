@@ -1,6 +1,6 @@
 import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
-const BG = { story: asset("../../assets/images/vn/vn_backgrounds/test-stars-gold.png"), school: asset("../../assets/images/vn/vn_backgrounds/school_bg.png"), forest: asset("../../assets/images/vn/vn_backgrounds/test-night-gold.png") };
+const BG = { story: asset("../../assets/images/vn/vn_backgrounds/vn-3_school1.png"), school: asset("../../assets/images/vn/vn_backgrounds/school_bg.png"), forest: asset("../../assets/images/vn/vn_backgrounds/test-night-gold.png") };
 const MUSIC = asset("../../assets/audio/vn/VN-1.mp3");
 const GIRL = asset("../../assets/images/vn/sprites/girl/girl_school.png");
 const GIRL_ANGER = asset("../../assets/images/vn/sprites/girl/girl_school_anger.png");
@@ -27,7 +27,7 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "...",
       text: "Но однажды она пришла в школу и увидела большую дружную компанию. И решила:",
       bg: BG.school,
-      sprites: { girl: true },
+      sprites: {},
       next: "choice"
     },
     choice: {

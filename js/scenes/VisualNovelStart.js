@@ -30,7 +30,7 @@ export class VisualNovelStart extends VisualNovelScene {
         },
         earth: {
           speaker: "...",
-          text: "Но самые удивительные истории случаются с ними на земле.",
+          text: "Но самые удивительные истории случаются с ними на Земле.",
           bg: BACKGROUND_URL,
           next: "ending",
         },
