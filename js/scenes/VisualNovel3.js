@@ -1,6 +1,6 @@
 import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
-const BG = { story: asset("../../assets/images/vn/vn_backgrounds/vn-3_school1.png"), school: asset("../../assets/images/vn/vn_backgrounds/school_bg.png"), forest: asset("../../assets/images/vn/vn_backgrounds/test-night-gold.png") };
+const BG = { story: asset("../../assets/images/vn/vn_backgrounds/vn-3_school1.png"), school: asset("../../assets/images/vn/vn_backgrounds/school_bg.png"), schoolOut: asset("../../assets/images/vn/vn_backgrounds/school_out_bg.png"), schoolFinal: asset("../../assets/images/vn/vn_backgrounds/vn-3_school2_paper_v1.png") };
 const MUSIC = asset("../../assets/audio/vn/VN-1.mp3");
 const GIRL = asset("../../assets/images/vn/sprites/girl/girl_school.png");
 const GIRL_ANGER = asset("../../assets/images/vn/sprites/girl/girl_school_anger.png");
@@ -32,7 +32,7 @@ export class VisualNovel3 extends VisualNovelScene {
     },
     school: {
       speaker: "...",
-      text: "Но однажды она пришла в школу и увидела большую дружную компанию. И решила:",
+      text: "Но однажды она пришла в школу и увидела большую дружную компанию.",
       bg: BG.school,
       sprites: {},
       next: "choice"
@@ -42,7 +42,7 @@ export class VisualNovel3 extends VisualNovelScene {
       text: "",
       bg: BG.school,
       sprites: { girl: true },
-      choiceLabel: "У них весело",
+      choiceLabel: "У них весело!",
       choices: [
         { label: "Послушаю, о чём они говорят", next: "listen" },
         { label: "Подойду к ним", next: "approach" }
@@ -73,7 +73,21 @@ export class VisualNovel3 extends VisualNovelScene {
     },
     freeze: {
       speaker: "...",
-      text: "Девочка замерла. Неужели они говорят про неё?Но она же не такая: не дурочка и не странная. И ей впервые стало стыдно — что она помогает звёздам.",
+      text: "Девочка замерла. Неужели они говорят про неё?",
+      bg: BG.school,
+      sprites: {},
+      next: "freezeDoubt"
+    },
+    freezeDoubt: {
+      speaker: "...",
+      text: "Но она же не такая: не дурочка и не странная.",
+      bg: BG.school,
+      sprites: {},
+      next: "freezeShame"
+    },
+    freezeShame: {
+      speaker: "...",
+      text: "И ей впервые стало стыдно — что она помогает звёздам.",
       bg: BG.school,
       sprites: {},
       next: "leave"
@@ -99,7 +113,7 @@ export class VisualNovel3 extends VisualNovelScene {
       text: "Все засмеялись, а девочка бросилась бежать со всех ног.",
       bg: BG.school,
       sprites: {},
-      next: "forest"
+      next: "schoolGardenCold"
     },
     approach: {
       speaker: "Девочка",
@@ -111,7 +125,14 @@ export class VisualNovel3 extends VisualNovelScene {
     },
     hope: {
       speaker: "...",
-      text: "Она думала, что ей обрадуются. Что её примут в компанию. Ведь ей нравилось дружить.",
+      text: "Она думала, что ей обрадуются. Что её примут в компанию.",
+      bg: BG.school,
+      sprites: {},
+      next: "hopeFriendship"
+    },
+    hopeFriendship: {
+      speaker: "...",
+      text: "Ведь ей нравилось дружить.",
       bg: BG.school,
       sprites: {},
       next: "insult3"
@@ -126,7 +147,14 @@ export class VisualNovel3 extends VisualNovelScene {
     },
     paralyzed: {
       speaker: "...",
-      text: "Девочка оторопела. Будто парализовало — и стало так холодно, как не было даже в самую лютую зиму.",
+      text: "Девочка оторопела — будто парализовало.",
+      bg: BG.school,
+      sprites: {},
+      next: "paralyzedCold"
+    },
+    paralyzedCold: {
+      speaker: "...",
+      text: "И стало так холодно, как не было даже в самую лютую зиму.",
       bg: BG.school,
       sprites: {},
       next: "stammer1"
@@ -183,12 +211,26 @@ export class VisualNovel3 extends VisualNovelScene {
       text: "Девочка сделала шаг назад. Ещё один. И бросилась бежать со всех ног.",
       bg: BG.school,
       sprites: {},
+      next: "schoolGardenCold"
+    },
+    schoolGardenCold: {
+      speaker: "...",
+      text: "В школьном саду было холодно и тихо.",
+      bg: BG.schoolOut,
+      sprites: {},
+      next: "schoolGardenStar"
+    },
+    schoolGardenStar: {
+      speaker: "...",
+      text: "Только мягко светилась крохотная звезда.",
+      bg: BG.schoolOut,
+      sprites: {},
       next: "forest"
     },
     forest: {
       speaker: "Девочка",
       text: "Уйди! Это всё из-за тебя! Ненавижу тебя! Ненавижу!",
-      bg: BG.forest,
+      bg: BG.schoolOut,
       sprites: { girl: "anger" },
       speakingSprite: "girl",
       next: "help"
@@ -196,7 +238,7 @@ export class VisualNovel3 extends VisualNovelScene {
     help: {
       speaker: "Звезда",
       text: "Я знаю, что тебе больно. И прилетела помочь.",
-      bg: BG.forest,
+      bg: BG.schoolOut,
       sprites: { girl: "anger", star: true },
       speakingSprite: "star",
       next: "angryChoice"
@@ -204,7 +246,7 @@ export class VisualNovel3 extends VisualNovelScene {
     angryChoice: {
       speaker: "",
       text: "",
-      bg: BG.forest,
+      bg: BG.schoolOut,
       sprites: { girl: "anger", star: true },
       choiceLabel: "Глупая звезда!",
       choices: [
@@ -215,7 +257,7 @@ export class VisualNovel3 extends VisualNovelScene {
     anger: {
       speaker: "Девочка",
       text: "Вечно ноете и ноете! «Ах, в небе так холодно и страшно!», «Ах, но нам надо домой!»",
-      bg: BG.forest,
+      bg: BG.schoolOut,
       sprites: { girl: "anger", star: true },
       speakingSprite: "girl",
       next: "hate"
@@ -223,23 +265,37 @@ export class VisualNovel3 extends VisualNovelScene {
     hate: {
       speaker: "Девочка",
       text: "Да лучше бы вас вовсе не было!",
-      bg: BG.forest,
+      bg: BG.schoolOut,
       sprites: { girl: "anger", star: true },
       speakingSprite: "girl",
       next: "alone"
     },
     alone: {
       speaker: "...",
-      text: "Девочка всё говорила и говорила гадости, размахивала руками и доказывала, что от звёзд только хуже. А когда обернулась, поняла, что осталась одна.",
-      bg: BG.forest,
-      sprites: { girl: "anger" },
+      text: "Девочка всё говорила и говорила гадости.",
+      bg: BG.schoolFinal,
+      sprites: {},
+      next: "aloneArgues"
+    },
+    aloneArgues: {
+      speaker: "...",
+      text: "Размахивала руками и доказывала, что от звёзд только хуже.",
+      bg: BG.schoolFinal,
+      sprites: {},
+      next: "aloneRealizes"
+    },
+    aloneRealizes: {
+      speaker: "...",
+      text: "А когда обернулась, поняла, что осталась одна.",
+      bg: BG.schoolFinal,
+      sprites: {},
       next: "noRoute"
     },
     noRoute: {
       speaker: "...",
       text: "И в эту ночь она больше не рисовала звёздам маршрут.",
-      bg: BG.forest,
-      sprites: { girl: "anger" },
+      bg: BG.schoolFinal,
+      sprites: {},
       last: true,
       resultTitle: "История продолжается",
       resultMessage: ""
