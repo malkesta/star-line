@@ -8,10 +8,17 @@ const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
 const BOY_CLASSMATE = asset("../../assets/images/vn/sprites/boy_classmate/boy.png");
 const GIRL_CLASSMATE = asset("../../assets/images/vn/sprites/girl_classmate/girl_classmate.png");
 export class VisualNovel3 extends VisualNovelScene {
-  constructor(options = {}) { super({ ...options, sceneId: "vn-3", musicUrl: MUSIC, sprites: { girl: { src: GIRL, variants: { anger: GIRL_ANGER }, alt: "Девочка", visualScale: 1, viewportHeightRatio: 0.783, focusViewportHeightRatio: 1.2 }, star: { src: STAR, alt: "Звезда", visualScale: 1 }, boyClassmate: { src: BOY_CLASSMATE, alt: "Одноклассник", visualScale: 1, speakerFrame: "medium" }, girlClassmate: { src: GIRL_CLASSMATE, alt: "Одноклассница", visualScale: 1, speakerFrame: "medium" } }, startNode: "intro", nodes: {
+  constructor(options = {}) { super({ ...options, sceneId: "vn-3", musicUrl: MUSIC, sprites: { girl: { src: GIRL, variants: { anger: GIRL_ANGER }, alt: "Девочка", visualScale: 1, viewportHeightRatio: 0.783, focusViewportHeightRatio: 1.2 }, star: { src: STAR, alt: "Звезда", visualScale: 1 }, boyClassmate: { src: BOY_CLASSMATE, alt: "Одноклассник", visualScale: 1, viewportHeightRatio: 0.9, focusViewportHeightRatio: 1.2 }, girlClassmate: { src: GIRL_CLASSMATE, alt: "Одноклассница", visualScale: 1, viewportHeightRatio: 0.9, focusViewportHeightRatio: 1.2 } }, startNode: "intro", nodes: {
     intro: {
       speaker: "...",
-      text: "Девочка стала осторожнее. Она больше не говорила про звёзды ни маме, ни папе. Просто молча рисовала маршруты в небе каждый день. Даже когда уставала.",
+      text: "Девочка стала осторожнее. Она больше не говорила про звёзды ни маме, ни папе.",
+      bg: BG.story,
+      sprites: {},
+      next: "introRoutes"
+    },
+    introRoutes: {
+      speaker: "...",
+      text: "Просто молча рисовала маршруты в небе каждый день. Даже когда уставала.",
       bg: BG.story,
       sprites: {},
       next: "fading"
@@ -45,7 +52,7 @@ export class VisualNovel3 extends VisualNovelScene {
       speaker: "...",
       text: "Но как только она подошла, услышала нечто странное.",
       bg: BG.school,
-      sprites: { boyClassmate: true, girlClassmate: true },
+      sprites: {},
       next: "insult1"
     },
     insult1: {
