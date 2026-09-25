@@ -22,14 +22,16 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
 
-  --dialog-h: clamp(180px, calc(var(--vmin) * 30), 340px);
+  /* The card keeps its lower edge; remove one readable text row from its top. */
+  --dialog-base-h: clamp(180px, calc(var(--vmin) * 30), 340px);
   /* Sprite heights are calculated per visual-novel scene in JavaScript from
      the intrinsic height of its tallest declared sprite. */
   --sprite-stage-baseline: calc(var(--safe-b) + var(--vmin) * 2.1);
   /* Typography follows the dialog card, not the viewport. The text area is
      sized for roughly three comfortable dialogue lines. */
-  --dialog-text-size: calc(var(--dialog-h) * 0.096);
-  --dialog-speaker-size: calc(var(--dialog-h) * 0.12);
+  --dialog-text-size: calc(var(--dialog-base-h) * 0.096);
+  --dialog-speaker-size: calc(var(--dialog-base-h) * 0.12);
+  --dialog-h: calc(var(--dialog-base-h) * 0.856);
 }
 
 /* =========================================================================
@@ -503,6 +505,15 @@
   min-height: 0;
 }
 
+/* Narration has no nameplate: its text starts at the card's first text row. */
+#vnDialogContent.is-narrator {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+#vnDialogContent.is-narrator #vnSpeakerName {
+  display: none;
+}
+
 #vnSpeakerName {
   align-self: end;
   justify-self: start;
@@ -962,7 +973,7 @@ body.is-vn-active #gameCanvas {
 
 @media (max-height: 420px) {
   :root {
-    --dialog-h: clamp(150px, calc(var(--vmin) * 38), 220px);
+    --dialog-base-h: clamp(150px, calc(var(--vmin) * 38), 220px);
   }
 
 }

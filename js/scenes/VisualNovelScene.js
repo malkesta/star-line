@@ -50,6 +50,7 @@ export class VisualNovelScene {
     this.backgroundTransitionRaf = null;
 
     this.speakerEl = document.getElementById("vnSpeakerName");
+    this.dialogContent = document.getElementById("vnDialogContent");
     this.textWrap = document.getElementById("vnDialogTextWrap");
     this.textEl = document.getElementById("vnDialogText");
     this.nextHint = document.getElementById("vnNextHint");
@@ -530,6 +531,7 @@ export class VisualNovelScene {
     this.textWrap.scrollTop = 0;
     this.speakerEl.textContent = "";
     this.speakerEl.classList.remove("show", "narrator");
+    this.dialogContent?.classList.remove("is-narrator");
     this.nextHint.classList.remove("show");
   }
 
@@ -637,11 +639,16 @@ export class VisualNovelScene {
   }
 
   setSpeaker(name) {
-    const label = name || "...";
+    // "..." is the scenario's narrator marker, not a visible speaker name.
+    // Keeping the marker in scene data makes the existing scripts compatible
+    // while the presentation treats narration as its own kind of line.
+    const isNarrator = name === "...";
+    const label = isNarrator ? "" : name || "";
 
     this.speakerEl.textContent = label;
     this.speakerEl.classList.toggle("show", Boolean(label));
     this.speakerEl.classList.remove("narrator");
+    this.dialogContent?.classList.toggle("is-narrator", isNarrator);
   }
 
   typeText(text) {
@@ -778,6 +785,7 @@ export class VisualNovelScene {
 
     this.speakerEl.textContent = "";
     this.speakerEl.classList.remove("show", "narrator");
+    this.dialogContent?.classList.remove("is-narrator");
     this.typeText(node.choiceLabel ?? node.text ?? "");
   }
 
