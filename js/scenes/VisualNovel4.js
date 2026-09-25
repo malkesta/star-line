@@ -1,51 +1,51 @@
 import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
-const BG = { story: asset("../../assets/images/vn/vn_backgrounds/test-stars-gold.png"), room: asset("../../assets/images/vn/vn_backgrounds/garden_bg.png") };
+const BG = { story: asset("../../assets/images/vn/vn_backgrounds/test-stars-gold.png"), room: asset("../../assets/images/vn/vn_backgrounds/garden_bg.png"), lantern: asset("../../assets/images/vn/vn_backgrounds/vn-4-girl-lantern.png"), final: asset("../../assets/images/vn/vn_backgrounds/vn-4-final-star_parchment.png") };
 const MUSIC = asset("../../assets/audio/vn/VN-1.mp3");
-const GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
+const GIRL = asset("../../assets/images/vn/sprites/girl/girl_vn4_sad.png");
 const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
 export class VisualNovel4 extends VisualNovelScene {
   constructor(options = {}) { super({ ...options, sceneId: "vn-4", musicUrl: MUSIC, sprites: { girl: { src: GIRL, alt: "Девочка", visualScale: 1, viewportHeightRatio: 0.783, focusViewportHeightRatio: 1.2 }, star: { src: STAR, alt: "Звезда", visualScale: 1 } }, startNode: "intro", nodes: {
     intro: {
       speaker: "...",
       text: "Шли дни. Девочка ходила в школу, слушала маму с папой. И внутри у неё было тихо и темно.",
-      bg: BG.story,
+      bg: BG.lantern,
       sprites: {},
       next: "stars"
     },
     stars: {
       speaker: "...",
       text: "Звёзды не прилетали, и она старалась не смотреть на небо.",
-      bg: BG.story,
+      bg: BG.lantern,
       sprites: {},
       next: "dust"
     },
     dust: {
       speaker: "...",
       text: "Никто её больше не трогал, и её ничто больше не трогало. Будто всё внутри покрыла холодная космическая пыль.",
-      bg: BG.story,
+      bg: BG.lantern,
       sprites: {},
       next: "sleep"
     },
     sleep: {
       speaker: "...",
       text: "А ночами она просто спала.",
-      bg: BG.story,
+      bg: BG.lantern,
       sprites: {},
       next: "window"
     },
     window: {
       speaker: "...",
       text: "Но потом как-то раз вышла в осенний сад, посмотрела в небо. Там был след от падающей звезды.",
-      bg: BG.room,
+      bg: BG.lantern,
       sprites: {},
       next: "cried"
     },
     cried: {
       speaker: "...",
       text: "И девочка вдруг расплакалась.",
-      bg: BG.room,
-      sprites: { girl: true },
+      bg: BG.lantern,
+      sprites: {},
       next: "choice"
     },
     choice: {
@@ -78,7 +78,14 @@ export class VisualNovel4 extends VisualNovelScene {
       speaker: "...",
       text: "Но ей никто не ответил.",
       bg: BG.room,
-      sprites: { girl: true },
+      sprites: {},
+      next: "wind1"
+    },
+    wind1: {
+      speaker: "...",
+      text: "Лишь свистел в кронах ветер.",
+      bg: BG.room,
+      sprites: {},
       next: "merge"
     },
     hear: {
@@ -93,7 +100,14 @@ export class VisualNovel4 extends VisualNovelScene {
       speaker: "...",
       text: "Но ей никто не ответил.",
       bg: BG.room,
-      sprites: { girl: true },
+      sprites: {},
+      next: "wind2"
+    },
+    wind2: {
+      speaker: "...",
+      text: "Лишь свистел в кронах ветер.",
+      bg: BG.room,
+      sprites: {},
       next: "better"
     },
     better: {
@@ -134,6 +148,27 @@ export class VisualNovel4 extends VisualNovelScene {
       bg: BG.room,
       sprites: { girl: true, star: true },
       speakingSprite: "star",
+      next: "starToChest"
+    },
+    starToChest: {
+      speaker: "...",
+      text: "Звезда мягко подлетела к её груди.",
+      bg: BG.final,
+      sprites: {},
+      next: "innerLight"
+    },
+    innerLight: {
+      speaker: "...",
+      text: "И девочка почувствовала, как разгорается внутри новый свет.",
+      bg: BG.final,
+      sprites: {},
+      next: "wayHome"
+    },
+    wayHome: {
+      speaker: "...",
+      text: "Звезда указывала ей путь домой.",
+      bg: BG.final,
+      sprites: {},
       last: true,
       resultTitle: "История продолжается",
       resultMessage: ""

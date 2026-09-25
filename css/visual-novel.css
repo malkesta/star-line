@@ -672,11 +672,11 @@
     radial-gradient(115% 150% at 0% 0%, rgba(109, 96, 126, 0.26), transparent 49%),
     radial-gradient(95% 135% at 100% 100%, rgba(73, 62, 99, 0.3), transparent 56%),
     linear-gradient(132deg, rgba(37, 36, 57, 0.96) 0%, rgba(26, 29, 47, 0.97) 49%, rgba(31, 25, 45, 0.965) 100%);
-  border: calc(var(--vmin) * 0.14) solid rgba(240, 201, 135, 0.34);
+  border: calc(var(--vmin) * 0.21) solid rgba(240, 201, 135, 0.78);
   box-shadow:
     0 calc(var(--vmin) * 1.2) calc(var(--vmin) * 3.8) rgba(0, 0, 0, 0.52),
-    inset 0 0 0 calc(var(--vmin) * 0.1) rgba(255, 255, 255, 0.035),
-    inset 0 0 calc(var(--vmin) * 4) rgba(240, 201, 135, 0.055);
+    inset 0 0 0 calc(var(--vmin) * 0.1) rgba(255, 255, 255, 0.04),
+    inset 0 0 calc(var(--vmin) * 4) rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(12px) saturate(1.1);
   -webkit-backdrop-filter: blur(12px) saturate(1.1);
 }
@@ -686,25 +686,16 @@
   z-index: 3;
   left: 50%;
   top: 0;
-  width: calc(var(--vmin) * 7.2);
+  width: calc(var(--vmin) * 3.9);
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #332e5e, #14132c 72%);
-  border: calc(var(--vmin) * 0.16) solid rgba(240, 201, 135, 0.62);
-  box-shadow: 0 0 calc(var(--vmin) * 2.2) rgba(240, 201, 135, 0.32), 0 calc(var(--vmin) * 0.5) calc(var(--vmin) * 1.2) rgba(0, 0, 0, 0.42);
-  pointer-events: none;
-}
-
-.vn-dialog-medallion svg {
-  width: 47%;
-  height: 47%;
-  fill: #f0c987;
-  stroke: #ffe9b0;
-  stroke-width: 3;
+  display: block;
+  overflow: visible;
+  fill: #edc26b;
+  stroke: #ffe5a1;
+  stroke-width: 2.1;
   filter: drop-shadow(0 0 calc(var(--vmin) * 0.7) rgba(255, 220, 150, 0.7));
+  pointer-events: none;
 }
 
 #vnDialogContent {

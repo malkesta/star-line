@@ -8,7 +8,7 @@ const BACKGROUNDS = {
   stars: asset("../../assets/images/vn/vn_backgrounds/test-stars-gold.png"),
 };
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
-const PLACEHOLDER_GIRL = asset("../../assets/images/vn/sprites/girl/neutral.png");
+const PLACEHOLDER_GIRL = asset("../../assets/images/vn/sprites/girl/neutral_old.png");
 const PLACEHOLDER_STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
 
 export class VisualNovel1 extends VisualNovelScene {
