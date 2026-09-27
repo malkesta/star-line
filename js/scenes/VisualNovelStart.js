@@ -3,7 +3,7 @@ import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
 
 const BACKGROUND_URL = asset(
-  "../../assets/images/vn/vn_backgrounds/vn-start-clouds.webp"
+  "../../assets/images/vn/vn_backgrounds/vn-start-book-dialogue-safe.png"
 );
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
 
