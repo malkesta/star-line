@@ -475,6 +475,11 @@ export class VisualNovelScene {
         viewportHeight * resolvedFocusHeightRatio * visualScale,
         availableFocusHeight
       );
+      const focusSmallScale = Number(this.sprites[key]?.focusSmallScale);
+      const resolvedFocusSmallScale =
+        Number.isFinite(focusSmallScale) && focusSmallScale > 0 && focusSmallScale <= 1
+          ? focusSmallScale
+          : 0.86;
 
       element.style.setProperty(
         "--sprite-render-height",
@@ -487,6 +492,10 @@ export class VisualNovelScene {
       element.style.setProperty(
         "--sprite-focus-bottom",
         "var(--sprite-stage-baseline)"
+      );
+      element.style.setProperty(
+        "--sprite-focus-small-scale",
+        String(resolvedFocusSmallScale)
       );
     });
   }
@@ -595,17 +604,20 @@ export class VisualNovelScene {
       const presentation = this.getSpritePresentation(config, key, speakingKey);
 
       element.classList.toggle("show", visible);
-      element.classList.toggle("focus", visible && presentation === "focus");
+      element.classList.toggle(
+        "focus",
+        visible && (presentation === "focus" || presentation === "focus-small")
+      );
+      element.classList.toggle("focus-small", visible && presentation === "focus-small");
 
       if (!visible) {
-        element.classList.remove("speaking", "not-speaking", "focus");
+        element.classList.remove("speaking", "not-speaking", "focus", "focus-small");
         return;
       }
 
       if (speakingKey) {
-        // И говорящий, и слушающий сначала получают свой масштаб для
-        // текущего viewport. CSS уменьшает слушающего ровно на 10% от
-        // этого же относительного значения.
+        // И говорящий, и слушающий используют общий относительный масштаб
+        // текущего viewport. Особые режимы слушателя уточняются в CSS.
         this.fitSpeakingSpriteToViewport(element);
         element.classList.toggle("speaking", key === speakingKey);
         element.classList.toggle("not-speaking", key !== speakingKey);
@@ -617,7 +629,7 @@ export class VisualNovelScene {
 
   /*
    * Каждый видимый спрайт получает допустимый масштаб от высоты viewport.
-   * Говорящий использует его полностью, слушающий — 90% этого значения.
+   * Особые режимы слушателя могут дополнительно его скорректировать.
    */
   fitSpeakingSpriteToViewport(element) {
     element.style.setProperty("--speaking-sprite-scale", "1");
@@ -633,7 +645,9 @@ export class VisualNovelScene {
 
   getSpritePresentation(config, key, speakingKey) {
     if (!speakingKey) return "medium";
-    if (key !== speakingKey) return "listener";
+    if (key !== speakingKey) {
+      return config?.listenerFrame === "focus_small" ? "focus-small" : "listener";
+    }
 
     return config?.speakerFrame === "medium" ? "medium" : "focus";
   }

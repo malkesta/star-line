@@ -17,7 +17,7 @@ export class VisualNovel2 extends VisualNovelScene {
     super({ ...options, sceneId: "vn-2", musicUrl: MUSIC_URL,
       sprites: {
         girl: { src: GIRL, alt: "Девочка", visualScale: 1, viewportHeightRatio: 0.783, focusViewportHeightRatio: 1.2 },
-        star: { src: STAR, alt: "Звезда", visualScale: 1 },
+        star: { src: STAR, alt: "Звезда", visualScale: 1, listenerFrame: "focus_small", focusSmallScale: 0.86 },
         mom: { src: MOM, alt: "Мама", visualScale: 1, viewportHeightRatio: 0.9, focusViewportHeightRatio: 1.2 },
         dad: { src: DAD, alt: "Папа", visualScale: 1, viewportHeightRatio: 0.9, focusViewportHeightRatio: 1.2 },
       }, startNode: "intro",
@@ -145,7 +145,14 @@ export class VisualNovel2 extends VisualNovelScene {
         },
         momAfter: {
           speaker: "...",
-          text: "И хотя девочке было очень обидно это слушать, она старалась верить в то, что делает. Несмотря на чувство, будто от маминых слов что-то внутри надломилось.",
+          text: "И хотя девочке было очень обидно это слушать, она старалась верить в то, что делает.",
+          bg: BACKGROUNDS.story,
+          sprites: {},
+          next: "momAfter2"
+        },
+        momAfter2: {
+          speaker: "...",
+          text: "Несмотря на чувство, будто от маминых слов что-то внутри надломилось.",
           bg: BACKGROUNDS.story,
           sprites: {},
           next: "end"
@@ -214,7 +221,14 @@ export class VisualNovel2 extends VisualNovelScene {
         },
         dadAfter: {
           speaker: "...",
-          text: "И хотя девочке было очень обидно это слушать, она старалась верить в то, что делает. Несмотря на чувство, будто от папиных слов что-то погасло.",
+          text: "И хотя девочке было очень обидно это слушать, она старалась верить в то, что делает.",
+          bg: BACKGROUNDS.story,
+          sprites: {},
+          next: "dadAfter2"
+        },
+        dadAfter2: {
+          speaker: "...",
+          text: "Несмотря на чувство, будто от папиных слов что-то погасло.",
           bg: BACKGROUNDS.story,
           sprites: {},
           next: "end"

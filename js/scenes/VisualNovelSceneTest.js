@@ -29,6 +29,8 @@ export class VisualNovelSceneTest extends VisualNovelScene {
           src: asset("../../assets/images/vn/sprites/star/neutral.png"),
           alt: "Звезда",
           visualScale: 1,
+          listenerFrame: "focus_small",
+          focusSmallScale: 0.86,
         },
       },
 

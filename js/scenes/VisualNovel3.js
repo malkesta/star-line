@@ -8,7 +8,7 @@ const STAR = asset("../../assets/images/vn/sprites/star/neutral.png");
 const BOY_CLASSMATE = asset("../../assets/images/vn/sprites/boy_classmate/boy.png");
 const GIRL_CLASSMATE = asset("../../assets/images/vn/sprites/girl_classmate/girl_classmate.png");
 export class VisualNovel3 extends VisualNovelScene {
-  constructor(options = {}) { super({ ...options, sceneId: "vn-3", musicUrl: MUSIC, sprites: { girl: { src: GIRL, variants: { anger: GIRL_ANGER }, alt: "Девочка", visualScale: 1, viewportHeightRatio: 0.783, focusViewportHeightRatio: 1.2 }, star: { src: STAR, alt: "Звезда", visualScale: 1 }, boyClassmate: { src: BOY_CLASSMATE, alt: "Одноклассник", visualScale: 1, viewportHeightRatio: 0.9, focusViewportHeightRatio: 1.2 }, girlClassmate: { src: GIRL_CLASSMATE, alt: "Одноклассница", visualScale: 1, viewportHeightRatio: 0.9, focusViewportHeightRatio: 1.2 } }, startNode: "intro", nodes: {
+  constructor(options = {}) { super({ ...options, sceneId: "vn-3", musicUrl: MUSIC, sprites: { girl: { src: GIRL, variants: { anger: GIRL_ANGER }, alt: "Девочка", visualScale: 1, viewportHeightRatio: 0.783, focusViewportHeightRatio: 1.2 }, star: { src: STAR, alt: "Звезда", visualScale: 1, listenerFrame: "focus_small", focusSmallScale: 0.86 }, boyClassmate: { src: BOY_CLASSMATE, alt: "Одноклассник", visualScale: 1, viewportHeightRatio: 0.9, focusViewportHeightRatio: 1.2 }, girlClassmate: { src: GIRL_CLASSMATE, alt: "Одноклассница", visualScale: 1, viewportHeightRatio: 0.9, focusViewportHeightRatio: 1.2 } }, startNode: "intro", nodes: {
     intro: {
       speaker: "...",
       text: "Девочка стала осторожнее. Она больше не говорила про звёзды ни маме, ни папе.",
@@ -56,7 +56,7 @@ export class VisualNovel3 extends VisualNovelScene {
       next: "insult1"
     },
     insult1: {
-      speaker: "Мальчик",
+      speaker: "Одноклассник",
       text: "Да она тупая! Треплется, будто слушает звёзды! Совсем дурочка.",
       bg: BG.school,
       sprites: { boyClassmate: true, girlClassmate: true },
@@ -64,7 +64,7 @@ export class VisualNovel3 extends VisualNovelScene {
       next: "insult2"
     },
     insult2: {
-      speaker: "Другая девочка",
+      speaker: "Одноклассница",
       text: "И вечно сидит в своей дурацкой книжке. Со странностями, в общем.",
       bg: BG.school,
       sprites: { boyClassmate: true, girlClassmate: true },
@@ -93,7 +93,7 @@ export class VisualNovel3 extends VisualNovelScene {
       next: "leave"
     },
     leave: {
-      speaker: "Мальчик",
+      speaker: "Одноклассник",
       text: "Эй, это ведь она! А ну иди отсюда, тупая! Нам тут такие не нужны.",
       bg: BG.school,
       sprites: { boyClassmate: true },
@@ -101,7 +101,7 @@ export class VisualNovel3 extends VisualNovelScene {
       next: "stars"
     },
     stars: {
-      speaker: "Мальчик",
+      speaker: "Одноклассник",
       text: "Вали к своим звёздам!",
       bg: BG.school,
       sprites: { boyClassmate: true },
@@ -138,7 +138,7 @@ export class VisualNovel3 extends VisualNovelScene {
       next: "insult3"
     },
     insult3: {
-      speaker: "Мальчик",
+      speaker: "Одноклассник",
       text: "А вот и эта. Эй, тупая, говорят, ты там со звёздами болтаешь.",
       bg: BG.school,
       sprites: { boyClassmate: true },
@@ -175,7 +175,7 @@ export class VisualNovel3 extends VisualNovelScene {
       next: "stammer2"
     },
     stammer2: {
-      speaker: "Другая девочка",
+      speaker: "Одноклассница",
       text: "Ещё и заика! Она потому всё это придумывает!",
       bg: BG.school,
       sprites: { girlClassmate: true },
@@ -183,7 +183,7 @@ export class VisualNovel3 extends VisualNovelScene {
       next: "normal"
     },
     normal: {
-      speaker: "Другая девочка",
+      speaker: "Одноклассница",
       text: "Говорить нормально не умеет!",
       bg: BG.school,
       sprites: { girlClassmate: true },
@@ -199,7 +199,7 @@ export class VisualNovel3 extends VisualNovelScene {
       next: "chant"
     },
     chant: {
-      speaker: "Мальчик",
+      speaker: "Одноклассник",
       text: "Тупая! Заика! Тупая! Заика!",
       bg: BG.school,
       sprites: { boyClassmate: true },
@@ -251,7 +251,7 @@ export class VisualNovel3 extends VisualNovelScene {
       choiceLabel: "Глупая звезда!",
       choices: [
         { label: "Даже себе помочь не можешь!", next: "anger" },
-        { label: "Лети! Пусть тебя там сожрут в этом твоём космосе!", next: "anger" }
+        { label: "Лети! Пусть тебя сожрут в твоём космосе!", next: "anger" }
       ]
     },
     anger: {

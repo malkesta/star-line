@@ -39,6 +39,13 @@ export class VisualNovelFin extends VisualNovelScene {
           text: "И те, с кем они делятся теплом.",
           bg: BACKGROUND_URL,
           sprites: {},
+          next: "reachOut"
+        },
+        reachOut: {
+          speaker: "...",
+          text: "Протяни им руку. Может быть, они прилетят и к тебе",
+          bg: BACKGROUND_URL,
+          sprites: {},
           last: true,
           resultTitle: "Конец.",
           resultMessage: "Автор Ольга Куран.",

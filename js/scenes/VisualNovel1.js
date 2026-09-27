@@ -29,6 +29,8 @@ export class VisualNovel1 extends VisualNovelScene {
           src: PLACEHOLDER_STAR,
           alt: "Звезда — временный спрайт",
           visualScale: 1,
+          listenerFrame: "focus_small",
+          focusSmallScale: 0.86,
         },
       },
       startNode: "intro",

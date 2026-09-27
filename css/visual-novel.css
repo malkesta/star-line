@@ -269,6 +269,13 @@
   bottom: var(--sprite-focus-bottom, var(--sprite-stage-baseline));
 }
 
+/* The star keeps its focused anchor while listening, then scales around its
+   centre instead of dropping to the regular listener baseline. */
+.vn-sprite.focus-small.not-speaking {
+  transform: translateY(0) scale(var(--sprite-focus-small-scale, 0.86));
+  transform-origin: center center;
+}
+
 #spriteGirl {
   left: 6%;
   max-width: 60vw;
