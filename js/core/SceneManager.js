@@ -16,6 +16,7 @@ export class SceneManager {
     */
     this.preloadedScene = null;
     this.preloadedIndex = -1;
+
   }
 
   resetProgress() {

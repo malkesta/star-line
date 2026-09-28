@@ -282,6 +282,30 @@
   width: min(100%, 560px);
 }
 
+/* Локальная лента результата: создаётся и удаляется конкретной сценой. */
+.local-progression { display:flex; justify-content:center; align-items:center; gap:clamp(1px,.2vmin,3px); width:min(92vw,960px); margin-bottom:clamp(8px,1.3vmin,18px); }
+.local-progress-medal { position:relative; flex:0 1 clamp(22px,4.1vmin,52px); width:clamp(22px,4.1vmin,52px); min-width:15px; aspect-ratio:1; opacity:.28; filter:grayscale(1); }
+.local-progress-connector { flex:0 1 clamp(6px,1vmin,13px); color:rgba(255,220,175,.9); font-size:clamp(7px,1vmin,13px); line-height:1; text-shadow:0 0 12px rgba(255,215,150,.36); }
+.local-progress-medal svg { width:100%; height:100%; display:block; }
+.local-progress-medal svg circle { fill:rgba(11,17,33,.72); stroke:rgba(245,182,112,.55); stroke-width:1.2; }
+.local-progress-medal svg path { fill:#fff0b8; stroke:#f5b670; stroke-width:1.1; stroke-linecap:round; stroke-linejoin:round; }
+.local-progress-medal.is-lit { opacity:1; filter:drop-shadow(0 0 12px rgba(245,182,112,.55)); }
+.local-progress-medal.is-current { opacity:.32; filter:grayscale(.7); }
+.local-progress-medal.is-failed { opacity:.18; filter:grayscale(1); }
+.local-progress-medal.is-success-running { animation:local-medal-success 1.9s ease-in-out forwards; }
+.local-progress-medal.is-failure-running { animation:local-medal-failure 2.5s ease-in-out forwards; }
+.local-progress-comet { position:absolute; left:-35%; top:-45%; width:18px; height:18px; z-index:2; animation:local-comet-flight 1.1s linear forwards; pointer-events:none; }
+.local-comet-core { position:absolute; z-index:2; color:#fff1ba; font-size:18px; text-shadow:0 0 12px #f5b670,0 0 18px rgba(255,232,180,.8); }
+.local-comet-tail-particle { position:absolute; z-index:1; width:4px; height:4px; border-radius:50%; background:#ffe7a9; box-shadow:0 0 7px #f5b670; animation:local-comet-tail .58s linear infinite; }
+.local-comet-tail-particle:nth-of-type(2) { animation-delay:.1s; } .local-comet-tail-particle:nth-of-type(3) { animation-delay:.2s; } .local-comet-tail-particle:nth-of-type(4) { animation-delay:.3s; } .local-comet-tail-particle:nth-of-type(5) { animation-delay:.4s; } .local-comet-tail-particle:nth-of-type(6) { animation-delay:.5s; }
+.local-impact-burst { position:absolute; inset:0; z-index:3; pointer-events:none; }
+.local-impact-burst i { position:absolute; top:50%; left:50%; width:4px; height:4px; margin:-2px; border-radius:50%; background:#fff0ba; box-shadow:0 0 8px #f5b670; animation:local-impact-particle .8s ease-out forwards; }
+@keyframes local-comet-flight { 0%{transform:translate(-90px,-46px) scale(.4);opacity:0} 12%{opacity:1} 100%{transform:translate(8px,8px) scale(.95);opacity:1} }
+@keyframes local-comet-tail { 0%{transform:translate(1px,1px) scale(1);opacity:.9} 100%{transform:translate(-26px,-14px) scale(.15);opacity:0} }
+@keyframes local-impact-particle { 0%{transform:rotate(var(--particle-angle)) translateX(0) scale(1);opacity:1} 100%{transform:rotate(var(--particle-angle)) translateX(var(--particle-distance)) scale(.2);opacity:0} }
+@keyframes local-medal-success { 0%,25%{opacity:.32;transform:scale(.84);filter:grayscale(.7)} 26%{opacity:1;transform:scale(1.22);filter:drop-shadow(0 0 23px rgba(255,226,142,.98))} 45%{opacity:.7;transform:scale(.94)} 68%{opacity:1;transform:scale(1.1)} 86%{opacity:.78;transform:scale(.97)} 100%{opacity:1;transform:scale(1);filter:drop-shadow(0 0 12px rgba(245,182,112,.55))} }
+@keyframes local-medal-failure { 0%,35%{opacity:.36;transform:scale(.9)} 50%{opacity:.85;transform:scale(1.08)} 65%{opacity:.28;transform:scale(.94)} 80%{opacity:.65;transform:scale(1.03)} 100%{opacity:.18;transform:scale(.92);filter:grayscale(1)} }
+
 .actionBtn-disabled,
 .actionBtn:disabled,
 .start-btn:disabled {

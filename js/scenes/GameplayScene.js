@@ -23,6 +23,7 @@ export class GameplayScene extends BaseScene {
       onRoundFinished: (result) => {
         console.log("Round finished:", result);
       },
+      progressionIndex: 1,
     });
 
     if (typeof this.game.preload === "function") {
@@ -41,6 +42,7 @@ export class GameplayScene extends BaseScene {
         onRoundFinished: (result) => {
           console.log("Round finished:", result);
         },
+        progressionIndex: 1,
       });
     }
 

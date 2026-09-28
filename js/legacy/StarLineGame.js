@@ -1152,6 +1152,8 @@ playStarletSpawnSound() {
   }
 }
     
+import { LocalResultProgression } from "../scenes/LocalResultProgression.js";
+
 class Starlet {
   constructor(x, y, entrySide = "right", sceneMetrics) {
     this.sceneMetrics = sceneMetrics;
@@ -2015,6 +2017,7 @@ class Obstacle {
     audio = null,
     onNext = null,
     onRoundFinished = null,
+    progressionIndex = 1,
     musicUrl = null,
   } = {}) {
     this.sceneId = sceneId;
@@ -2022,6 +2025,7 @@ class Obstacle {
     this.audio = audio ?? new GameAudio();
     this.onNext = onNext;
     this.onRoundFinished = onRoundFinished;
+    this.progressionIndex = progressionIndex;
     this.musicUrl = musicUrl;
 
     this.sceneBackgroundUrl =
@@ -2055,6 +2059,11 @@ class Obstacle {
 
     this.restartBtn = document.getElementById("restartBtn");
     this.nextBtn = document.getElementById("nextBtn");
+    this.resultProgression = new LocalResultProgression({
+      currentIndex: this.progressionIndex,
+      host: this.overlay,
+      nextButton: this.nextBtn,
+    });
 
     this.tutorialEnabledInput = document.getElementById("tutorialEnabled");
     this.rotateHint = document.getElementById("rotateHint");
@@ -2606,13 +2615,8 @@ resetSceneBackground() {
       this.nextBtn.classList.remove("actionBtn-fade-glow");
       this.nextBtn.style.removeProperty("--fade-glow-duration");
 
-      if (this.levelPassed) {
-        this.nextBtn.classList.remove("actionBtn-disabled");
-        this.nextBtn.disabled = false;
-      } else {
-        this.nextBtn.classList.add("actionBtn-disabled");
-        this.nextBtn.disabled = true;
-      }
+      this.nextBtn.classList.add("actionBtn-disabled");
+      this.nextBtn.disabled = true;
     }
 
     if (this.restartBtn) {
@@ -2626,10 +2630,14 @@ resetSceneBackground() {
 
     this.audio.playGameOverSound();
     this.overlay?.classList.add("show");
+    this.levelPassed
+      ? this.resultProgression.playSuccess()
+      : this.resultProgression.playFailure();
     this.updateUI();
   }
 
   resetGame = ({ restartAmbient = false } = {}) => {
+    this.resultProgression?.destroy();
     console.log("[StarLine] resetGame()", {
       sceneId: this.sceneId,
       overlayShown: this.overlay?.classList.contains("show"),
@@ -3088,6 +3096,7 @@ resetSceneBackground() {
   }
 
   destroy() {
+    this.resultProgression?.destroy();
     this.isRunning = false;
     this.gameOver = true;
     this.isTransitioning = false;

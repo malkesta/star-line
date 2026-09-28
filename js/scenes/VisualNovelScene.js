@@ -1,3 +1,5 @@
+import { LocalResultProgression } from "./LocalResultProgression.js";
+
 export class VisualNovelScene {
   constructor({
   sceneId = "vn",
@@ -61,6 +63,7 @@ export class VisualNovelScene {
     this.resultTitle = document.getElementById("vnResultTitle");
     this.resultMessage = document.getElementById("vnResultMessage");
     this.resultNextBtn = document.getElementById("vnResultNextBtn");
+    this.resultProgression = null;
 
     this.spriteElements = {
       girl: document.getElementById("spriteGirl"),
@@ -135,6 +138,19 @@ export class VisualNovelScene {
 
     if (this.resultNextBtn) {
       this.resultNextBtn.disabled = false;
+    }
+
+    const progressionIndex = {
+      "vn-start": 0, "vn-1": 3, "vn-2": 6,
+      "vn-3": 9, "vn-4": 12, "vn-fin": 15,
+    }[this.sceneId];
+    if (Number.isInteger(progressionIndex)) {
+      this.resultProgression = new LocalResultProgression({
+        currentIndex: progressionIndex,
+        host: document.querySelector("#vnResultOverlay .vn-result-panel"),
+        nextButton: this.resultNextBtn,
+        anchor: document.querySelector("#vnResultOverlay .vn-result-star"),
+      });
     }
 
     document.body.classList.add("is-vn-active");
@@ -230,6 +246,8 @@ export class VisualNovelScene {
   }
 
   async exit() {
+  this.resultProgression?.destroy();
+  this.resultProgression = null;
   this.presentationId += 1;
   this.pendingChoiceNodeId = null;
   this.clearTimers();
@@ -1081,6 +1099,7 @@ export class VisualNovelScene {
 
   this.resultOverlay?.classList.add("show");
   this.resultOverlay?.setAttribute("aria-hidden", "false");
+  this.resultProgression?.playSuccess();
 
   /*
     Готовим следующую игровую сцену прямо сейчас, пока пользователь

@@ -1,3 +1,5 @@
+import { LocalResultProgression } from "./LocalResultProgression.js";
+
 // ============================================================================
 //  GameplayScene7 — "Перевёрнутый" режим StarLine.
 //
@@ -2536,6 +2538,7 @@ this.ringGoneAudio =
 
     this.restartBtn = document.getElementById("restartBtn");
     this.nextBtn = document.getElementById("nextBtn");
+    this.resultProgression = new LocalResultProgression({ currentIndex: 10, host: this.overlay, nextButton: this.nextBtn });
 
     this.rotateHint = document.getElementById("rotateHint");
 
@@ -3090,10 +3093,12 @@ this.ringGoneAudio =
 
     this.audio.playGameOverSound();
     this.overlay?.classList.add("show");
+    this.levelPassed ? this.resultProgression.playSuccess() : this.resultProgression.playFailure();
     this.updateUI();
   }
 
   resetGame = ({ restartAmbient = false } = {}) => {
+    this.resultProgression?.destroy();
     console.log("[StarLine] resetGame()", {
       sceneId: this.sceneId,
       overlayShown: this.overlay?.classList.contains("show"),
@@ -3783,6 +3788,7 @@ checkObstacleCollisions() {
   }
 
   destroy() {
+    this.resultProgression?.destroy();
     this.isRunning = false;
     this.gameOver = true;
     this.isTransitioning = false;

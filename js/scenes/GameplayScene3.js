@@ -1,3 +1,5 @@
+import { LocalResultProgression } from "./LocalResultProgression.js";
+
 function drawStarPath(ctx, cx, cy, outerRadius, innerRadius, points = 5) {
             ctx.beginPath();
             for (let i = 0; i < points * 2; i++) {
@@ -822,6 +824,7 @@ class Obstacle {
 
     this.restartBtn = document.getElementById("restartBtn");
     this.nextBtn = document.getElementById("nextBtn");
+    this.resultProgression = new LocalResultProgression({ currentIndex: 4, host: this.overlay, nextButton: this.nextBtn });
 
     this.rotateHint = document.getElementById("rotateHint");
 
@@ -1314,13 +1317,8 @@ class Obstacle {
       this.nextBtn.classList.remove("actionBtn-fade-glow");
       this.nextBtn.style.removeProperty("--fade-glow-duration");
 
-      if (this.levelPassed) {
-        this.nextBtn.classList.remove("actionBtn-disabled");
-        this.nextBtn.disabled = false;
-      } else {
-        this.nextBtn.classList.add("actionBtn-disabled");
-        this.nextBtn.disabled = true;
-      }
+      this.nextBtn.classList.add("actionBtn-disabled");
+      this.nextBtn.disabled = true;
     }
 
     if (this.restartBtn) {
@@ -1332,10 +1330,12 @@ class Obstacle {
 
     this.audio.playGameOverSound();
     this.overlay?.classList.add("show");
+    this.levelPassed ? this.resultProgression.playSuccess() : this.resultProgression.playFailure();
     this.updateUI();
   }
 
   resetGame = ({ restartAmbient = false } = {}) => {
+    this.resultProgression?.destroy();
     console.log("[StarLine] resetGame()", {
       sceneId: this.sceneId,
       overlayShown: this.overlay?.classList.contains("show"),
@@ -1799,6 +1799,7 @@ class Obstacle {
   }
 
   destroy() {
+    this.resultProgression?.destroy();
     this.isRunning = false;
     this.gameOver = true;
     this.isTransitioning = false;

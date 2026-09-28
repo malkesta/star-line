@@ -1,3 +1,5 @@
+import { LocalResultProgression } from "./LocalResultProgression.js";
+
 function drawStarPath(ctx, cx, cy, outerRadius, innerRadius, points = 5) {
             ctx.beginPath();
             for (let i = 0; i < points * 2; i++) {
@@ -1252,6 +1254,7 @@ this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
 
   this.restartBtn = document.getElementById("restartBtn");
   this.nextBtn = document.getElementById("nextBtn");
+    this.resultProgression = new LocalResultProgression({ currentIndex: 8, host: this.overlay, nextButton: this.nextBtn });
 
   this.rotateHint = document.getElementById("rotateHint");
 
@@ -1816,10 +1819,12 @@ updateRankUI() {
   // Показываем оверлей
   this.audio.playGameOverSound();
   this.overlay?.classList.add('show');
+  this.levelPassed ? this.resultProgression.playSuccess() : this.resultProgression.playFailure();
   this.updateUI();
 }
 
   resetGame = ({ restartAmbient = false } = {}) => {
+    this.resultProgression?.destroy();
 
     console.log("[StarLine] resetGame()", {
       sceneId: this.sceneId,
@@ -2342,6 +2347,7 @@ draw() {
   }
   
    destroy() {
+    this.resultProgression?.destroy();
     if (this.vnPreloadTimer) {
       window.clearTimeout(this.vnPreloadTimer);
       this.vnPreloadTimer = null;

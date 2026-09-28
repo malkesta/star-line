@@ -1,3 +1,5 @@
+import { LocalResultProgression } from "./LocalResultProgression.js";
+
 // ============================================================================
 //  GameplayScene9 — «Спасательная операция»
 //
@@ -4358,6 +4360,7 @@ export class GameplayScene9 {
 
     this.restartBtn = document.getElementById("restartBtn");
     this.nextBtn = document.getElementById("nextBtn");
+    this.resultProgression = new LocalResultProgression({ currentIndex: 13, host: this.overlay, nextButton: this.nextBtn });
 
     this.rotateHint = document.getElementById("rotateHint");
 
@@ -5017,10 +5020,12 @@ getSceneRankTitle(rank = this.getSceneRank()) {
 
     this.audio.playGameOverSound();
     this.overlay?.classList.add("show");
+    this.levelPassed ? this.resultProgression.playSuccess() : this.resultProgression.playFailure();
     this.updateUI();
   }
 
   resetGame = ({ restartAmbient = false } = {}) => {
+    this.resultProgression?.destroy();
   console.log("[StarLine] resetGame()", {
     sceneId: this.sceneId,
     overlayShown: this.overlay?.classList.contains("show"),
@@ -6568,6 +6573,7 @@ ctx.shadowBlur = 0;
   }
 
   destroy() {
+    this.resultProgression?.destroy();
     this.isRunning = false;
     this.gameOver = true;
     this.isTransitioning = false;
