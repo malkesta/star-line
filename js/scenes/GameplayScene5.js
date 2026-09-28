@@ -1314,7 +1314,7 @@ this.defaultBackgroundUrl = "../../assets/images/backgrounds/game_bg1.webp";
 
   this.restartBtn = document.getElementById("restartBtn");
   this.nextBtn = document.getElementById("nextBtn");
-    this.resultProgression = new LocalResultProgression({ currentIndex: 7, host: this.overlay, nextButton: this.nextBtn });
+    this.resultProgression = new LocalResultProgression({ currentIndex: 7, host: this.overlay, nextButton: this.nextBtn, rankSource: this });
 
   this.rotateHint = document.getElementById("rotateHint");
 
@@ -1778,9 +1778,9 @@ preload() {
 
               getRankThresholds() {
   return {
-    oneMedalScore: Math.ceil(this.levelTargetScore * 1.25),
-    twoMedalScore: Math.ceil(this.levelTargetScore * 1.6),
-    threeMedalScore: 1200,
+    oneMedalScore: 300,
+    twoMedalScore: 400,
+    threeMedalScore: 500,
   };
 }
 

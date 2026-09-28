@@ -32,11 +32,12 @@ class ResultOverlayLayout {
 // Живёт только вместе с одним экземпляром сцены. Здесь нет менеджера,
 // сохранения, событий окна и знания о результатах других сцен.
 export class LocalResultProgression {
-  constructor({ currentIndex, host, nextButton, anchor = null }) {
+  constructor({ currentIndex, host, nextButton, anchor = null, rankSource = null }) {
     this.currentIndex = currentIndex;
     this.host = host;
     this.nextButton = nextButton;
     this.anchor = anchor;
+    this.rankSource = rankSource;
     this.timers = new Set();
     this.finished = false;
     this.layout = new ResultOverlayLayout(host);
@@ -61,6 +62,38 @@ export class LocalResultProgression {
     this.strip = strip;
     this.current = strip.querySelector(".is-current");
     this.layout.update();
+    this.mountRankInfo();
+  }
+
+  mountRankInfo() {
+    this.removeRankInfo();
+    const thresholds = this.rankSource?.getRankThresholds?.();
+    const button = document.getElementById("rankInfoBtn");
+    const popover = document.getElementById("rankInfoPopover");
+    if (!thresholds || !button || !popover) return;
+    const hoverArea = button.closest(".result-rank-heading") ?? button;
+    const values = [thresholds.oneMedalScore, thresholds.twoMedalScore, thresholds.threeMedalScore];
+    popover.innerHTML = values.map((score, index) => `<div><span class="rank-info-medal">${"✦".repeat(index + 1)}</span><span>${score} очков</span></div>`).join("");
+    const setOpen = (open) => {
+      popover.classList.toggle("show", open);
+      popover.setAttribute("aria-hidden", String(!open));
+      button.setAttribute("aria-expanded", String(open));
+    };
+    this.rankInfoCleanup = [
+      [button, "click", () => setOpen(!popover.classList.contains("show"))],
+      [hoverArea, "pointerenter", () => setOpen(true)],
+      [hoverArea, "pointerleave", () => setOpen(false)],
+      [button, "blur", () => setOpen(false)],
+    ].map(([element, event, listener]) => {
+      element.addEventListener(event, listener);
+      return () => element.removeEventListener(event, listener);
+    });
+  }
+
+  removeRankInfo() {
+    this.rankInfoCleanup?.forEach((cleanup) => cleanup());
+    this.rankInfoCleanup = null;
+    document.getElementById("rankInfoPopover")?.classList.remove("show");
   }
 
   playSuccess() {
@@ -156,10 +189,12 @@ export class LocalResultProgression {
   destroy() {
     this.reset();
     this.layout.destroy();
+    this.removeRankInfo();
   }
 
   reset() {
     this.cancelTimers();
     this.destroyVisual();
+    this.removeRankInfo();
   }
 }

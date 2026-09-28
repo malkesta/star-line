@@ -2538,7 +2538,7 @@ this.ringGoneAudio =
 
     this.restartBtn = document.getElementById("restartBtn");
     this.nextBtn = document.getElementById("nextBtn");
-    this.resultProgression = new LocalResultProgression({ currentIndex: 10, host: this.overlay, nextButton: this.nextBtn });
+    this.resultProgression = new LocalResultProgression({ currentIndex: 10, host: this.overlay, nextButton: this.nextBtn, rankSource: this });
 
     this.rotateHint = document.getElementById("rotateHint");
 
@@ -2972,9 +2972,9 @@ this.ringGoneAudio =
 
   getRankThresholds() {
     return {
-      oneMedalScore: Math.ceil(this.levelTargetScore * 1.25),
-      twoMedalScore: Math.ceil(this.levelTargetScore * 1.6),
-      threeMedalScore: 1200,
+      oneMedalScore: 400,
+      twoMedalScore: 600,
+      threeMedalScore: 800,
     };
   }
 

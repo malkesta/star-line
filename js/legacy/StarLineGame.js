@@ -2063,6 +2063,7 @@ class Obstacle {
       currentIndex: this.progressionIndex,
       host: this.overlay,
       nextButton: this.nextBtn,
+      rankSource: this,
     });
 
     this.tutorialEnabledInput = document.getElementById("tutorialEnabled");
@@ -2512,9 +2513,9 @@ resetSceneBackground() {
 
   getRankThresholds() {
     return {
-      oneMedalScore: Math.ceil(this.levelTargetScore * 1.25),
-      twoMedalScore: Math.ceil(this.levelTargetScore * 1.6),
-      threeMedalScore: 1200,
+      oneMedalScore: 400,
+      twoMedalScore: 600,
+      threeMedalScore: 900,
     };
   }
 
