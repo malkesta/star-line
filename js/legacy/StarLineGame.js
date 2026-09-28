@@ -2637,7 +2637,7 @@ resetSceneBackground() {
   }
 
   resetGame = ({ restartAmbient = false } = {}) => {
-    this.resultProgression?.destroy();
+    this.resultProgression?.reset();
     console.log("[StarLine] resetGame()", {
       sceneId: this.sceneId,
       overlayShown: this.overlay?.classList.contains("show"),

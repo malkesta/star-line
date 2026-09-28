@@ -948,7 +948,7 @@ body.is-vn-active #gameCanvas {
 @media (max-height: 560px) { .progression-strip { --progress-medal-size: clamp(16px, calc(var(--vmin) * 3.3), 34px); margin-bottom: 5px; } }
 
 .vn-result-star {
-  width: min(20vw, 108px);
+  width: min(20vw, calc(108px * var(--result-decoration-scale, 1)));
   filter: drop-shadow(0 0 22px rgba(245, 182, 112, 0.28));
   opacity: 0;
   transform: translateY(calc(var(--vmin) * 1));

@@ -121,7 +121,7 @@
 }
 
 .result-summary-card {
-  width: min(92vw, 500px);
+  width: min(calc(92vw * var(--result-card-scale, 1)), calc(500px * var(--result-card-scale, 1)));
   margin:
     clamp(14px, 2vw, 18px)
     auto
@@ -284,8 +284,8 @@
 
 /* Локальная лента результата: создаётся и удаляется конкретной сценой. */
 .local-progression { display:flex; justify-content:center; align-items:center; gap:clamp(1px,.2vmin,3px); width:min(92vw,960px); margin-bottom:clamp(8px,1.3vmin,18px); }
-.local-progress-medal { position:relative; flex:0 1 clamp(22px,4.1vmin,52px); width:clamp(22px,4.1vmin,52px); min-width:15px; aspect-ratio:1; opacity:.28; filter:grayscale(1); }
-.local-progress-connector { flex:0 1 clamp(6px,1vmin,13px); color:rgba(255,220,175,.9); font-size:clamp(7px,1vmin,13px); line-height:1; text-shadow:0 0 12px rgba(255,215,150,.36); }
+.local-progress-medal { position:relative; flex:0 1 clamp(18px,calc(4.8vmin * var(--result-progress-scale, 1)),58px); width:clamp(18px,calc(4.8vmin * var(--result-progress-scale, 1)),58px); min-width:15px; aspect-ratio:1; opacity:.28; filter:grayscale(1); }
+.local-progress-connector { flex:0 1 clamp(6px,calc(1vmin * var(--result-progress-scale, 1)),13px); color:rgba(255,220,175,.9); font-size:clamp(7px,calc(1vmin * var(--result-progress-scale, 1)),13px); line-height:1; text-shadow:0 0 12px rgba(255,215,150,.36); }
 .local-progress-medal svg { width:100%; height:100%; display:block; }
 .local-progress-medal svg circle { fill:rgba(11,17,33,.72); stroke:rgba(245,182,112,.55); stroke-width:1.2; }
 .local-progress-medal svg path { fill:#fff0b8; stroke:#f5b670; stroke-width:1.1; stroke-linecap:round; stroke-linejoin:round; }

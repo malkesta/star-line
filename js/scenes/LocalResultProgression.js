@@ -3,6 +3,32 @@ const ROUTE = ["book", "star", "star", "book", "star", "star", "book", "star", "
 const starIcon = `<svg viewBox="0 0 54 54" aria-hidden="true"><circle cx="27" cy="27" r="22"/><path d="M27 10.5 31.8 20l10.6 1.6-7.7 7.5 1.8 10.6L27 34.7l-9.5 5 1.8-10.6-7.7-7.5L22.2 20Z"/></svg>`;
 const bookIcon = `<svg viewBox="0 0 54 54" aria-hidden="true"><circle cx="27" cy="27" r="22"/><path d="M27 17c-4-2.8-8.5-2.7-12.5-.2v19c4-2.5 8.5-2.5 12.5.2m0-19c4-2.8 8.5-2.7 12.5-.2v19c-4-2.5-8.5-2.5-12.5.2M27 17v19"/></svg>`;
 
+class ResultOverlayLayout {
+  constructor(host) {
+    this.overlay = host?.closest("#overlay, #vnResultOverlay") ?? host;
+    this.observe();
+  }
+
+  observe() {
+    if (!this.overlay || typeof ResizeObserver === "undefined") return;
+    this.observer = new ResizeObserver(() => this.update());
+    this.observer.observe(this.overlay);
+  }
+
+  update() {
+    const height = this.overlay?.getBoundingClientRect().height ?? 0;
+    if (!height) return;
+    // Пересчёт всегда идёт от исходной высоты, поэтому масштаб не накапливается.
+    const tier = height >= 720 ? [1.18, 1, 1] : height >= 560 ? [.94, .9, .72] : [.76, .78, .4];
+    const style = this.overlay.style;
+    style.setProperty("--result-progress-scale", tier[0]);
+    style.setProperty("--result-card-scale", tier[1]);
+    style.setProperty("--result-decoration-scale", tier[2]);
+  }
+
+  destroy() { this.observer?.disconnect(); }
+}
+
 // Живёт только вместе с одним экземпляром сцены. Здесь нет менеджера,
 // сохранения, событий окна и знания о результатах других сцен.
 export class LocalResultProgression {
@@ -13,6 +39,7 @@ export class LocalResultProgression {
     this.anchor = anchor;
     this.timers = new Set();
     this.finished = false;
+    this.layout = new ResultOverlayLayout(host);
   }
 
   mount() {
@@ -33,6 +60,7 @@ export class LocalResultProgression {
     }
     this.strip = strip;
     this.current = strip.querySelector(".is-current");
+    this.layout.update();
   }
 
   playSuccess() {
@@ -126,6 +154,11 @@ export class LocalResultProgression {
   }
 
   destroy() {
+    this.reset();
+    this.layout.destroy();
+  }
+
+  reset() {
     this.cancelTimers();
     this.destroyVisual();
   }
