@@ -1,6 +1,6 @@
 import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
-const BG = { story: asset("../../assets/images/vn/vn_backgrounds/vn-3_school1.png"), school: asset("../../assets/images/vn/vn_backgrounds/school_bg.png"), schoolOut: asset("../../assets/images/vn/vn_backgrounds/school_out_bg.png"), schoolFinalArgument: asset("../../assets/images/vn/vn_backgrounds/vn-3_school2_paper_v1.png"), schoolFinal: asset("../../assets/images/vn/vn_backgrounds/vn-3_school2_paper_v7.png") };
+const BG = { story: asset("../../assets/images/vn/vn_backgrounds/vn-3_school1.webp"), school: asset("../../assets/images/vn/vn_backgrounds/school_bg.webp"), schoolOut: asset("../../assets/images/vn/vn_backgrounds/school_out_bg.webp"), schoolFinalArgument: asset("../../assets/images/vn/vn_backgrounds/vn-3_school2_paper_v1.webp"), schoolFinal: asset("../../assets/images/vn/vn_backgrounds/vn-3_school2_paper_v7.webp") };
 const MUSIC = asset("../../assets/audio/vn/VN-1.mp3");
 const GIRL = asset("../../assets/images/vn/sprites/girl/girl_school.png");
 const GIRL_ANGER = asset("../../assets/images/vn/sprites/girl/girl_school_anger.png");

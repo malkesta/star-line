@@ -1,10 +1,10 @@
 import { VisualNovelScene } from "./VisualNovelScene.js";
 const asset = (path) => new URL(path, import.meta.url).href;
 const BACKGROUNDS = {
-  story: asset("../../assets/images/vn/vn_backgrounds/vn-2-fairytale-morning-gold.png"),
-  homeStart: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-start-gold.png"),
-  home: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-interior.png"),
-  livingRoom: asset("../../assets/images/vn/vn_backgrounds/living_room_bg.png"),
+  story: asset("../../assets/images/vn/vn_backgrounds/vn-2-fairytale-morning-gold.webp"),
+  homeStart: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-start-gold.webp"),
+  home: asset("../../assets/images/vn/vn_backgrounds/vn-2-home-interior.webp"),
+  livingRoom: asset("../../assets/images/vn/vn_backgrounds/living_room_bg.webp"),
 };
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
 const GIRL = asset("../../assets/images/vn/sprites/girl/girl_home.png");

@@ -1,7 +1,7 @@
 import { VisualNovelScene } from "./VisualNovelScene.js";
 
 const asset = (path) => new URL(path, import.meta.url).href;
-const BACKGROUND_URL = asset("../../assets/images/vn/vn_backgrounds/vn-fin-epilogue.png");
+const BACKGROUND_URL = asset("../../assets/images/vn/vn_backgrounds/vn-fin-epilogue.webp");
 const MUSIC_URL = asset("../../assets/audio/vn/VN-1.mp3");
 
 export class VisualNovelFin extends VisualNovelScene {
