@@ -3735,8 +3735,8 @@ this.ringGoneAudio =
   getRankThresholds() {
     return {
       oneMedalScore: 400,
-      twoMedalScore: 430,
-      threeMedalScore: 450,
+      twoMedalScore: 500,
+      threeMedalScore: 550,
     };
   }
 

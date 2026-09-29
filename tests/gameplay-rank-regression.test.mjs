@@ -17,7 +17,7 @@ const scenes = [
   [StarLineGame, [400, 600, 900], lightLabels], [GameplayScene2, [400, 600, 900], lightLabels],
   [GameplayScene3, [400, 600, 900], lightLabels], [GameplayScene4, [400, 600, 900], lightLabels],
   [GameplayScene5, [300, 400, 500], lightLabels], [GameplayScene6, [400, 500, 600], lightLabels],
-  [GameplayScene7, [400, 600, 800], darkLabels], [GameplayScene8, [400, 430, 450], darkLabels],
+  [GameplayScene7, [400, 600, 800], darkLabels], [GameplayScene8, [400, 500, 550], darkLabels],
   [GameplayScene9, [400, 500, 600], lightLabels], [GameplayScene10, [100, 150, 200], lightLabels],
 ];
 
