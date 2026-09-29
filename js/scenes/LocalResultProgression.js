@@ -49,7 +49,7 @@ export class LocalResultProgression {
     const strip = document.createElement("div");
     strip.className = "local-progression";
     strip.innerHTML = ROUTE.map((kind, index) => {
-      const medal = `<span class="local-progress-medal ${index < this.currentIndex ? "is-lit" : index === this.currentIndex ? "is-current" : "is-locked"}">${kind === "book" ? bookIcon : starIcon}</span>`;
+      const medal = `<span class="local-progress-medal ${kind === "star" ? "is-gameplay" : "is-vn"} ${index < this.currentIndex ? "is-lit" : index === this.currentIndex ? "is-current" : "is-locked"}">${kind === "book" ? bookIcon : starIcon}</span>`;
       const connector = index === ROUTE.length - 1
         ? ""
         : `<span class="local-progress-connector" aria-hidden="true">✦</span>`;
