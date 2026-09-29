@@ -47,8 +47,18 @@ export class VisualNovelFin extends VisualNovelScene {
           bg: BACKGROUND_URL,
           sprites: {},
           last: true,
-          resultTitle: "Конец.",
-          resultMessage: "Автор Ольга Куран.",
+          resultTitle: "Конец",
+          resultMessage: "Спасибо, что сыграли):",
+          resultButtonText: "Результат",
+          resultCredits: {
+            author: "Автор Ольга Куран.",
+            tools: [
+              "Perplexity",
+              "Codex",
+              "PixAI",
+              "FlowMusic",
+            ],
+          },
         },
       },
     });

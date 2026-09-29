@@ -1015,6 +1015,28 @@ body.is-vn-active #gameCanvas {
   min-width: min(52vw, 290px);
 }
 
+.vn-result-credits {
+  max-width: min(76vw, 680px);
+  margin-top: clamp(18px, calc(var(--vmin) * 2.6), 30px);
+  color: rgba(216, 220, 230, .58);
+  font: clamp(11px, calc(var(--vmin) * 1.35), 14px)/1.55 "Segoe UI", sans-serif;
+  text-align: center;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .42);
+  opacity: 0;
+  transform: translateY(calc(var(--vmin) * .7));
+  transition: opacity .6s ease .42s, transform .6s ease .42s;
+}
+
+.vn-result-credits a {
+  color: rgba(255, 230, 172, .76);
+  text-underline-offset: 2px;
+}
+
+#vnResultOverlay.show .vn-result-credits:not([hidden]) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* =========================================================================
    КОМПАКТНЫЕ АЛЬБОМНЫЕ ЭКРАНЫ
    ========================================================================== */

@@ -63,6 +63,7 @@ export class VisualNovelScene {
     this.resultTitle = document.getElementById("vnResultTitle");
     this.resultMessage = document.getElementById("vnResultMessage");
     this.resultNextBtn = document.getElementById("vnResultNextBtn");
+    this.resultCredits = document.getElementById("vnResultCredits");
     this.resultProgression = null;
 
     this.spriteElements = {
@@ -138,7 +139,9 @@ export class VisualNovelScene {
 
     if (this.resultNextBtn) {
       this.resultNextBtn.disabled = false;
+      this.resultNextBtn.textContent = "Дальше";
     }
+    this.setResultCredits(null);
 
     const progressionIndex = {
       "vn-start": 0, "vn-1": 3, "vn-2": 6,
@@ -1100,6 +1103,11 @@ export class VisualNovelScene {
       "Ты помогла маленькой звезде снова увидеть свет.";
   }
 
+  if (this.resultNextBtn) {
+    this.resultNextBtn.textContent = finalNode.resultButtonText ?? "Дальше";
+  }
+  this.setResultCredits(finalNode.resultCredits);
+
   this.resultOverlay?.classList.add("show");
   this.resultOverlay?.setAttribute("aria-hidden", "false");
   this.resultProgression?.playSuccess();
@@ -1119,5 +1127,36 @@ if (typeof this.sceneManager?.preloadNext === "function") {
   const preloaded = this.sceneManager.preloadNext();
   console.log("[VN] preloadNext() result", preloaded);
 }
-}
+  }
+
+  setResultCredits(credits) {
+    if (!this.resultCredits) return;
+    this.resultCredits.replaceChildren();
+    this.resultCredits.hidden = !credits;
+    if (!credits) return;
+
+    const author = document.createElement("div");
+    author.textContent = credits.author ?? "";
+    this.resultCredits.append(author);
+
+    const tools = Array.isArray(credits.tools) ? credits.tools : [];
+    if (!tools.length) return;
+
+    const toolsLine = document.createElement("div");
+    toolsLine.append("Создано при помощи нейросетей: ");
+    tools.forEach((tool, index) => {
+      if (index) toolsLine.append(", ");
+      if (typeof tool === "string") {
+        toolsLine.append(tool);
+        return;
+      }
+      const link = document.createElement("a");
+      link.href = tool.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = tool.label;
+      toolsLine.append(link);
+    });
+    this.resultCredits.append(toolsLine);
+  }
 }
