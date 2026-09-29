@@ -1153,6 +1153,7 @@ playStarletSpawnSound() {
 }
     
 import { LocalResultProgression } from "../scenes/LocalResultProgression.js";
+import { frameMetrics } from "../core/FrameMetrics.js";
 
 class Starlet {
   constructor(x, y, entrySide = "right", sceneMetrics) {
@@ -2064,6 +2065,7 @@ class Obstacle {
       host: this.overlay,
       nextButton: this.nextBtn,
       rankSource: this,
+      enableNextImmediately: true,
     });
 
     this.tutorialEnabledInput = document.getElementById("tutorialEnabled");
@@ -3042,8 +3044,11 @@ resetSceneBackground() {
     }
 
     const loop = (time) => {
+      const frame = frameMetrics.begin(time);
       this.update(time);
+      const updateEnd = frameMetrics.markUpdate(frame);
       this.draw();
+      frameMetrics.end(frame, updateEnd);
 
       if (this.isRunning && !this.gameOver) {
         this.rafId = requestAnimationFrame(loop);

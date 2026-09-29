@@ -995,7 +995,7 @@ class Obstacle {
 
     this.restartBtn = document.getElementById("restartBtn");
     this.nextBtn = document.getElementById("nextBtn");
-    this.resultProgression = new LocalResultProgression({ currentIndex: 5, host: this.overlay, nextButton: this.nextBtn, rankSource: this });
+    this.resultProgression = new LocalResultProgression({ currentIndex: 5, host: this.overlay, nextButton: this.nextBtn, rankSource: this, enableNextImmediately: true });
 
     this.rotateHint = document.getElementById("rotateHint");
 

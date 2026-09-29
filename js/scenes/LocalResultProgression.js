@@ -32,12 +32,13 @@ class ResultOverlayLayout {
 // Живёт только вместе с одним экземпляром сцены. Здесь нет менеджера,
 // сохранения, событий окна и знания о результатах других сцен.
 export class LocalResultProgression {
-  constructor({ currentIndex, host, nextButton, anchor = null, rankSource = null }) {
+  constructor({ currentIndex, host, nextButton, anchor = null, rankSource = null, enableNextImmediately = false }) {
     this.currentIndex = currentIndex;
     this.host = host;
     this.nextButton = nextButton;
     this.anchor = anchor;
     this.rankSource = rankSource;
+    this.enableNextImmediately = enableNextImmediately;
     this.timers = new Set();
     this.finished = false;
     this.layout = new ResultOverlayLayout(host);
@@ -107,9 +108,13 @@ export class LocalResultProgression {
       () => '<i class="local-comet-tail-particle"></i>'
     ).join("")}`;
     this.current?.append(comet);
-    // Кнопка живёт по собственному таймеру: её доступность не зависит от
-    // длительности декоративной анимации медали.
-    this.after(1000, () => this.setNextEnabled(true));
+    // В игровых сценах действие доступно сразу; ВН сохраняет собственную
+    // секундную задержку. Оба режима не зависят от анимации медали.
+    if (this.enableNextImmediately) {
+      this.setNextEnabled(true);
+    } else {
+      this.after(1000, () => this.setNextEnabled(true));
+    }
     this.after(1100, () => {
       comet.remove();
       this.createImpactBurst();

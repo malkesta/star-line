@@ -20,6 +20,9 @@ import { VisualNovelFin } from "./scenes/VisualNovelFin.js";
 import { GameAudio } from "./legacy/StarLineGame.js";
 
 const DEBUG_START_SCENE =  null;
+// В режиме дебага показываем локальную панель производительности.
+// В обычном запуске она не создаётся и не влияет на игру.
+globalThis.__starLineDebugMetrics = Boolean(DEBUG_START_SCENE);
 // null       -> обычный порядок
 // "intro"    -> только IntroScene
 // "start"    -> только StartScreenScene

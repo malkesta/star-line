@@ -27,6 +27,7 @@ test("every gameplay scene declares its own correct local progression position",
     assert.match(progressionOwner, /resultProgression\.playSuccess\(\)/, `${file} success path`);
     assert.match(progressionOwner, /resultProgression\.playFailure\(\)/, `${file} failure path`);
     assert.match(progressionOwner, /rankSource:\s*this/, `${file} local rank thresholds`);
+    assert.match(progressionOwner, /enableNextImmediately:\s*true/, `${file} immediate next button`);
   }
 });
 
