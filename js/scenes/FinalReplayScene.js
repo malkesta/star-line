@@ -169,13 +169,17 @@ export class FinalReplayScene {
     ctx.lineWidth = 2;
     ctx.strokeStyle = "rgba(255, 220, 190, .28)";
     ctx.stroke();
-    ctx.fillStyle = "#f5b670";
+    ctx.fillStyle = "#fff0b8";
+    ctx.shadowColor = "rgba(245, 182, 112, .72)";
+    ctx.shadowBlur = 26;
     ctx.font = "96px Georgia";
     const medalCount = getShareCardMedalCount(
       summary.averageRank,
       summary.completedCount
     );
     ctx.fillText(medalCount ? Array(medalCount).fill("✦").join("  ") : "—", 600, 298);
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
     ctx.fillStyle = "#fff0b8";
     ctx.font = "42px Georgia";
     const average = summary.completedCount ? summary.averageRank.toFixed(1) : "—";
