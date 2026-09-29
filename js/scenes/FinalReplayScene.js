@@ -7,8 +7,8 @@ const GAME_BACKGROUND_URL = new URL(
 ).href;
 
 const LEVEL_LABELS = Object.freeze({
-  game1: "Игра 1", game2: "Игра 2", game3: "Игра 3", game4: "Игра 4", game5: "Игра 5",
-  game6: "Игра 6", game7: "Игра 7", game8: "Игра 8", game9: "Игра 9", game10: "Игра 10",
+  game1: "1", game2: "2", game3: "3", game4: "4", game5: "5",
+  game6: "6", game7: "7", game8: "8", game9: "9", game10: "10",
 });
 
 const rankMedals = (rank) => Array.from({ length: 3 }, (_, index) =>
@@ -78,7 +78,7 @@ export class FinalReplayScene {
         <p class="final-replay-caption">Пройдено уровней: ${summary.completedCount} из ${GAME_SCENE_IDS.length}</p>
         <div class="final-replay-levels" aria-label="Перепройти игровой уровень">
           ${levels.map(({ sceneId, sceneRank }) => `
-            <button class="final-replay-level" type="button" data-replay-level="${sceneId}" aria-label="Перепройти ${LEVEL_LABELS[sceneId]}">
+            <button class="final-replay-level" type="button" data-replay-level="${sceneId}" aria-label="Перепройти уровень ${LEVEL_LABELS[sceneId]}">
               <span>${LEVEL_LABELS[sceneId]}</span>
               <span class="final-replay-rank" aria-label="Ранг ${sceneRank || 0}">${rankMedals(sceneRank)}</span>
               <span class="final-replay-icon" aria-hidden="true">↻</span>
