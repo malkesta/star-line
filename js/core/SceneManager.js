@@ -16,6 +16,7 @@ export class SceneManager {
     */
     this.preloadedScene = null;
     this.preloadedIndex = -1;
+    this.finalReplayState = null;
 
   }
 
@@ -28,6 +29,7 @@ export class SceneManager {
   }
 
   async start() {
+    await this.closeFinalReplay();
     if (!this.sceneDefs.length) {
       this.currentIndex = -1;
       this.currentScene = null;
@@ -44,6 +46,10 @@ export class SceneManager {
   }
 
   async next() {
+    if (this.finalReplayState) {
+      await this.returnFromFinalReplay();
+      return;
+    }
     this.discardPreloaded();
 
     if (this.currentScene) {
@@ -64,6 +70,7 @@ export class SceneManager {
   }
 
   async goTo(index) {
+    await this.closeFinalReplay();
     this.discardPreloaded();
 
     if (index < 0 || index >= this.sceneDefs.length) {
@@ -86,6 +93,7 @@ export class SceneManager {
   }
 
   async restartCurrent() {
+    await this.closeFinalReplay();
     this.discardPreloaded();
 
     if (this.currentIndex < 0 || this.currentIndex >= this.sceneDefs.length) {
@@ -234,5 +242,67 @@ export class SceneManager {
 
     this.currentScene = scene;
     await this.currentScene.enter();
+  }
+
+  /*
+    Временный маршрут финала. Он не меняет currentIndex и не использует
+    обычную последовательность сцен: переигранный уровень возвращается
+    только к сохранённому экземпляру финального экрана.
+  */
+  async openFinalReplay(sceneId, finalReplaySession) {
+    if (this.finalReplayState || !this.currentScene || !finalReplaySession) return false;
+    const sceneDef = this.sceneDefs.find((item) => item.id === sceneId);
+    if (!sceneDef?.create) return false;
+
+    this.discardPreloaded();
+    const origin = this.currentScene;
+    await origin.suspend?.();
+
+    const replayNavigator = {
+      next: () => this.returnFromFinalReplay(),
+      // Предзагрузка обычного сюжета запрещена для режима перепрохождения.
+      preloadNext: undefined,
+    };
+    const replayScene = sceneDef.create({ finalReplaySession, replayNavigator });
+    if (!replayScene) {
+      await origin.resume?.();
+      return false;
+    }
+
+    this.finalReplayState = { origin, replayScene };
+    this.currentScene = replayScene;
+    try {
+      await replayScene.enter();
+      return true;
+    } catch (error) {
+      this.finalReplayState = null;
+      this.currentScene = origin;
+      await origin.resume?.();
+      throw error;
+    }
+  }
+
+  async returnFromFinalReplay() {
+    const state = this.finalReplayState;
+    if (!state) return false;
+
+    this.discardPreloaded();
+    this.finalReplayState = null;
+    try {
+      await state.replayScene.exit?.();
+    } finally {
+      this.currentScene = state.origin;
+      await state.origin.resume?.();
+    }
+    return true;
+  }
+
+  async closeFinalReplay() {
+    const state = this.finalReplayState;
+    if (!state) return;
+    this.finalReplayState = null;
+    await state.replayScene.exit?.();
+    await state.origin.exit?.();
+    this.currentScene = null;
   }
 }

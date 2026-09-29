@@ -1,7 +1,8 @@
 export class StartScreenScene {
-  constructor({ sceneManager, audio }) {
+  constructor({ sceneManager, audio, onNewRun = null }) {
     this.sceneManager = sceneManager;
     this.audio = audio;
+    this.onNewRun = onNewRun;
 
     this.startScreen = document.getElementById("startScreen");
     this.startBtn = document.getElementById("startBtn");
@@ -389,6 +390,7 @@ export class StartScreenScene {
   }
 
   this.sceneManager?.resetProgress?.();
+  this.onNewRun?.();
 
   if (this.startScreen) {
     this.startScreen.classList.remove("show");

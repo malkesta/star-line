@@ -17,6 +17,8 @@ import { VisualNovel2 } from "./scenes/VisualNovel2.js";
 import { VisualNovel3 } from "./scenes/VisualNovel3.js";
 import { VisualNovel4 } from "./scenes/VisualNovel4.js";
 import { VisualNovelFin } from "./scenes/VisualNovelFin.js";
+import { FinalReplayScene } from "./scenes/FinalReplayScene.js";
+import { CampaignResults } from "./core/CampaignResults.js";
 import { GameAudio } from "./legacy/StarLineGame.js";
 
 const DEBUG_START_SCENE =  null;
@@ -42,8 +44,23 @@ globalThis.__starLineDebugMetrics = Boolean(DEBUG_START_SCENE);
 // "game9"    -> только GameplayScene9
 // "game10"   -> только GameplayScene10
 // "vnFin"    -> только VisualNovelFin
+// "finalReplay" -> финальный экран с тестовыми рангами и перепрохождением
 
 const audio = new GameAudio();
+const campaignResults = new CampaignResults();
+
+// Только для удобной отладки финала. В обычной игре эти данные никогда не
+// создаются и не сохраняются.
+const DEBUG_FINAL_REPLAY_RESULTS = Object.freeze([
+  ["game1", 3], ["game2", 2], ["game3", 1], ["game4", 3], ["game5", 2],
+  ["game6", 3], ["game7", 1], ["game8", 2], ["game9", 3], ["game10", 2],
+]);
+
+if (DEBUG_START_SCENE === "finalReplay") {
+  DEBUG_FINAL_REPLAY_RESULTS.forEach(([sceneId, sceneRank]) => {
+    campaignResults.record({ sceneId, sceneRank, levelPassed: true });
+  });
+}
 
 const sceneManager = new SceneManager({
   sceneDefs: [],
@@ -51,12 +68,31 @@ const sceneManager = new SceneManager({
 
 const createSceneDef = (id, create) => ({ id, create });
 
+const gameplayOptions = ({ finalReplaySession, replayNavigator } = {}) => ({
+  sceneManager: replayNavigator ?? sceneManager,
+  audio,
+  onRoundFinished: (result) => {
+    (finalReplaySession ?? campaignResults).record(result);
+  },
+  onNext: async () => {
+    if (finalReplaySession) {
+      await sceneManager.returnFromFinalReplay();
+      return;
+    }
+    await sceneManager.next();
+  },
+});
+
 const allSceneDefs = {
   intro: createSceneDef("intro", () => new IntroScene({ sceneManager })),
 
   start: createSceneDef(
     "start",
-    () => new StartScreenScene({ sceneManager, audio })
+    () => new StartScreenScene({
+      sceneManager,
+      audio,
+      onNewRun: () => campaignResults.reset(),
+    })
   ),
 
   vnStart: createSceneDef(
@@ -66,12 +102,12 @@ const allSceneDefs = {
 
   game1: createSceneDef(
     "game1",
-    () => new GameplayScene({ sceneManager, audio })
+    (options) => new GameplayScene(gameplayOptions(options))
   ),
 
   game2: createSceneDef(
     "game2",
-    () => new GameplayScene2({ sceneManager, audio })
+    (options) => new GameplayScene2(gameplayOptions(options))
   ),
 
   vn1: createSceneDef(
@@ -81,12 +117,12 @@ const allSceneDefs = {
 
   game3: createSceneDef(
     "game3",
-    () => new GameplayScene3({ sceneManager, audio })
+    (options) => new GameplayScene3(gameplayOptions(options))
   ),
 
   game4: createSceneDef(
     "game4",
-    () => new GameplayScene4({ sceneManager, audio })
+    (options) => new GameplayScene4(gameplayOptions(options))
   ),
 
   vn2: createSceneDef(
@@ -96,12 +132,12 @@ const allSceneDefs = {
 
   game5: createSceneDef(
     "game5",
-    () => new GameplayScene5({ sceneManager, audio })
+    (options) => new GameplayScene5(gameplayOptions(options))
   ),
 
   game6: createSceneDef(
     "game6",
-    () => new GameplayScene6({ sceneManager, audio })
+    (options) => new GameplayScene6(gameplayOptions(options))
   ),
 
   vn3: createSceneDef(
@@ -111,12 +147,12 @@ const allSceneDefs = {
 
   game7: createSceneDef(
     "game7",
-    () => new GameplayScene7({ sceneManager, audio })
+    (options) => new GameplayScene7(gameplayOptions(options))
   ),
 
   game8: createSceneDef(
     "game8",
-    () => new GameplayScene8({ sceneManager, audio })
+    (options) => new GameplayScene8(gameplayOptions(options))
   ),
 
   vn4: createSceneDef(
@@ -126,17 +162,22 @@ const allSceneDefs = {
 
   game9: createSceneDef(
     "game9",
-    () => new GameplayScene9({ sceneManager, audio })
+    (options) => new GameplayScene9(gameplayOptions(options))
   ),
 
   game10: createSceneDef(
     "game10",
-    () => new GameplayScene10({ sceneManager, audio })
+    (options) => new GameplayScene10(gameplayOptions(options))
   ),
 
   vnFin: createSceneDef(
     "vnFin",
     () => new VisualNovelFin({ sceneManager, audio })
+  ),
+
+  finalReplay: createSceneDef(
+    "finalReplay",
+    () => new FinalReplayScene({ sceneManager, campaignResults })
   ),
 };
 
@@ -163,6 +204,21 @@ const defaultSceneOrder = [
   allSceneDefs.game9,
   allSceneDefs.game10,
   allSceneDefs.vnFin,
+  allSceneDefs.finalReplay,
+];
+
+const finalReplayDebugSceneOrder = [
+  allSceneDefs.finalReplay,
+  allSceneDefs.game1,
+  allSceneDefs.game2,
+  allSceneDefs.game3,
+  allSceneDefs.game4,
+  allSceneDefs.game5,
+  allSceneDefs.game6,
+  allSceneDefs.game7,
+  allSceneDefs.game8,
+  allSceneDefs.game9,
+  allSceneDefs.game10,
 ];
 
 if (DEBUG_START_SCENE) {
@@ -173,7 +229,9 @@ if (DEBUG_START_SCENE) {
 }
 
 sceneManager.sceneDefs =
-  DEBUG_START_SCENE && allSceneDefs[DEBUG_START_SCENE]
+  DEBUG_START_SCENE === "finalReplay"
+    ? finalReplayDebugSceneOrder
+    : DEBUG_START_SCENE && allSceneDefs[DEBUG_START_SCENE]
     ? [allSceneDefs[DEBUG_START_SCENE]]
     : defaultSceneOrder;
 
@@ -184,7 +242,8 @@ if (
   DEBUG_START_SCENE !== "vn2" &&
   DEBUG_START_SCENE !== "vn3" &&
   DEBUG_START_SCENE !== "vn4" &&
-  DEBUG_START_SCENE !== "vnFin"
+  DEBUG_START_SCENE !== "vnFin" &&
+  DEBUG_START_SCENE !== "finalReplay"
 ) {
   try {
     await audio.init();
