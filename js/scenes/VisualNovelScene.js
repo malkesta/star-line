@@ -606,6 +606,7 @@ export class VisualNovelScene {
     Object.entries(this.spriteElements).forEach(([key, element]) => {
       if (!element) return;
 
+      const visible = Boolean(spriteState[key]);
       const spriteVariant =
         typeof spriteState[key] === "string" ? spriteState[key] : null;
       const config = this.sprites[key];
@@ -613,12 +614,14 @@ export class VisualNovelScene {
         ? config?.variants?.[spriteVariant]
         : config?.src;
 
-      if (source && element.dataset.spriteSrc !== source) {
+      // Скрываемый спрайт ещё затухает по CSS. Не подменяем его кадр на
+      // базовый в этот момент: иначе вариант (например, anger) на долю
+      // секунды превращается в обычный портрет перед исчезновением.
+      if (visible && source && element.dataset.spriteSrc !== source) {
         element.src = source;
         element.dataset.spriteSrc = source;
       }
 
-      const visible = Boolean(spriteState[key]);
       const presentation = this.getSpritePresentation(config, key, speakingKey);
 
       element.classList.toggle("show", visible);
