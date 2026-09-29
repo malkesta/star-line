@@ -1,6 +1,10 @@
 import { FinalReplaySession, GAME_SCENE_IDS } from "../core/CampaignResults.js";
 
 export const GAME_SHARE_URL = "https://malkesta.github.io/star-line/";
+const GAME_BACKGROUND_URL = new URL(
+  "../../assets/images/backgrounds/game_bg1.webp",
+  import.meta.url
+).href;
 
 const LEVEL_LABELS = Object.freeze({
   game1: "Игра 1", game2: "Игра 2", game3: "Игра 3", game4: "Игра 4", game5: "Игра 5",
@@ -13,6 +17,24 @@ const rankMedals = (rank) => Array.from({ length: 3 }, (_, index) =>
 
 const shareText = (summary) =>
   `Мой средний ранг в «Звёздной линии» — ${summary.averageRank.toFixed(1)} из 3. Попробуй тоже!`;
+
+const roundedRect = (ctx, x, y, width, height, radius) => {
+  const corner = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + corner, y);
+  ctx.arcTo(x + width, y, x + width, y + height, corner);
+  ctx.arcTo(x + width, y + height, x, y + height, corner);
+  ctx.arcTo(x, y + height, x, y, corner);
+  ctx.arcTo(x, y, x + width, y, corner);
+  ctx.closePath();
+};
+
+export const getShareCardMedalCount = (averageRank, completedCount) => {
+  if (!completedCount) return 0;
+  if (averageRank >= 2.7) return 3;
+  if (averageRank > 2) return 2;
+  return 1;
+};
 
 export class FinalReplayScene {
   constructor({ sceneManager, campaignResults } = {}) {
@@ -67,9 +89,9 @@ export class FinalReplayScene {
           <button class="final-replay-share-toggle" type="button" aria-expanded="false">Поделиться</button>
           <div class="final-replay-share-menu" hidden>
             <button type="button" data-share-native>В приложения</button>
-            <button type="button" data-share-telegram>Telegram с карточкой</button>
+            <button type="button" data-share-telegram>Telegram</button>
             <button type="button" data-share-x>X</button>
-            <button type="button" data-share-download>Скачать карточку</button>
+            <button type="button" data-share-download>Скачать результат PNG</button>
           </div>
         </div>
       </section>`;
@@ -90,7 +112,7 @@ export class FinalReplayScene {
       toggle.setAttribute("aria-expanded", String(Boolean(open)));
     });
     this.root.querySelector("[data-share-native]")?.addEventListener("click", () => this.shareNative());
-    this.root.querySelector("[data-share-telegram]")?.addEventListener("click", () => this.shareTelegram());
+    this.root.querySelector("[data-share-telegram]")?.addEventListener("click", () => this.openTelegramLink());
     this.root.querySelector("[data-share-x]")?.addEventListener("click", () => this.openX());
     this.root.querySelector("[data-share-download]")?.addEventListener("click", () => this.downloadCard());
   }
@@ -100,7 +122,16 @@ export class FinalReplayScene {
     await this.sceneManager?.openFinalReplay?.(sceneId, this.session);
   }
 
-  createShareFile() {
+  async loadShareBackground() {
+    return new Promise((resolve) => {
+      const image = new Image();
+      image.addEventListener("load", () => resolve(image), { once: true });
+      image.addEventListener("error", () => resolve(null), { once: true });
+      image.src = GAME_BACKGROUND_URL;
+    });
+  }
+
+  async createShareFile() {
     const summary = this.session?.getSummary() ?? { averageRank: 0, completedCount: 0 };
     const canvas = document.createElement("canvas");
     canvas.width = 1200;
@@ -111,6 +142,15 @@ export class FinalReplayScene {
     gradient.addColorStop(1, "#21162b");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const background = await this.loadShareBackground();
+    if (background) {
+      ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+      const shade = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      shade.addColorStop(0, "rgba(5, 13, 29, .34)");
+      shade.addColorStop(1, "rgba(27, 16, 39, .38)");
+      ctx.fillStyle = shade;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
     ctx.fillStyle = "rgba(255, 232, 184, .12)";
     for (let index = 0; index < 36; index += 1) {
       const x = (index * 137) % canvas.width;
@@ -123,9 +163,19 @@ export class FinalReplayScene {
     ctx.fillStyle = "#fff0b8";
     ctx.font = "56px Georgia";
     ctx.fillText("Звёздная линия", 600, 158);
+    roundedRect(ctx, 230, 195, 740, 300, 34);
+    ctx.fillStyle = "rgba(13, 20, 39, .58)";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255, 220, 190, .28)";
+    ctx.stroke();
     ctx.fillStyle = "#f5b670";
-    ctx.font = "120px Georgia";
-    ctx.fillText("✦", 600, 298);
+    ctx.font = "96px Georgia";
+    const medalCount = getShareCardMedalCount(
+      summary.averageRank,
+      summary.completedCount
+    );
+    ctx.fillText(medalCount ? Array(medalCount).fill("✦").join("  ") : "—", 600, 298);
     ctx.fillStyle = "#fff0b8";
     ctx.font = "42px Georgia";
     const average = summary.completedCount ? summary.averageRank.toFixed(1) : "—";
@@ -157,17 +207,6 @@ export class FinalReplayScene {
       if (downloadFallback) await this.downloadCard();
       return "failed";
     }
-  }
-
-  async shareTelegram() {
-    // Ссылка t.me не умеет принимать локальный PNG из браузера. Поэтому на
-    // поддерживаемом телефоне используем системный share-sheet: Telegram
-    // получит и карточку, и подпись со ссылкой. На остальных устройствах
-    // сохраняем PNG и открываем обычный Telegram share-link.
-    const status = await this.shareNative({ downloadFallback: false });
-    if (status !== "unsupported") return;
-    await this.downloadCard();
-    this.openTelegramLink();
   }
 
   openTelegramLink() {

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { CampaignResults, FinalReplaySession } from "../js/core/CampaignResults.js";
 import { SceneManager } from "../js/core/SceneManager.js";
+import { getShareCardMedalCount } from "../js/scenes/FinalReplayScene.js";
 
 test("campaign records only confirmed successful gameplay results", () => {
   const campaign = new CampaignResults();
@@ -52,4 +53,13 @@ test("final replay returns to its existing final scene without changing the rout
   assert.equal(manager.currentIndex, 1);
   assert.equal(manager.currentScene, finalScene);
   assert.deepEqual(calls, ["suspend", "replay-enter", "replay-exit", "resume"]);
+});
+
+test("share card turns the average rank into the requested medal count", () => {
+  assert.equal(getShareCardMedalCount(2.0, 10), 1);
+  assert.equal(getShareCardMedalCount(2.01, 10), 2);
+  assert.equal(getShareCardMedalCount(2.69, 10), 2);
+  assert.equal(getShareCardMedalCount(2.7, 10), 3);
+  assert.equal(getShareCardMedalCount(3, 10), 3);
+  assert.equal(getShareCardMedalCount(3, 0), 0);
 });
