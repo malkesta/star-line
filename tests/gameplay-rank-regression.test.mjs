@@ -14,7 +14,7 @@ import { GameplayScene10 } from "../js/scenes/GameplayScene10.js";
 const lightLabels = ["Юный проводник", "Проводник звезд", "Звездочет", "Космический друг"];
 const darkLabels = ["Наблюдатель", "Ведущий к тьме", "Пожиратель", "Космический враг"];
 const scenes = [
-  [StarLineGame, [400, 600, 900], lightLabels], [GameplayScene2, [400, 600, 900], lightLabels],
+  [StarLineGame, [150, 600, 900], lightLabels], [GameplayScene2, [200, 600, 900], lightLabels],
   [GameplayScene3, [400, 600, 900], lightLabels], [GameplayScene4, [400, 600, 900], lightLabels],
   [GameplayScene5, [300, 400, 500], lightLabels], [GameplayScene6, [400, 500, 600], lightLabels],
   [GameplayScene7, [400, 600, 800], darkLabels], [GameplayScene8, [400, 500, 550], darkLabels],

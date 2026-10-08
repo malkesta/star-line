@@ -10,7 +10,7 @@ const expected = new Map([
 ]);
 
 const rankThresholds = new Map([
-  ["GameplayScene.js", [400, 600, 900]], ["GameplayScene2.js", [400, 600, 900]],
+  ["GameplayScene.js", [150, 600, 900]], ["GameplayScene2.js", [200, 600, 900]],
   ["GameplayScene3.js", [400, 600, 900]], ["GameplayScene4.js", [400, 600, 900]],
   ["GameplayScene5.js", [300, 400, 500]], ["GameplayScene6.js", [400, 500, 600]],
   ["GameplayScene7.js", [400, 600, 800]], ["GameplayScene8.js", [400, 500, 550]],

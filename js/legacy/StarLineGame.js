@@ -2071,7 +2071,7 @@ class Obstacle {
     this.tutorialEnabledInput = document.getElementById("tutorialEnabled");
     this.rotateHint = document.getElementById("rotateHint");
 
-    this.levelTargetScore = 400;
+    this.levelTargetScore = 150;
     this.levelPassed = false;
     this.displayedHeartProgress = 0;
     this.targetHeartProgress = 0;
@@ -2515,7 +2515,7 @@ resetSceneBackground() {
 
   getRankThresholds() {
     return {
-      oneMedalScore: 400,
+      oneMedalScore: 150,
       twoMedalScore: 600,
       threeMedalScore: 900,
     };

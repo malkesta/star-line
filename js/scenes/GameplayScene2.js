@@ -814,7 +814,7 @@ class Obstacle {
 
     this.rotateHint = document.getElementById("rotateHint");
 
-    this.levelTargetScore = 400;
+    this.levelTargetScore = 200;
     this.levelPassed = false;
     this.displayedHeartProgress = 0;
     this.targetHeartProgress = 0;
@@ -1162,7 +1162,7 @@ class Obstacle {
 
   getRankThresholds() {
     return {
-      oneMedalScore: 400,
+      oneMedalScore: 200,
       twoMedalScore: 600,
       threeMedalScore: 900,
     };
